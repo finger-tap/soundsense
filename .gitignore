@@ -1,0 +1,24 @@
+# 构建产物
+.build/
+.swiftpm/
+build/
+/soundsense
+/generate_icon
+/SoundSense.app/
+Package.resolved
+
+# 图标中间产物（保留 .swift 源码和 .icns 最终产物）
+icon.iconset/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# 系统文件
+.DS_Store
+*.swp
+*~
+
+# 日志
+*.log

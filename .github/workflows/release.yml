@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          chmod +x scripts/build.sh
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$VERSION" ./scripts/build.sh build
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP_FILE="build/SoundSense-${VERSION}.zip"
+
+          gh release create "$GITHUB_REF_NAME" \
+            "$ZIP_FILE" \
+            --title "闻声 SoundSense $GITHUB_REF_NAME" \
+            --notes "## 闻声 SoundSense $GITHUB_REF_NAME
+
+          ### 下载安装
+
+          1. 下载 \`SoundSense-${VERSION}.zip\` 并解压
+          2. 将 SoundSense.app 拖到「应用程序」文件夹
+          3. 首次打开：右键点击 -> 「打开」-> 确认
+          4. 在 系统设置 -> 隐私与安全 -> 麦克风 中授权
+
+          > ⚠️ 本 app 未签名，macOS 会显示安全提示，右键打开即可。
+
+          ### 功能
+
+          - A 计权噪音测量（IEC 61672 标准）
+          - FFT 频谱分析
+          - 实时分贝显示"
