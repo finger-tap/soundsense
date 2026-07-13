@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: macos-14
@@ -19,7 +22,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           VERSION="$VERSION" ./scripts/build.sh build
 
-      - name: Upload to GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
