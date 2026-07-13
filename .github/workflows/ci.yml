@@ -1,0 +1,100 @@
+name: CI
+
+# 触发:push 到任意分支 + 任意 PR。用于及早发现编译问题。
+# 发版打包由 release.yml(仅 tag)负责,与本 workflow 互不干扰。
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]   # tag 推送交给 release.yml,这里不重复跑
+  pull_request:
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # macOS:验证 SwiftPM + build.sh 双架构编译
+  # ─────────────────────────────────────────────────
+  macos-build:
+    name: macOS build (universal)
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: SwiftPM build
+        run: swift build
+
+      - name: Build universal .app + DMG
+        run: |
+          chmod +x scripts/build.sh
+          VERSION="ci-${GITHUB_SHA::7}" ./scripts/build.sh build
+
+      - name: Verify universal binary
+        run: |
+          BIN="build/SoundSense.app/Contents/MacOS/SoundSense"
+          ARCHS=$(lipo -archs "$BIN")
+          echo "二进制架构: $ARCHS"
+          if [[ "$ARCHS" != *"arm64"* || "$ARCHS" != *"x86_64"* ]]; then
+            echo "❌ 产物未包含双架构"
+            exit 1
+          fi
+          echo "✅ 双架构 universal binary 正常"
+
+  # ─────────────────────────────────────────────────
+  # iOS:验证 Xcode 工程能编译 iOS target
+  # ─────────────────────────────────────────────────
+  ios-build:
+    name: iOS build
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -resolvePackageDependencies
+
+      - name: Build iOS target (generic)
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -scheme SoundSense \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | xcpretty
+
+  # ─────────────────────────────────────────────────
+  # watchOS:验证 Xcode 工程能编译 watchOS target
+  # ─────────────────────────────────────────────────
+  watchos-build:
+    name: watchOS build
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -resolvePackageDependencies
+
+      - name: Build watchOS target (generic)
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -scheme SoundSenseWatch \
+            -destination 'generic/platform=watchOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | xcpretty

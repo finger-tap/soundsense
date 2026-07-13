@@ -1,5 +1,7 @@
 name: Release
 
+# 仅 tag (v*) 触发,产出三端产物并发 GitHub Release。
+# 编译检查由 ci.yml(push/PR)负责。
 on:
   push:
     tags:
@@ -9,42 +11,205 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  # ─────────────────────────────────────────────────
+  # macOS universal .app + DMG(不签名)
+  # ─────────────────────────────────────────────────
+  macos:
+    name: macOS universal DMG
     runs-on: macos-14
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build universal .app + DMG
         run: |
           chmod +x scripts/build.sh
-          VERSION="${GITHUB_REF_NAME#v}"
-          VERSION="$VERSION" ./scripts/build.sh build
+          VERSION="${GITHUB_REF_NAME#v}" ./scripts/build.sh build
+
+      - name: Verify universal binary
+        run: |
+          BIN="build/SoundSense.app/Contents/MacOS/SoundSense"
+          ARCHS=$(lipo -archs "$BIN")
+          echo "二进制架构: $ARCHS"
+          if [[ "$ARCHS" != *"arm64"* || "$ARCHS" != *"x86_64"* ]]; then
+            echo "❌ 产物未包含双架构"
+            exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: build/*.dmg
+
+  # ─────────────────────────────────────────────────
+  # iOS .ipa(未签名,验证可打包)
+  # ─────────────────────────────────────────────────
+  ios:
+    name: iOS IPA (unsigned)
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -resolvePackageDependencies
+
+      - name: Build iOS archive (unsigned)
+        run: |
+          mkdir -p build
+          xcodebuild -project SoundSense.xcodeproj \
+            -scheme SoundSense \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath build/SoundSense-iOS.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -allowProvisioningUpdates \
+            archive | xcpretty || true
+
+      - name: Export unsigned .ipa
+        run: |
+          mkdir -p build/ipa-export
+          # 未签名导出:用 development 风格 + 不签名,或手动打包 .app 为 .ipa
+          APP_PATH=$(find build/SoundSense-iOS.xcarchive -name "SoundSense.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ 找不到 .app,archive 可能失败"
+            exit 1
+          fi
+          # 手动组装 .ipa payload(绕过签名要求)
+          PAYLOAD="build/ipa-export/Payload"
+          mkdir -p "$PAYLOAD"
+          cp -R "$APP_PATH" "$PAYLOAD/"
+          cd build/ipa-export
+          zip -qr "../SoundSense-iOS-${GITHUB_REF_NAME#v}.ipa" Payload
+          cd ../..
+          ls -la build/*.ipa
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/*.ipa
+
+  # ─────────────────────────────────────────────────
+  # watchOS .ipa(未签名,验证可打包)
+  # ─────────────────────────────────────────────────
+  watchos:
+    name: watchOS IPA (unsigned)
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -project SoundSense.xcodeproj \
+            -resolvePackageDependencies
+
+      - name: Build watchOS archive (unsigned)
+        run: |
+          mkdir -p build
+          xcodebuild -project SoundSense.xcodeproj \
+            -scheme SoundSenseWatch \
+            -destination 'generic/platform=watchOS' \
+            -configuration Release \
+            -archivePath build/SoundSense-watchOS.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive | xcpretty || true
+
+      - name: Export unsigned .ipa
+        run: |
+          APP_PATH=$(find build/SoundSense-watchOS.xcarchive -name "SoundSenseWatch.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ 找不到 .app,archive 可能失败"
+            exit 1
+          fi
+          PAYLOAD="build/Payload"
+          mkdir -p "$PAYLOAD"
+          cp -R "$APP_PATH" "$PAYLOAD/"
+          cd build
+          zip -qr "SoundSense-watchOS-${GITHUB_REF_NAME#v}.ipa" Payload
+          cd ..
+          ls -la build/*.ipa
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchos-ipa
+          path: build/*.ipa
+
+  # ─────────────────────────────────────────────────
+  # 汇总:下载三端产物,创建 GitHub Release
+  # ─────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [macos, ios, watchos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.dmg" -o -name "*.ipa" \) -exec cp {} release/ \;
+          ls -la release/
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          DMG_FILE="build/SoundSense-${VERSION}.dmg"
-
-          gh release create "$GITHUB_REF_NAME" \
-            "$DMG_FILE" \
+          gh release create "$GITHUB_REF_NAME" release/* \
             --title "闻声 SoundSense $GITHUB_REF_NAME" \
             --notes "## 闻声 SoundSense $GITHUB_REF_NAME
 
-          ### 下载安装
+          ### 📦 下载
+
+          | 平台 | 文件 | 说明 |
+          |------|------|------|
+          | macOS(Apple Silicon + Intel) | \`SoundSense-${VERSION}.dmg\` | Universal binary,双芯片原生运行 |
+          | iOS | \`SoundSense-iOS-${VERSION}.ipa\` | 未签名,需自备签名才能装真机 |
+          | watchOS | \`SoundSense-watchOS-${VERSION}.ipa\` | 未签名,需自备签名才能装真机 |
+
+          ### 🍎 macOS 安装
 
           1. 下载 \`SoundSense-${VERSION}.dmg\`
-          2. 双击打开 dmg，将 SoundSense.app 拖入「应用程序」文件夹
-          3. 首次打开：右键点击 SoundSense.app -> 「打开」-> 确认
-          4. 在 系统设置 -> 隐私与安全 -> 麦克风 中授权
+          2. 双击打开 dmg,将 SoundSense.app 拖入「应用程序」文件夹
+          3. 首次打开:右键点击 SoundSense.app → 「打开」→ 确认
+          4. 在 系统设置 → 隐私与安全 → 麦克风 中授权
 
-          > ⚠️ 本 app 未签名，macOS 会显示安全提示，右键打开即可。
+          > ⚠️ 本 app 未签名,macOS 会显示安全提示,右键打开即可。
+          > ✅ Universal binary 同时支持 Apple Silicon(M 系列)和 Intel 芯片。
+
+          ### 📱 iOS / ⌚ watchOS
+
+          \`.ipa\` 为未签名包,无法直接安装到真机。如需真机调试:
+          1. 用 Xcode 打开 \`SoundSense.xcodeproj\`
+          2. 在 Signing & Capabilities 配置你的开发者账号
+          3. 连接设备直接 build & run,或用你的证书重签 .ipa
 
           ### 功能
 
-          - A 计权噪音测量（IEC 61672 标准）
-          - FFT 频谱分析
-          - 实时分贝显示"
+          - A 计权噪音测量(IEC 61672 标准)
+          - FFT 频谱分析(4096 点,vDSP)
+          - iOS:实时分贝 + 仪表盘 + 声波 + 频谱图 + 校准
+          - watchOS:独立运行,抬腕即测
+          - macOS:实时测量 + 算法自验证"
