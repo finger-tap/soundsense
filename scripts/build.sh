@@ -104,18 +104,80 @@ PLIST
 echo "✅ App bundle 组装完成"
 echo ""
 
-# ---- 3. 打 zip 包 ----
-echo "🗜  打包 zip..."
+# ---- 3. 打 DMG 包（拖拽安装）----
+echo "💿 打包 DMG..."
 
-ZIP_NAME="SoundSense-${VERSION}.zip"
-cd "$OUTPUT_DIR"
-zip -r -q "$ZIP_NAME" SoundSense.app
-cd "$PROJECT_ROOT"
+DMG_NAME="SoundSense-${VERSION}.dmg"
+DMG_PATH="$OUTPUT_DIR/$DMG_NAME"
+STAGING_DIR="$OUTPUT_DIR/dmg-staging"
 
-echo "✅ 打包完成: $OUTPUT_DIR/$ZIP_NAME"
+# 准备 DMG 暂存目录：放 .app + /Applications 快捷方式
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -R "$APP_DIR" "$STAGING_DIR/"
+ln -s /Applications "$STAGING_DIR/Applications"
+
+# 创建临时 DMG
+TMP_DMG="$OUTPUT_DIR/tmp-$DMG_NAME"
+rm -f "$TMP_DMG" "$DMG_PATH"
+hdiutil create -volname "闻声 SoundSense" \
+  -srcfolder "$STAGING_DIR" \
+  -fs HFS+ \
+  -format UDRW \
+  "$TMP_DMG" >/dev/null 2>&1
+
+# 挂载临时 DMG
+MOUNT_POINT=$(hdiutil attach -readwrite -noverify -noautoopen "$TMP_DMG" 2>/dev/null \
+  | grep -o '/Volumes/.*' | head -1)
+
+# 设置窗口布局（图标大小、位置等）
+if [ -n "$MOUNT_POINT" ]; then
+    # 用 AppleScript 设置 DMG 窗口外观
+    osascript << APPLESCRIPT 2>/dev/null || true
+tell application "Finder"
+    tell disk "$(basename "$MOUNT_POINT")"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {100, 100, 500, 320}
+        set view options of icon view of container window to \
+            {icon size: 96, arrangement: row}
+        set position of item "SoundSense.app" of container window to {120, 120}
+        set position of item "Applications" of container window to {350, 120}
+        close
+    end tell
+end tell
+APPLESCRIPT
+    # 卸载
+    hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1
+fi
+
+# 转换为压缩只读 DMG（体积更小，带 LZMA 压缩）
+hdiutil convert "$TMP_DMG" \
+  -format ULMO \
+  -imagekey zlib-level=9 \
+  -o "$DMG_PATH" >/dev/null 2>&1
+
+# 清理临时文件
+rm -f "$TMP_DMG"
+rm -rf "$STAGING_DIR"
+
+if [ -f "$DMG_PATH" ]; then
+    DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
+    echo "✅ 打包完成: $OUTPUT_DIR/$DMG_NAME ($DMG_SIZE)"
+else
+    echo "❌ DMG 打包失败，回退到 zip"
+    ZIP_NAME="SoundSense-${VERSION}.zip"
+    cd "$OUTPUT_DIR"
+    zip -r -q "$ZIP_NAME" SoundSense.app
+    cd "$PROJECT_ROOT"
+    echo "✅ 打包完成: $OUTPUT_DIR/$ZIP_NAME"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════"
 echo "  构建完成！"
 echo "  App:  $OUTPUT_DIR/SoundSense.app"
-echo "  Zip:  $OUTPUT_DIR/$ZIP_NAME"
+echo "  Dmg:  $OUTPUT_DIR/$DMG_NAME"
 echo "═══════════════════════════════════════════════"
