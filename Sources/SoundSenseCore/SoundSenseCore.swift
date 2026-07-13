@@ -12,7 +12,7 @@ import Accelerate
 // MARK: - 公共类型
 
 /// 一次测量结果
-public struct MeterResult: CustomStringConvertible {
+public struct MeterResult: CustomStringConvertible, Equatable {
     /// 全频段 dBFS（未计权），用于调试对比
     public let dbfsFlat: Float
     /// A 计权 dBFS（未计权），用于调试对比

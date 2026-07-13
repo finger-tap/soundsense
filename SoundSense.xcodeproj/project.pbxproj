@@ -1,0 +1,593 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section - iOS sources */
+		A10000000000000000000001 /* MeterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* MeterViewModel.swift */; };
+		A10000000000000000000002 /* SoundSenseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* SoundSenseApp.swift */; };
+		A10000000000000000000003 /* MainMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* MainMeterView.swift */; };
+		A10000000000000000000004 /* SPLGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* SPLGaugeView.swift */; };
+		A10000000000000000000005 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* WaveformView.swift */; };
+		A10000000000000000000006 /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* SpectrumView.swift */; };
+		A10000000000000000000007 /* LevelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LevelBadge.swift */; };
+		A10000000000000000000008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* SettingsView.swift */; };
+		A10000000000000000000009 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
+		A1000000000000000000000A /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
+		A1000000000000000000000B /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
+		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* Assets.xcassets */; };
+/* End PBXBuildFile section - iOS sources */
+
+/* Begin PBXBuildFile section - watchOS sources */
+		A1000000000000000000000D /* SoundSenseWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* SoundSenseWatchApp.swift */; };
+		A1000000000000000000000E /* WatchMeterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* WatchMeterViewModel.swift */; };
+		A1000000000000000000000F /* WatchMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* WatchMeterView.swift */; };
+		A10000000000000000000010 /* WatchSpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* WatchSpectrumView.swift */; };
+		A10000000000000000000011 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
+		A10000000000000000000012 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
+		A10000000000000000000013 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
+		A10000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* Assets.xcassets */; };
+/* End PBXBuildFile section - watchOS sources */
+
+/* Begin PBXBuildFile section - frameworks (SoundSenseCore product) */
+		A10000000000000000000015 /* SoundSenseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000001 /* SoundSenseCore */; };
+		A10000000000000000000016 /* SoundSenseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000002 /* SoundSenseCore */; };
+/* End PBXBuildFile section - frameworks */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* MeterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* SoundSenseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundSenseApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* MainMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMeterView.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* SPLGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SPLGaugeView.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* LevelBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelBadge.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* AudioMeterEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMeterEngine.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* MeterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterTheme.swift; sourceTree = "<group>"; };
+		A2000000000000000000000C /* NoiseLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseLevel.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000000000000000000010 /* SoundSenseWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundSenseWatchApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* WatchMeterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMeterViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* WatchMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMeterView.swift; sourceTree = "<group>"; };
+		A20000000000000000000013 /* WatchSpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSpectrumView.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000000000000000000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000030 /* SoundSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000031 /* SoundSenseWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundSenseWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A40000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000015 /* SoundSenseCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A40000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000016 /* SoundSenseCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A50000000000000000000000 = {
+			isa = PBXGroup;
+			children = (
+				A50000000000000000000001 /* SoundSense */,
+				A50000000000000000000002 /* Shared */,
+				A50000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A50000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000030 /* SoundSense.app */,
+				A20000000000000000000031 /* SoundSenseWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000002 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A2000000000000000000000A /* AudioMeterEngine.swift */,
+				A2000000000000000000000B /* MeterTheme.swift */,
+				A2000000000000000000000C /* NoiseLevel.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000001 /* SoundSense */ = {
+			isa = PBXGroup;
+			children = (
+				A50000000000000000000010 /* iOS */,
+				A50000000000000000000020 /* watchOS */,
+			);
+			name = SoundSense;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000010 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A50000000000000000000011 /* SoundSenseApp */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000011 /* SoundSenseApp */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* SoundSenseApp.swift */,
+				A50000000000000000000012 /* Views */,
+				A50000000000000000000013 /* ViewModels */,
+				A2000000000000000000000D /* Assets.xcassets */,
+				A20000000000000000000020 /* Info.plist */,
+			);
+			path = SoundSenseApp;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000012 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000003 /* MainMeterView.swift */,
+				A20000000000000000000004 /* SPLGaugeView.swift */,
+				A20000000000000000000005 /* WaveformView.swift */,
+				A20000000000000000000006 /* SpectrumView.swift */,
+				A20000000000000000000007 /* LevelBadge.swift */,
+				A20000000000000000000008 /* SettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000013 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* MeterViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000020 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				A50000000000000000000021 /* SoundSenseWatchApp */,
+			);
+			path = watchOS;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000021 /* SoundSenseWatchApp */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000010 /* SoundSenseWatchApp.swift */,
+				A20000000000000000000011 /* WatchMeterViewModel.swift */,
+				A50000000000000000000022 /* Views */,
+				A20000000000000000000014 /* Assets.xcassets */,
+				A20000000000000000000021 /* Info.plist */,
+			);
+			path = SoundSenseWatchApp;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000022 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000012 /* WatchMeterView.swift */,
+				A20000000000000000000013 /* WatchSpectrumView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A60000000000000000000001 /* SoundSense */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXNativeTarget "SoundSense" */;
+			buildPhases = (
+				A70000000000000000000001 /* Sources */,
+				A40000000000000000000001 /* Frameworks */,
+				A70000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoundSense;
+			packageProductDependencies = (
+				A30000000000000000000001 /* SoundSenseCore */,
+			);
+			productName = SoundSense;
+			productReference = A20000000000000000000030 /* SoundSense.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A60000000000000000000002 /* SoundSenseWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000004 /* Build configuration list for PBXNativeTarget "SoundSenseWatch" */;
+			buildPhases = (
+				A70000000000000000000003 /* Sources */,
+				A40000000000000000000002 /* Frameworks */,
+				A70000000000000000000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoundSenseWatch;
+			packageProductDependencies = (
+				A30000000000000000000002 /* SoundSenseCore */,
+			);
+			productName = SoundSenseWatch;
+			productReference = A20000000000000000000031 /* SoundSenseWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A60000000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					A60000000000000000000002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A80000000000000000000007 /* Build configuration list for PBXProject "SoundSense" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"zh-Hans",
+				Base,
+			);
+			mainGroup = A50000000000000000000000;
+			packageReferences = (
+				B10000000000000000000001 /* XCLocalSwiftPackageReference "SoundSenseCore" */,
+			);
+			productRefGroup = A50000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A60000000000000000000001 /* SoundSense */,
+				A60000000000000000000002 /* SoundSenseWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A70000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A70000000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000014 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000002 /* SoundSenseApp.swift in Sources */,
+				A10000000000000000000001 /* MeterViewModel.swift in Sources */,
+				A10000000000000000000003 /* MainMeterView.swift in Sources */,
+				A10000000000000000000004 /* SPLGaugeView.swift in Sources */,
+				A10000000000000000000005 /* WaveformView.swift in Sources */,
+				A10000000000000000000006 /* SpectrumView.swift in Sources */,
+				A10000000000000000000007 /* LevelBadge.swift in Sources */,
+				A10000000000000000000008 /* SettingsView.swift in Sources */,
+				A10000000000000000000009 /* AudioMeterEngine.swift in Sources */,
+				A1000000000000000000000A /* MeterTheme.swift in Sources */,
+				A1000000000000000000000B /* NoiseLevel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A70000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000D /* SoundSenseWatchApp.swift in Sources */,
+				A1000000000000000000000E /* WatchMeterViewModel.swift in Sources */,
+				A1000000000000000000000F /* WatchMeterView.swift in Sources */,
+				A10000000000000000000010 /* WatchSpectrumView.swift in Sources */,
+				A10000000000000000000011 /* AudioMeterEngine.swift in Sources */,
+				A10000000000000000000012 /* MeterTheme.swift in Sources */,
+				A10000000000000000000013 /* NoiseLevel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		B10000000000000000000001 /* XCLocalSwiftPackageReference "SoundSenseCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../soundsense";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A30000000000000000000001 /* SoundSenseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B10000000000000000000001 /* XCLocalSwiftPackageReference "SoundSenseCore" */;
+			productName = SoundSenseCore;
+		};
+		A30000000000000000000002 /* SoundSenseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B10000000000000000000001 /* XCLocalSwiftPackageReference "SoundSenseCore" */;
+			productName = SoundSenseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCBuildConfiguration section */
+		/* ---- Project: Debug ---- */
+		A70000000000000000000010 /* Project Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+		/* ---- Project: Release ---- */
+		A70000000000000000000011 /* Project Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRIP_INSTALLED_PRODUCT = YES;
+				STRIP_SWIFT_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+		/* ---- iOS Target: Debug ---- */
+		A70000000000000000000012 /* iOS Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "iOS/SoundSenseApp/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense";
+				PRODUCT_NAME = SoundSense;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		/* ---- iOS Target: Release ---- */
+		A70000000000000000000013 /* iOS Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "iOS/SoundSenseApp/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense";
+				PRODUCT_NAME = SoundSense;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		/* ---- watchOS Target: Debug ---- */
+		A70000000000000000000014 /* watchOS Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "watchOS/SoundSenseWatchApp/Info.plist";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.watch";
+				PRODUCT_NAME = SoundSenseWatch;
+				SDKROOT = watchos;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+		/* ---- watchOS Target: Release ---- */
+		A70000000000000000000015 /* watchOS Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "watchOS/SoundSenseWatchApp/Info.plist";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.watch";
+				PRODUCT_NAME = SoundSenseWatch;
+				SDKROOT = watchos;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A80000000000000000000001 /* Build configuration list for PBXNativeTarget "SoundSense" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A70000000000000000000012 /* iOS Debug */,
+				A70000000000000000000013 /* iOS Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000004 /* Build configuration list for PBXNativeTarget "SoundSenseWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A70000000000000000000014 /* watchOS Debug */,
+				A70000000000000000000015 /* watchOS Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000007 /* Build configuration list for PBXProject "SoundSense" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A70000000000000000000010 /* Project Debug */,
+				A70000000000000000000011 /* Project Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = A90000000000000000000001 /* Project object */;
+}
