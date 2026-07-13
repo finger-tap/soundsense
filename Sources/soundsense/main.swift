@@ -9,7 +9,12 @@
 //
 
 import Foundation
-// SoundSenseCore.swift 的代码在同一编译单元内，无需 import
+// SwiftPM 模块化编译需要显式 import SoundSenseCore;
+// scripts/build.sh 走 swiftc 单文件编译(把算法源码直接并入编译单元),
+// 此时模块不存在,用 canImport 守卫跳过,两种方式都能编译。
+#if canImport(SoundSenseCore)
+import SoundSenseCore
+#endif
 
 // MARK: - 命令行解析
 

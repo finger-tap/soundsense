@@ -35,22 +35,55 @@ echo ""
 # ---- 1. 编译 ----
 echo "🔨 编译中..."
 
+# 优先使用完整 Xcode 工具链(交叉编译更可靠;CommandLineTools 的 swiftc 在
+# 交叉编译 arm64 时可能卡死)。CI(macos-14 runner)已默认 xcode-select 到 Xcode。
+if [ -z "${DEVELOPER_DIR:-}" ] || [ "${DEVELOPER_DIR:-}" = "/" ]; then
+  if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+    export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+    export PATH="/Applications/Xcode.app/Contents/Developer/usr/bin:$PATH"
+    echo "  使用 Xcode 工具链: $DEVELOPER_DIR"
+  fi
+fi
+
 # 确定 SDK 路径
 SDK_PATH="$(xcrun --show-sdk-path 2>/dev/null || echo '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk')"
-# 目标架构：GitHub Actions macos-14 是 arm64，本地可能是 x86_64
-ARCH="$(uname -m)"
-TARGET="${ARCH}-apple-macos12"
 
-swiftc \
-  -O \
-  -target "$TARGET" \
-  -sdk "$SDK_PATH" \
-  -framework Accelerate \
-  -framework AVFoundation \
-  -framework Foundation \
-  Sources/SoundSenseCore/SoundSenseCore.swift \
-  Sources/soundsense/main.swift \
-  -o "$OUTPUT_DIR/SoundSense"
+# Universal Binary:分别编译 arm64(Apple Silicon,M 系列)和 x86_64(Intel),
+# 再用 lipo 合并成一个双架构二进制。这样一个 .app / .dmg 在两种芯片的 Mac 上
+# 都能原生运行,无需 Rosetta。
+# macOS 12 最低部署目标:Intel 最后支持到 macOS 12 Monterey;Apple Silicon 全支持。
+MACOS_MIN="12.0"
+SOURCES="Sources/SoundSenseCore/SoundSenseCore.swift Sources/soundsense/main.swift"
+FRAMEWORKS="-framework Accelerate -framework AVFoundation -framework Foundation"
+
+# 1a. 编译 arm64(Apple Silicon)
+echo "  → 编译 arm64 (Apple Silicon)..."
+swiftc -O -target "arm64-apple-macos${MACOS_MIN}" -sdk "$SDK_PATH" \
+  $FRAMEWORKS $SOURCES \
+  -o "$OUTPUT_DIR/SoundSense.arm64" || { echo "❌ arm64 编译失败"; exit 1; }
+
+# 1b. 编译 x86_64(Intel)
+echo "  → 编译 x86_64 (Intel)..."
+swiftc -O -target "x86_64-apple-macos${MACOS_MIN}" -sdk "$SDK_PATH" \
+  $FRAMEWORKS $SOURCES \
+  -o "$OUTPUT_DIR/SoundSense.x86_64" || { echo "❌ x86_64 编译失败"; exit 1; }
+
+# 1c. 合并为 universal binary
+echo "  → 合并 universal binary..."
+lipo -create \
+  "$OUTPUT_DIR/SoundSense.arm64" \
+  "$OUTPUT_DIR/SoundSense.x86_64" \
+  -output "$OUTPUT_DIR/SoundSense" || { echo "❌ lipo 合并失败"; exit 1; }
+
+# 清理中间产物
+rm -f "$OUTPUT_DIR/SoundSense.arm64" "$OUTPUT_DIR/SoundSense.x86_64"
+
+# 校验产物确实是双架构
+BUILT_ARCHS="$(lipo -archs "$OUTPUT_DIR/SoundSense" 2>/dev/null || echo unknown)"
+echo "  二进制架构: $BUILT_ARCHS"
+if [[ "$BUILT_ARCHS" != *"arm64"* || "$BUILT_ARCHS" != *"x86_64"* ]]; then
+  echo "  ⚠️  警告:产物未包含双架构,某些 Mac 可能无法运行"
+fi
 
 echo "✅ 编译完成"
 echo ""
