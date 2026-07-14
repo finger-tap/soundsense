@@ -67,10 +67,10 @@ jobs:
             -scheme SoundSense \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
             build
 
   # ─────────────────────────────────────────────────
@@ -99,8 +99,8 @@ jobs:
             -target SoundSenseWatch \
             -sdk watchos \
             -configuration Release \
-            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
             build

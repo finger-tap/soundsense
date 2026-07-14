@@ -67,23 +67,25 @@ jobs:
         run: |
           xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
 
-      # 用 build + CONFIGURATION_BUILD_DIR 出 .app,再手动打 ipa。
-      # 比 archive 更可控,不依赖 destination/platform runtime 的设备端。
       - name: Build iOS .app (unsigned)
         run: |
           mkdir -p build/app
+          # 用 -scheme + -destination build 出 .app(CONFIGURATION_BUILD_DIR
+          # 指定输出目录,便于后续打包 ipa)。
           xcodebuild -project SoundSense.xcodeproj \
             -scheme SoundSense \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
             build
-          # 把 .app 复制到已知位置
-          APP=$(find build/derived -name "SoundSense.app" -type d | head -1)
-          cp -R "$APP" build/app/
+          if [ ! -d build/app/SoundSense.app ]; then
+            echo "❌ 未生成 SoundSense.app"
+            ls -la build/app/
+            exit 1
+          fi
 
       - name: Package unsigned .ipa
         run: |
@@ -126,18 +128,22 @@ jobs:
           mkdir -p build/app
           # 用 -target + -sdk watchos(而非 -scheme + -destination),
           # 绕过 device destination 解析,更可靠。
+          # 注意:-derivedDataPath 必须配合 -scheme,这里用 -target,
+          # 所以改用 CONFIGURATION_BUILD_DIR 指定输出目录。
           xcodebuild -project SoundSense.xcodeproj \
             -target SoundSenseWatch \
             -sdk watchos \
             -configuration Release \
-            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
             build
-          APP=$(find build/derived -name "SoundSenseWatch.app" -type d | head -1)
-          if [ -z "$APP" ]; then echo "❌ 未找到 .app"; exit 1; fi
-          cp -R "$APP" build/app/
+          if [ ! -d build/app/SoundSenseWatch.app ]; then
+            echo "❌ 未生成 SoundSenseWatch.app"
+            ls -la build/app/
+            exit 1
+          fi
 
       - name: Package unsigned .ipa
         run: |
