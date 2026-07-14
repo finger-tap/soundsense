@@ -168,6 +168,13 @@ jobs:
     needs: [macos, ios, watchos]
     runs-on: ubuntu-latest
     steps:
+      # gh release create 内部会调用 git 获取仓库信息,必须有 checkout。
+      # 用浅克隆即可(只为提供 git 上下文,不需要完整历史)。
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
