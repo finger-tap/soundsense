@@ -156,12 +156,9 @@ public final class AudioMeterEngine: ObservableObject {
     /// 按 platform 返回合法的 category options
     private func platformCategoryOptions() -> AVAudioSession.CategoryOptions {
         #if os(watchOS)
-        // watchOS:defaultToSpeaker 不可用;allowBluetooth 仅 watchOS 11+
-        if #available(watchOS 11.0, *) {
-            return [.allowBluetooth]
-        } else {
-            return []
-        }
+        // watchOS:defaultToSpeaker 和 allowBluetooth 都不可用或受限。
+        // 测分贝只需要麦克风输入,用空 options 最稳,跨 SDK 版本兼容。
+        return []
         #else
         // iOS
         return [.allowBluetooth, .defaultToSpeaker]
