@@ -16,7 +16,9 @@
 //  本引擎不做后台保活 —— 由调用方在 scenePhase 变化时 start()/stop()。
 //
 
-#if os(iOS) || os(watchOS)
+// macOS:configureSession 空(macOS 无 AVAudioSession);iOS/watchOS 配置 session。
+// AVAudioEngine + installTap + DBMeter 调度逻辑三端一致。
+#if os(iOS) || os(watchOS) || os(macOS)
 
 import Foundation
 import AVFoundation
@@ -88,7 +90,17 @@ public final class AudioMeterEngine: ObservableObject {
                 self?.latestResult = result
             }
         }
+        #if os(macOS)
+        // macOS 无 AVAudioSession,授权由系统在 installTap 时弹窗处理。
+        // macOS 14+ 可用 AVAudioApplication.shared.recordPermission 预查。
+        if #available(macOS 14.0, *) {
+            self.permissionGranted = AVAudioApplication.shared.recordPermission == .granted
+        } else {
+            self.permissionGranted = false
+        }
+        #else
         self.permissionGranted = AVAudioSession.sharedInstance().recordPermission == .granted
+        #endif
     }
 
     // MARK: - 权限
@@ -96,6 +108,19 @@ public final class AudioMeterEngine: ObservableObject {
     /// 请求麦克风权限(异步)。
     public func requestPermission() async -> Bool {
         guard !permissionGranted else { return true }
+        #if os(macOS)
+        // macOS 14+ 用 AVAudioApplication;更低版本 macOS 没有 requestRecordPermission,
+        // 首次 installTap 时系统会自动弹授权。这里统一返回 true,授权由系统在 start 时处理。
+        if #available(macOS 14.0, *) {
+            let granted = await AVAudioApplication.requestRecordPermission()
+            permissionGranted = granted
+            return granted
+        } else {
+            // macOS 13 及以下:无前置 API,等 installTap 触发系统弹窗
+            permissionGranted = true
+            return true
+        }
+        #else
         let granted = await withCheckedContinuation { continuation in
             AVAudioSession.sharedInstance().requestRecordPermission { allowed in
                 continuation.resume(returning: allowed)
@@ -103,6 +128,7 @@ public final class AudioMeterEngine: ObservableObject {
         }
         permissionGranted = granted
         return granted
+        #endif
     }
 
     // MARK: - 启动 / 停止
@@ -135,8 +161,11 @@ public final class AudioMeterEngine: ObservableObject {
     public func stop() {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        #if !os(macOS)
+        // macOS 无 AVAudioSession
         try? AVAudioSession.sharedInstance().setActive(false,
                                                         options: [.notifyOthersOnDeactivation])
+        #endif
         worker?.reset()
         state = .stopped
     }
@@ -144,6 +173,10 @@ public final class AudioMeterEngine: ObservableObject {
     // MARK: - 内部实现
 
     private func configureSession() throws {
+        #if os(macOS)
+        // macOS 没有 AVAudioSession,无需配置。AVAudioEngine 可直接启动。
+        // (macOS 上 engine.start() 会触发系统级麦克风授权弹窗)
+        #else
         let session = AVAudioSession.sharedInstance()
         // .measurement 尽量关闭 AGC/高通,保证测量精度(与 macOS LiveMeter 一致)
         // 选项按平台区分:watchOS 不支持 defaultToSpeaker;allowBluetooth 在 watchOS 11+ 才有。
@@ -151,9 +184,11 @@ public final class AudioMeterEngine: ObservableObject {
                                 mode: .measurement,
                                 options: platformCategoryOptions())
         try session.setActive(true, options: [])
+        #endif
     }
 
-    /// 按 platform 返回合法的 category options
+    /// 按 platform 返回合法的 category options(仅 iOS/watchOS 用,macOS 不调用此函数)
+    #if !os(macOS)
     private func platformCategoryOptions() -> AVAudioSession.CategoryOptions {
         #if os(watchOS)
         // watchOS:defaultToSpeaker 和 allowBluetooth 都不可用或受限。
@@ -164,6 +199,7 @@ public final class AudioMeterEngine: ObservableObject {
         return [.allowBluetooth, .defaultToSpeaker]
         #endif
     }
+    #endif
 
     private func installTapIfNeeded() throws {
         let inputNode = engine.inputNode

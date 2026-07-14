@@ -15,7 +15,7 @@ jobs:
   # macOS universal .app + DMG(不签名)
   # ─────────────────────────────────────────────────
   macos:
-    name: macOS universal DMG
+    name: macOS universal DMG (GUI app)
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -24,20 +24,85 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      - name: Build universal .app + DMG
+      - name: Resolve packages
         run: |
-          chmod +x scripts/build.sh
-          VERSION="${GITHUB_REF_NAME#v}" ./scripts/build.sh build
+          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+
+      # 编译 macOS GUI app(universal binary: arm64 + x86_64)。
+      # 用 -target + -sdk macosx + ARCHS 出双架构,无需 simulator runtime。
+      - name: Build macOS GUI app (universal)
+        run: |
+          mkdir -p build
+          xcodebuild -project SoundSense.xcodeproj \
+            -target SoundSenseMac \
+            -sdk macosx \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
+            build
 
       - name: Verify universal binary
         run: |
-          BIN="build/SoundSense.app/Contents/MacOS/SoundSense"
+          BIN="build/app/SoundSenseMac.app/Contents/MacOS/SoundSenseMac"
+          if [ ! -f "$BIN" ]; then echo "❌ 未生成可执行文件"; exit 1; fi
           ARCHS=$(lipo -archs "$BIN")
           echo "二进制架构: $ARCHS"
           if [[ "$ARCHS" != *"arm64"* || "$ARCHS" != *"x86_64"* ]]; then
             echo "❌ 产物未包含双架构"
             exit 1
           fi
+
+      # 打 DMG(拖拽安装),复用 build.sh 里成熟的 hdiutil 流程
+      - name: Package DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG_NAME="SoundSense-${VERSION}.dmg"
+          STAGING="build/dmg-staging"
+          mkdir -p "$STAGING"
+          cp -R build/app/SoundSenseMac.app "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          TMP_DMG="build/tmp-$DMG_NAME"
+          hdiutil create -volname "闻声 SoundSense" \
+            -srcfolder "$STAGING" \
+            -fs HFS+ \
+            -format UDRW \
+            "$TMP_DMG" >/dev/null 2>&1
+
+          MOUNT_POINT=$(hdiutil attach -readwrite -noverify -noautoopen "$TMP_DMG" 2>/dev/null \
+            | grep -o '/Volumes/.*' | head -1)
+
+          if [ -n "$MOUNT_POINT" ]; then
+            osascript <<APPLESCRIPT 2>/dev/null || true
+          tell application "Finder"
+            tell disk "$(basename "$MOUNT_POINT")"
+              open
+              set current view of container window to icon view
+              set toolbar visible of container window to false
+              set statusbar visible of container window to false
+              set the bounds of container window to {100, 100, 500, 320}
+              set view options of icon view of container window to {icon size: 96, arrangement: row}
+              set position of item "SoundSenseMac.app" of container window to {120, 120}
+              set position of item "Applications" of container window to {350, 120}
+              close
+            end tell
+          end tell
+          APPLESCRIPT
+            hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1
+          fi
+
+          hdiutil convert "$TMP_DMG" \
+            -format ULMO \
+            -imagekey zlib-level=9 \
+            -o "build/$DMG_NAME" >/dev/null 2>&1
+
+          rm -f "$TMP_DMG"
+          rm -rf "$STAGING"
+          ls -la build/*.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

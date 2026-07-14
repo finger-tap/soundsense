@@ -22,24 +22,23 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      - name: SwiftPM build
+      - name: SwiftPM build (CLI 算法验证)
         run: swift build
 
-      - name: Build universal .app + DMG
+      - name: Build macOS GUI app
         run: |
-          chmod +x scripts/build.sh
-          VERSION="ci-${GITHUB_SHA::7}" ./scripts/build.sh build
-
-      - name: Verify universal binary
-        run: |
-          BIN="build/SoundSense.app/Contents/MacOS/SoundSense"
-          ARCHS=$(lipo -archs "$BIN")
-          echo "二进制架构: $ARCHS"
-          if [[ "$ARCHS" != *"arm64"* || "$ARCHS" != *"x86_64"* ]]; then
-            echo "❌ 产物未包含双架构"
-            exit 1
-          fi
-          echo "✅ 双架构 universal binary 正常"
+          mkdir -p build/app
+          xcodebuild -project SoundSense.xcodeproj \
+            -target SoundSenseMac \
+            -sdk macosx \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
+            build
+          test -f build/app/SoundSenseMac.app/Contents/MacOS/SoundSenseMac
+          echo "✅ macOS GUI app 编译成功"
 
   # ─────────────────────────────────────────────────
   # iOS:验证 Xcode 工程能编译 iOS target
