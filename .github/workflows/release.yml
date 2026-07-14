@@ -46,7 +46,7 @@ jobs:
           path: build/*.dmg
 
   # ─────────────────────────────────────────────────
-  # iOS .ipa(未签名,验证可打包)
+  # iOS .ipa(未签名)
   # ─────────────────────────────────────────────────
   ios:
     name: iOS IPA (unsigned)
@@ -58,41 +58,40 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      # 下载 iOS simulator runtime(Assets.xcassets 编译需要)。
+      # runner 可能未预装与 Xcode 版本匹配的 runtime。
+      - name: Download iOS simulator runtime
+        run: xcodebuild -downloadPlatform iOS
+
       - name: Resolve packages
         run: |
-          xcodebuild -project SoundSense.xcodeproj \
-            -resolvePackageDependencies
+          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
 
-      - name: Build iOS archive (unsigned)
+      # 用 build + CONFIGURATION_BUILD_DIR 出 .app,再手动打 ipa。
+      # 比 archive 更可控,不依赖 destination/platform runtime 的设备端。
+      - name: Build iOS .app (unsigned)
         run: |
-          mkdir -p build
+          mkdir -p build/app
           xcodebuild -project SoundSense.xcodeproj \
             -scheme SoundSense \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            -archivePath build/SoundSense-iOS.xcarchive \
+            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            -allowProvisioningUpdates \
-            archive | xcpretty || true
+            build
+          # 把 .app 复制到已知位置
+          APP=$(find build/derived -name "SoundSense.app" -type d | head -1)
+          cp -R "$APP" build/app/
 
-      - name: Export unsigned .ipa
+      - name: Package unsigned .ipa
         run: |
-          mkdir -p build/ipa-export
-          # 未签名导出:用 development 风格 + 不签名,或手动打包 .app 为 .ipa
-          APP_PATH=$(find build/SoundSense-iOS.xcarchive -name "SoundSense.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ 找不到 .app,archive 可能失败"
-            exit 1
-          fi
-          # 手动组装 .ipa payload(绕过签名要求)
-          PAYLOAD="build/ipa-export/Payload"
-          mkdir -p "$PAYLOAD"
-          cp -R "$APP_PATH" "$PAYLOAD/"
-          cd build/ipa-export
-          zip -qr "../SoundSense-iOS-${GITHUB_REF_NAME#v}.ipa" Payload
-          cd ../..
+          mkdir -p build/Payload
+          cp -R build/app/SoundSense.app build/Payload/
+          cd build
+          zip -qr "SoundSense-iOS-${GITHUB_REF_NAME#v}.ipa" Payload
+          cd ..
           ls -la build/*.ipa
 
       - name: Upload artifact
@@ -102,7 +101,7 @@ jobs:
           path: build/*.ipa
 
   # ─────────────────────────────────────────────────
-  # watchOS .ipa(未签名,验证可打包)
+  # watchOS .ipa(未签名)
   # ─────────────────────────────────────────────────
   watchos:
     name: watchOS IPA (unsigned)
@@ -114,34 +113,36 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      # 下载 watchOS simulator runtime(Assets.xcassets 编译需要)
+      - name: Download watchOS simulator runtime
+        run: xcodebuild -downloadPlatform watchOS
+
       - name: Resolve packages
         run: |
-          xcodebuild -project SoundSense.xcodeproj \
-            -resolvePackageDependencies
+          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
 
-      - name: Build watchOS archive (unsigned)
+      - name: Build watchOS .app (unsigned)
         run: |
-          mkdir -p build
+          mkdir -p build/app
+          # 用 -target + -sdk watchos(而非 -scheme + -destination),
+          # 绕过 device destination 解析,更可靠。
           xcodebuild -project SoundSense.xcodeproj \
-            -scheme SoundSenseWatch \
-            -destination 'generic/platform=watchOS' \
+            -target SoundSenseWatch \
+            -sdk watchos \
             -configuration Release \
-            -archivePath build/SoundSense-watchOS.xcarchive \
+            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive | xcpretty || true
+            build
+          APP=$(find build/derived -name "SoundSenseWatch.app" -type d | head -1)
+          if [ -z "$APP" ]; then echo "❌ 未找到 .app"; exit 1; fi
+          cp -R "$APP" build/app/
 
-      - name: Export unsigned .ipa
+      - name: Package unsigned .ipa
         run: |
-          APP_PATH=$(find build/SoundSense-watchOS.xcarchive -name "SoundSenseWatch.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ 找不到 .app,archive 可能失败"
-            exit 1
-          fi
-          PAYLOAD="build/Payload"
-          mkdir -p "$PAYLOAD"
-          cp -R "$APP_PATH" "$PAYLOAD/"
+          mkdir -p build/Payload
+          cp -R build/app/SoundSenseWatch.app build/Payload/
           cd build
           zip -qr "SoundSense-watchOS-${GITHUB_REF_NAME#v}.ipa" Payload
           cd ..

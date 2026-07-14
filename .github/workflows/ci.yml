@@ -54,21 +54,24 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Download iOS simulator runtime
+        run: xcodebuild -downloadPlatform iOS
+
       - name: Resolve packages
         run: |
-          xcodebuild -project SoundSense.xcodeproj \
-            -resolvePackageDependencies
+          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
 
-      - name: Build iOS target (generic)
+      - name: Build iOS target
         run: |
           xcodebuild -project SoundSense.xcodeproj \
             -scheme SoundSense \
             -destination 'generic/platform=iOS' \
             -configuration Release \
+            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build | xcpretty
+            build
 
   # ─────────────────────────────────────────────────
   # watchOS:验证 Xcode 工程能编译 watchOS target
@@ -83,18 +86,21 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Download watchOS simulator runtime
+        run: xcodebuild -downloadPlatform watchOS
+
       - name: Resolve packages
         run: |
-          xcodebuild -project SoundSense.xcodeproj \
-            -resolvePackageDependencies
+          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
 
-      - name: Build watchOS target (generic)
+      - name: Build watchOS target
         run: |
           xcodebuild -project SoundSense.xcodeproj \
-            -scheme SoundSenseWatch \
-            -destination 'generic/platform=watchOS' \
+            -target SoundSenseWatch \
+            -sdk watchos \
             -configuration Release \
+            -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build | xcpretty
+            build
