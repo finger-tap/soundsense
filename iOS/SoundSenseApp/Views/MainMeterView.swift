@@ -11,6 +11,7 @@ import SoundSenseCore
 struct MainMeterView: View {
     @StateObject private var viewModel = MeterViewModel()
     @State private var showingSettings = false
+    @State private var showingShare = false
 
     var body: some View {
         ZStack {
@@ -92,14 +93,39 @@ struct MainMeterView: View {
             }
 
             // —— 底部起停按钮 ——
-            VStack {
+            VStack(spacing: 10) {
                 Spacer()
+                // 停止后显示导出报告按钮
+                if viewModel.lastStats != nil {
+                    Button {
+                        showingShare = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("导出报告")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Capsule().fill(Color.white.opacity(0.12)))
+                        .padding(.horizontal, 40)
+                    }
+                    .buttonStyle(.plain)
+                }
                 controlButton
                     .padding(.bottom, 30)
             }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingShare) {
+            if let stats = viewModel.lastStats {
+                ReportShareSheet(stats: stats,
+                                 deviceName: viewModel.deviceName,
+                                 calibrationOffset: viewModel.calibrationOffset)
+            }
         }
         // 监听引擎状态变化:状态机变化时处理
         .onChange(of: viewModel.engine.state) { newState in

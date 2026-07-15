@@ -69,6 +69,8 @@ public final class AudioMeterEngine: ObservableObject {
     /// 在专用队列上跑的测量 worker(非隔离,只通过 meterQueue 访问)
     private var worker: MeterWorker?
     private let engine = AVAudioEngine()
+    /// 标记 tap 是否已安装(installTap 重复装会抛异常)
+    private var tapInstalled = false
 
     // MARK: - 初始化
 
@@ -91,13 +93,9 @@ public final class AudioMeterEngine: ObservableObject {
             }
         }
         #if os(macOS)
-        // macOS 无 AVAudioSession,授权由系统在 installTap 时弹窗处理。
-        // macOS 14+ 可用 AVAudioApplication.shared.recordPermission 预查。
-        if #available(macOS 14.0, *) {
-            self.permissionGranted = AVAudioApplication.shared.recordPermission == .granted
-        } else {
-            self.permissionGranted = false
-        }
+        // macOS:授权由 engine.start() 触发系统弹窗处理,这里默认 false。
+        // start() 会调用 requestPermission()(macOS 直接返回 true),不卡。
+        self.permissionGranted = false
         #else
         self.permissionGranted = AVAudioSession.sharedInstance().recordPermission == .granted
         #endif
@@ -109,17 +107,12 @@ public final class AudioMeterEngine: ObservableObject {
     public func requestPermission() async -> Bool {
         guard !permissionGranted else { return true }
         #if os(macOS)
-        // macOS 14+ 用 AVAudioApplication;更低版本 macOS 没有 requestRecordPermission,
-        // 首次 installTap 时系统会自动弹授权。这里统一返回 true,授权由系统在 start 时处理。
-        if #available(macOS 14.0, *) {
-            let granted = await AVAudioApplication.requestRecordPermission()
-            permissionGranted = granted
-            return granted
-        } else {
-            // macOS 13 及以下:无前置 API,等 installTap 触发系统弹窗
-            permissionGranted = true
-            return true
-        }
+        // macOS:不调前置请求 API(AVAudioApplication.requestRecordPermission 需要
+        // macOS 14.2+ 且行为不稳,容易卡住)。直接返回 true,让 engine.start()/
+        // installTap 触发系统级授权弹窗。权限被拒时 start() 会抛错,catch 里置 failed。
+        // 首次授权成功后,系统记住权限,后续 start() 不再弹窗。
+        permissionGranted = true
+        return true
         #else
         let granted = await withCheckedContinuation { continuation in
             AVAudioSession.sharedInstance().requestRecordPermission { allowed in
@@ -135,24 +128,30 @@ public final class AudioMeterEngine: ObservableObject {
 
     /// 启动采集。
     public func start() async {
-        guard state != .running, state != .starting else { return }
-
-        if !permissionGranted {
-            state = .starting
-            let ok = await requestPermission()
-            if !ok {
-                state = .denied
-                return
-            }
-        }
+        // 防重入:已在运行/启动中则直接返回
+        if state == .running || state == .starting { return }
 
         state = .starting
+
+        // 1. 权限
+        let granted = await requestPermission()
+        if !granted {
+            state = .denied
+            return
+        }
+
+        // 2. 配置 + 启动
+        // 注意:不在主线程同步调 engine.prepare()(@MainActor 上会死锁,
+        // prepare 内部会 dispatch 到主线程同步执行)。直接 start() 即可,
+        // macOS 上 AVAudioEngine 不需要显式 prepare。
         do {
             try configureSession()
             try installTapIfNeeded()
             try engine.start()
             state = .running
         } catch {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
             state = .failed(error.localizedDescription)
         }
     }
@@ -160,6 +159,7 @@ public final class AudioMeterEngine: ObservableObject {
     /// 停止采集。
     public func stop() {
         engine.inputNode.removeTap(onBus: 0)
+        tapInstalled = false
         engine.stop()
         #if !os(macOS)
         // macOS 无 AVAudioSession
@@ -167,6 +167,7 @@ public final class AudioMeterEngine: ObservableObject {
                                                         options: [.notifyOthersOnDeactivation])
         #endif
         worker?.reset()
+        latestResult = nil
         state = .stopped
     }
 
@@ -205,21 +206,24 @@ public final class AudioMeterEngine: ObservableObject {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
 
-        // 采样率变化时通知 worker 重建 DBMeter
-        worker?.updateSampleRate(Float(format.sampleRate))
+        // 若 format 采样率不合法(占位值),用 48000 兜底。
+        let sampleRate = (format.sampleRate > 0 && format.sampleRate.isFinite)
+                         ? Float(format.sampleRate) : 48000
+        worker?.updateSampleRate(sampleRate)
 
+        // 防御性移除旧 tap(installTap 重复装会抛 "tap already installed")。
+        inputNode.removeTap(onBus: 0)
+
+        let tapFormat = format.sampleRate > 0 ? format : nil
         let bufferSize = AVAudioFrameCount(worker!.fftSize)
-        // installTap 重复装会崩;这里 stop() 已 remove,正常情况下不会重复。
-        // 但为防御,用 do/catch 包一层。
-        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: tapFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
             guard let channelData = buffer.floatChannelData?[0] else { return }
             let frameLength = Int(buffer.frameLength)
-            // 复制到可控 buffer(installTap 回调里的 buffer 会被复用)
             let samples = Array(UnsafeBufferPointer(start: channelData, count: frameLength))
-            // 跨 actor 投递样本:worker 自身在 meterQueue 上串行处理,线程安全
             self.worker?.enqueue(samples)
         }
+        tapInstalled = true
     }
 
     deinit {
@@ -293,6 +297,8 @@ private final class MeterWorker: @unchecked Sendable {
         }
     }
 
+    private var processCount = 0
+
     /// 在 meterQueue 上执行(私有,只通过 meterQueue.async 调用)
     private func process(_ incoming: [Float]) {
         sampleBuffer.append(contentsOf: incoming)
@@ -304,12 +310,11 @@ private final class MeterWorker: @unchecked Sendable {
 
         // 取前 fftSize 个样本处理
         let frame = Array(sampleBuffer.prefix(fftSize))
-        // 滑窗:丢弃一半,实现 50% 重叠(更平滑)
         sampleBuffer.removeFirst(fftSize / 2)
 
         guard let result = meter.process(frame) else { return }
 
-        // 节流(用 Date 计时,跨平台;CACurrentMediaTime 在 watchOS 不可用)
+        // 节流
         let now = Date.timeIntervalSinceReferenceDate
         if now - lastCallbackTime < throttleInterval {
             return

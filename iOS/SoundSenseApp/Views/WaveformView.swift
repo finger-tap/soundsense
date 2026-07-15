@@ -11,8 +11,8 @@ struct WaveformView: View {
 
     /// 历史 SPL 数组(最近若干帧)
     let values: [Float]
-    /// 显示量程
-    var minDB: Float = 20
+    /// 显示量程(SPL:校准后的声压级)
+    var minDB: Float = 30
     var maxDB: Float = 100
     /// 主色
     var color: Color = MeterTheme.waveColor
