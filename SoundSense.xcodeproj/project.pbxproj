@@ -18,7 +18,11 @@
 		A10000000000000000000009 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
 		A1000000000000000000000A /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
 		A1000000000000000000000B /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
-		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* Assets.xcassets */; };
+			A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* Assets.xcassets */; };
+			A1BB00000000000000000001 /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
+			A1BB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
+			A1BB00000000000000000003 /* ImageCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000003 /* ImageCanvas.swift */; };
+			A1BB00000000000000000004 /* ReportShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000004 /* ReportShareSheet.swift */; };
 /* End PBXBuildFile section - iOS sources */
 
 /* Begin PBXBuildFile section - watchOS sources */
@@ -50,7 +54,11 @@
 		AA000000000000000000001F /* LevelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LevelBadge.swift */; };
 		AA0000000000000000000020 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
 		AA0000000000000000000021 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
-		AA0000000000000000000022 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
+			AA0000000000000000000022 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
+			AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
+			AABB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
+			AABB00000000000000000003 /* ImageCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000003 /* ImageCanvas.swift */; };
+			AABB00000000000000000004 /* ReportExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02BB000000000000000004 /* ReportExporter.swift */; };
 /* End PBXBuildFile section - macOS sources */
 
 /* Begin PBXFileReference section */
@@ -81,6 +89,11 @@
 		AA0200000000000000000004 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		AA0200000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA0200000000000000000030 /* SoundSenseMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundSenseMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2BB00000000000000000001 /* MeasurementRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementRecorder.swift; sourceTree = "<group>"; };
+		A2BB00000000000000000002 /* ReportRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportRenderer.swift; sourceTree = "<group>"; };
+		A2BB00000000000000000003 /* ImageCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCanvas.swift; sourceTree = "<group>"; };
+		A2BB00000000000000000004 /* ReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportShareSheet.swift; sourceTree = "<group>"; };
+		AA02BB000000000000000004 /* ReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportExporter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +149,9 @@
 				A2000000000000000000000A /* AudioMeterEngine.swift */,
 				A2000000000000000000000B /* MeterTheme.swift */,
 				A2000000000000000000000C /* NoiseLevel.swift */,
+				A2BB00000000000000000001 /* MeasurementRecorder.swift */,
+				A2BB00000000000000000002 /* ReportRenderer.swift */,
+				A2BB00000000000000000003 /* ImageCanvas.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -174,6 +190,7 @@
 			children = (
 				AA0200000000000000000003 /* MacMainMeterView.swift */,
 				AA0200000000000000000004 /* MacSettingsView.swift */,
+				AA02BB000000000000000004 /* ReportExporter.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,6 +224,7 @@
 				A20000000000000000000006 /* SpectrumView.swift */,
 				A20000000000000000000007 /* LevelBadge.swift */,
 				A20000000000000000000008 /* SettingsView.swift */,
+				A2BB00000000000000000004 /* ReportShareSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -389,6 +407,10 @@
 				A10000000000000000000009 /* AudioMeterEngine.swift in Sources */,
 				A1000000000000000000000A /* MeterTheme.swift in Sources */,
 				A1000000000000000000000B /* NoiseLevel.swift in Sources */,
+				A1BB00000000000000000001 /* MeasurementRecorder.swift in Sources */,
+				A1BB00000000000000000002 /* ReportRenderer.swift in Sources */,
+				A1BB00000000000000000003 /* ImageCanvas.swift in Sources */,
+				A1BB00000000000000000004 /* ReportShareSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -421,6 +443,10 @@
 				AA0000000000000000000020 /* AudioMeterEngine.swift in Sources */,
 				AA0000000000000000000021 /* MeterTheme.swift in Sources */,
 				AA0000000000000000000022 /* NoiseLevel.swift in Sources */,
+				AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */,
+				AABB00000000000000000002 /* ReportRenderer.swift in Sources */,
+				AABB00000000000000000003 /* ImageCanvas.swift in Sources */,
+				AABB00000000000000000004 /* ReportExporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
