@@ -37,7 +37,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/build/app" \
             build
-          test -f build/app/SoundSenseMac.app/Contents/MacOS/SoundSenseMac
+          test -f build/app/SoundSense.app/Contents/MacOS/SoundSense
           echo "✅ macOS GUI app 编译成功"
 
   # ─────────────────────────────────────────────────
