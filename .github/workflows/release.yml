@@ -47,7 +47,7 @@ jobs:
 
       - name: Verify universal binary
         run: |
-          BIN="build/app/SoundSenseMac.app/Contents/MacOS/SoundSenseMac"
+          BIN="build/app/SoundSense.app/Contents/MacOS/SoundSense"
           if [ ! -f "$BIN" ]; then echo "❌ 未生成可执行文件"; exit 1; fi
           ARCHS=$(lipo -archs "$BIN")
           echo "二进制架构: $ARCHS"
@@ -63,7 +63,7 @@ jobs:
           DMG_NAME="SoundSense-${VERSION}.dmg"
           STAGING="build/dmg-staging"
           mkdir -p "$STAGING"
-          cp -R build/app/SoundSenseMac.app "$STAGING/"
+          cp -R build/app/SoundSense.app "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
 
           TMP_DMG="build/tmp-$DMG_NAME"
@@ -86,7 +86,7 @@ jobs:
               set statusbar visible of container window to false
               set the bounds of container window to {100, 100, 500, 320}
               set view options of icon view of container window to {icon size: 96, arrangement: row}
-              set position of item "SoundSenseMac.app" of container window to {120, 120}
+              set position of item "SoundSense.app" of container window to {120, 120}
               set position of item "Applications" of container window to {350, 120}
               close
             end tell
