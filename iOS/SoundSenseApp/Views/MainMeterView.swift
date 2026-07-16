@@ -76,6 +76,7 @@ struct MainMeterView: View {
                             if let result = viewModel.engine.latestResult {
                                 SpectrumView(spectrum: result.spectrum,
                                              frequencies: result.frequencies)
+                                            .frame(height: 100)
                             } else {
                                 placeholderBar(height: 100)
                             }

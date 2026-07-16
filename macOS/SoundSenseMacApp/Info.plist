@@ -24,6 +24,8 @@
     <string>12.0</string>
     <key>LSUIElement</key>
     <false/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon.icns</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>

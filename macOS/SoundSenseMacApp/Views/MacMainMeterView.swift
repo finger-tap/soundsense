@@ -49,6 +49,7 @@ struct MacMainMeterView: View {
                                     if let r = viewModel.engine.latestResult {
                                         SpectrumView(spectrum: r.spectrum, frequencies: r.frequencies)
                                             .frame(height: 56)
+                                            .clipped()
                                     } else { EmptyHint().frame(height: 56) }
                                 }
                             }
@@ -98,8 +99,6 @@ struct MacMainMeterView: View {
     private var headerBar: some View {
         HStack {
             HStack(spacing: 10) {
-                Circle().fill(levelColor).frame(width: 10, height: 10)
-                    .shadow(color: levelColor.opacity(0.6), radius: 6)
                 Text("闻声").font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
                 Text("SoundSense").font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.35)).textCase(.uppercase)

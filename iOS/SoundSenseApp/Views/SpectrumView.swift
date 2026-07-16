@@ -51,7 +51,6 @@ struct SpectrumView: View {
                 }
             }
         }
-        .frame(height: 100)
     }
 
     /// 把全频谱按对数频率轴聚合成 bandCount 个频段

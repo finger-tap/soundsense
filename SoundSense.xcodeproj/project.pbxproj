@@ -58,7 +58,8 @@
 			AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
 			AABB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
 			AABB00000000000000000003 /* ImageCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000003 /* ImageCanvas.swift */; };
-			AABB00000000000000000004 /* ReportExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02BB000000000000000004 /* ReportExporter.swift */; };
+				AABB00000000000000000004 /* ReportExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02BB000000000000000004 /* ReportExporter.swift */; };
+				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
 /* End PBXBuildFile section - macOS sources */
 
 /* Begin PBXFileReference section */
@@ -93,7 +94,8 @@
 		A2BB00000000000000000002 /* ReportRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportRenderer.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000003 /* ImageCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCanvas.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000004 /* ReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportShareSheet.swift; sourceTree = "<group>"; };
-		AA02BB000000000000000004 /* ReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportExporter.swift; sourceTree = "<group>"; };
+			AA02BB000000000000000004 /* ReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportExporter.swift; sourceTree = "<group>"; };
+			AA0200000000000000000006 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = AppIcon.icns; path = ../../AppIcon.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -174,17 +176,18 @@
 			path = macOS;
 			sourceTree = "<group>";
 		};
-		AA50000000000000000000031 /* SoundSenseMacApp */ = {
-			isa = PBXGroup;
-			children = (
-				AA0200000000000000000001 /* SoundSenseMacApp.swift */,
-				AA0200000000000000000002 /* MeterViewModel.swift */,
-				AA50000000000000000000032 /* Views */,
-				AA0200000000000000000005 /* Info.plist */,
-			);
-			path = SoundSenseMacApp;
-			sourceTree = "<group>";
-		};
+			AA50000000000000000000031 /* SoundSenseMacApp */ = {
+				isa = PBXGroup;
+				children = (
+					AA0200000000000000000001 /* SoundSenseMacApp.swift */,
+					AA0200000000000000000002 /* MeterViewModel.swift */,
+					AA50000000000000000000032 /* Views */,
+					AA0200000000000000000006 /* AppIcon.icns */,
+					AA0200000000000000000005 /* Info.plist */,
+				);
+				path = SoundSenseMacApp;
+				sourceTree = "<group>";
+			};
 		AA50000000000000000000032 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -312,10 +315,11 @@
 		AA60000000000000000000003 /* SoundSenseMac */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AA8000000000000000000000A /* Build configuration list for PBXNativeTarget "SoundSenseMac" */;
-			buildPhases = (
-				AA70000000000000000000005 /* Sources */,
-				AA0400000000000000000003 /* Frameworks */,
-			);
+				buildPhases = (
+					AA70000000000000000000005 /* Sources */,
+					AA0400000000000000000003 /* Frameworks */,
+					AA70000000000000000000006 /* Resources */,
+				);
 			buildRules = (
 			);
 			dependencies = (
@@ -389,6 +393,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA70000000000000000000006 /* Resources */ = {
+				isa = PBXResourcesBuildPhase;
+				buildActionMask = 2147483647;
+				files = (
+					AA0000000000000000000023 /* AppIcon.icns in Resources */,
+				);
+				runOnlyForDeploymentPostprocessing = 0;
+			};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
