@@ -13,8 +13,9 @@ import SwiftUI
 import SoundSenseCore
 
 struct MacMainMeterView: View {
-    @StateObject private var viewModel = MeterViewModel()
+    @ObservedObject var viewModel: MeterViewModel
     @State private var showingSettings = false
+    @State private var showingHistory = false
 
     /// 当前等级色(贯穿数字、仪表、按钮)
     private var levelColor: Color {
@@ -37,6 +38,20 @@ struct MacMainMeterView: View {
 
                         // 等级文字
                         levelLabel
+
+                        // 实时统计(测量中显示)
+                        if let live = viewModel.liveStats {
+                            LiveStatsBar(stats: live)
+                                .padding(.horizontal, 28)
+                                .transition(.opacity)
+                        }
+
+                        // 噪声暴露警告
+                        if viewModel.exposureWarning {
+                            ExposureWarningBanner()
+                                .padding(.horizontal, 28)
+                                .transition(.opacity)
+                        }
 
                         // 三卡片:声波 / 频谱 / 趋势
                         VStack(spacing: 12) {
@@ -79,10 +94,16 @@ struct MacMainMeterView: View {
                 .padding(.horizontal, 80).padding(.bottom, 22).padding(.top, 6)
             }
 
-            // 设置浮层(ZStack 覆盖,瞬间弹出,不用慢吞吞的 sheet)
+            // 设置 / 历史浮层(ZStack 覆盖,瞬间弹出,不用慢吞吞的 sheet)
             if showingSettings {
                 SettingsOverlay(viewModel: viewModel,
                                 isPresented: $showingSettings)
+            }
+            if showingHistory {
+                HistoryOverlay(store: viewModel.historyStore,
+                               deviceName: viewModel.deviceName,
+                               calibrationOffset: viewModel.calibrationOffset,
+                               isPresented: $showingHistory)
             }
         }
         // 整个 ZStack 撑满窗口(背景色覆盖到窗口边缘,无白边)
@@ -104,6 +125,15 @@ struct MacMainMeterView: View {
                     .foregroundColor(.white.opacity(0.35)).textCase(.uppercase)
             }
             Spacer()
+            Button {
+                showingHistory = true
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(.white.opacity(showingHistory ? 0.12 : 0)))
+            }
+            .buttonStyle(.plain)
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
@@ -114,20 +144,18 @@ struct MacMainMeterView: View {
         }
     }
 
-    /// 中央环形仪表 + 大数字
+    /// 中央主读数:大数字 + dB 标尺(仪器面板式)
     private var centerMeter: some View {
-        ZStack {
-            RingGauge(spl: viewModel.currentSPL, color: levelColor)
-                .frame(width: 300, height: 300)
-
-            VStack(spacing: 4) {
-                Text(splText(viewModel.currentSPL))
-                    .font(.system(size: 76, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white).monospacedDigit()
-                    .shadow(color: levelColor.opacity(0.3), radius: 12)
-                Text("dB(A)").font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.5))
-            }
+        VStack(spacing: 10) {
+            Text(splText(viewModel.currentSPL))
+                .font(.system(size: 84, weight: .heavy, design: .rounded))
+                .foregroundColor(.white).monospacedDigit()
+            Text("dB(A)")
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundColor(.white.opacity(0.5))
+            DBRulerGauge(spl: viewModel.currentSPL, levelColor: levelColor)
+                .frame(width: 380)
+                .padding(.top, 6)
         }
     }
 
@@ -229,17 +257,17 @@ struct MacMainMeterView: View {
     }
 }
 
-// MARK: - 背景(随等级色微变)
+// MARK: - 背景(石墨底 + 随等级色的极淡光晕)
 
 private struct BackgroundView: View {
     let accent: Color
     var body: some View {
         ZStack {
-            Color(red: 0.05, green: 0.06, blue: 0.08)
-            // 顶部柔和的光晕,颜色跟随等级
+            Color(red: 0.043, green: 0.063, blue: 0.078)
+            // 极淡的等级色氛围光(克制,不抢读数)
             RadialGradient(
-                colors: [accent.opacity(0.18), .clear],
-                center: .top, startRadius: 20, endRadius: 600
+                colors: [accent.opacity(0.10), .clear],
+                center: UnitPoint(x: 0.5, y: 0.15), startRadius: 20, endRadius: 620
             )
         }
         .ignoresSafeArea()
@@ -247,72 +275,25 @@ private struct BackgroundView: View {
     }
 }
 
-// MARK: - 环形仪表
-
-private struct RingGauge: View {
-    let spl: Float
-    let color: Color
-    // SPL 量程(校准后的声压级)
-    private let minDB: Float = 20
-    private let maxDB: Float = 120
-
-    var body: some View {
-        Canvas { ctx, size in
-            let center = CGPoint(x: size.width/2, y: size.height/2)
-            let radius = min(size.width, size.height)/2 - 14
-            let style = StrokeStyle(lineWidth: 10, lineCap: .round)
-
-            // 底环
-            var track = Path()
-            track.addArc(center: center, radius: radius, startAngle: .degrees(135),
-                         endAngle: .degrees(405), clockwise: false)
-            ctx.stroke(track, with: .color(.white.opacity(0.07)), style: style)
-
-            // 进度环
-            let p = progress(spl)
-            let endAngleDeg = 135.0 + Double(p) * 270.0
-            var arc = Path()
-            arc.addArc(center: center, radius: radius, startAngle: .degrees(135),
-                       endAngle: .degrees(endAngleDeg), clockwise: false)
-            ctx.stroke(arc, with: .color(color), style: style)
-
-            // 刻度点(20~120 dB SPL,每 20dB 一个)
-            for db in [20, 40, 60, 80, 100, 120] {
-                let t = CGFloat((Float(db) - minDB) / (maxDB - minDB))
-                let angle = Angle.degrees(135 + Double(t) * 270)
-                let pt = CGPoint(x: center.x + CGFloat(cos(angle.radians)) * radius,
-                                 y: center.y + CGFloat(sin(angle.radians)) * radius)
-                ctx.fill(Path(ellipseIn: CGRect(x: pt.x-2, y: pt.y-2, width: 4, height: 4)),
-                         with: .color(.white.opacity(0.3)))
-            }
-        }
-        .animation(.easeOut(duration: 0.15), value: spl)
-    }
-
-    private func progress(_ spl: Float) -> CGFloat {
-        let c = max(minDB, min(maxDB, spl))
-        return CGFloat((c - minDB) / (maxDB - minDB))
-    }
-}
-
-// MARK: - 卡片(毛玻璃)
+// MARK: - 卡片(石墨面板 + 发丝线)
 
 private struct Card<Content: View>: View {
     let title: String
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.white.opacity(0.45)).textCase(.uppercase)
+            Text(title).font(MeterTheme.sectionLabel(10))
+                .tracking(1.5)
+                .foregroundColor(.white.opacity(0.42)).textCase(.uppercase)
                 .padding(.bottom, 2)
             content
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color(red: 0.09, green: 0.10, blue: 0.13))
+                .fill(MeterTheme.panel)
                 .overlay(RoundedRectangle(cornerRadius: 14)
-                    .stroke(.white.opacity(0.08), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 }

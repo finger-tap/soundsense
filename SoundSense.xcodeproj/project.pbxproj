@@ -23,6 +23,13 @@
 			A1BB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
 			A1BB00000000000000000003 /* ImageCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000003 /* ImageCanvas.swift */; };
 			A1BB00000000000000000004 /* ReportShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000004 /* ReportShareSheet.swift */; };
+			A1BB00000000000000000005 /* MeasurementHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000005 /* MeasurementHistoryStore.swift */; };
+			A1BB00000000000000000006 /* NoiseAlertNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000006 /* NoiseAlertNotifier.swift */; };
+			A1BB00000000000000000007 /* LiveStatsBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000007 /* LiveStatsBar.swift */; };
+			A1BB00000000000000000008 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000008 /* HistoryView.swift */; };
+			A1BB00000000000000000009 /* DBRulerGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000009 /* DBRulerGauge.swift */; };
+			A1BB0000000000000000000A /* MeasurementCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000A /* MeasurementCSV.swift */; };
+			A1BB0000000000000000000B /* HealthWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000B /* HealthWriter.swift */; };
 /* End PBXBuildFile section - iOS sources */
 
 /* Begin PBXBuildFile section - watchOS sources */
@@ -31,6 +38,8 @@
 		A1000000000000000000000F /* WatchMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* WatchMeterView.swift */; };
 		A10000000000000000000010 /* WatchSpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* WatchSpectrumView.swift */; };
 		A10000000000000000000011 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
+		A1000000000000000000002E /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
+		A1000000000000000000002F /* WatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* WatchSettingsView.swift */; };
 		A10000000000000000000012 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
 		A10000000000000000000013 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
 		A10000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* Assets.xcassets */; };
@@ -59,6 +68,13 @@
 			AABB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
 			AABB00000000000000000003 /* ImageCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000003 /* ImageCanvas.swift */; };
 				AABB00000000000000000004 /* ReportExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02BB000000000000000004 /* ReportExporter.swift */; };
+				AABB00000000000000000005 /* MeasurementHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000005 /* MeasurementHistoryStore.swift */; };
+				AABB00000000000000000006 /* NoiseAlertNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000006 /* NoiseAlertNotifier.swift */; };
+				AABB00000000000000000007 /* LiveStatsBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000007 /* LiveStatsBar.swift */; };
+				AABB00000000000000000008 /* HistoryOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02BB000000000000000005 /* HistoryOverlayView.swift */; };
+				AA0000000000000000000024 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000007 /* MenuBarController.swift */; };
+				AABB00000000000000000009 /* DBRulerGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000009 /* DBRulerGauge.swift */; };
+				AABB0000000000000000000A /* MeasurementCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000A /* MeasurementCSV.swift */; };
 				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
 /* End PBXBuildFile section - macOS sources */
 
@@ -93,7 +109,17 @@
 		A2BB00000000000000000001 /* MeasurementRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementRecorder.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000002 /* ReportRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportRenderer.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000003 /* ImageCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCanvas.swift; sourceTree = "<group>"; };
-		A2BB00000000000000000004 /* ReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportShareSheet.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000004 /* ReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportShareSheet.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000005 /* MeasurementHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementHistoryStore.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000006 /* NoiseAlertNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseAlertNotifier.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000007 /* LiveStatsBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveStatsBar.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000008 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000009 /* DBRulerGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBRulerGauge.swift; sourceTree = "<group>"; };
+			A2BB0000000000000000000A /* MeasurementCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementCSV.swift; sourceTree = "<group>"; };
+			A2BB0000000000000000000B /* HealthWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWriter.swift; sourceTree = "<group>"; };
+			A20000000000000000000015 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
+				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
+				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 			AA02BB000000000000000004 /* ReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportExporter.swift; sourceTree = "<group>"; };
 			AA0200000000000000000006 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = AppIcon.icns; path = ../../AppIcon.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -154,6 +180,12 @@
 				A2BB00000000000000000001 /* MeasurementRecorder.swift */,
 				A2BB00000000000000000002 /* ReportRenderer.swift */,
 				A2BB00000000000000000003 /* ImageCanvas.swift */,
+				A2BB00000000000000000005 /* MeasurementHistoryStore.swift */,
+				A2BB00000000000000000006 /* NoiseAlertNotifier.swift */,
+				A2BB00000000000000000007 /* LiveStatsBar.swift */,
+				A2BB00000000000000000009 /* DBRulerGauge.swift */,
+				A2BB0000000000000000000A /* MeasurementCSV.swift */,
+				A2BB0000000000000000000B /* HealthWriter.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -181,6 +213,7 @@
 				children = (
 					AA0200000000000000000001 /* SoundSenseMacApp.swift */,
 					AA0200000000000000000002 /* MeterViewModel.swift */,
+					AA0200000000000000000007 /* MenuBarController.swift */,
 					AA50000000000000000000032 /* Views */,
 					AA0200000000000000000006 /* AppIcon.icns */,
 					AA0200000000000000000005 /* Info.plist */,
@@ -194,6 +227,7 @@
 				AA0200000000000000000003 /* MacMainMeterView.swift */,
 				AA0200000000000000000004 /* MacSettingsView.swift */,
 				AA02BB000000000000000004 /* ReportExporter.swift */,
+				AA02BB000000000000000005 /* HistoryOverlayView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -228,6 +262,7 @@
 				A20000000000000000000007 /* LevelBadge.swift */,
 				A20000000000000000000008 /* SettingsView.swift */,
 				A2BB00000000000000000004 /* ReportShareSheet.swift */,
+				A2BB00000000000000000008 /* HistoryView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -265,6 +300,7 @@
 			children = (
 				A20000000000000000000012 /* WatchMeterView.swift */,
 				A20000000000000000000013 /* WatchSpectrumView.swift */,
+				A20000000000000000000015 /* WatchSettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -423,6 +459,13 @@
 				A1BB00000000000000000002 /* ReportRenderer.swift in Sources */,
 				A1BB00000000000000000003 /* ImageCanvas.swift in Sources */,
 				A1BB00000000000000000004 /* ReportShareSheet.swift in Sources */,
+				A1BB00000000000000000005 /* MeasurementHistoryStore.swift in Sources */,
+				A1BB00000000000000000006 /* NoiseAlertNotifier.swift in Sources */,
+				A1BB00000000000000000007 /* LiveStatsBar.swift in Sources */,
+				A1BB00000000000000000008 /* HistoryView.swift in Sources */,
+				A1BB00000000000000000009 /* DBRulerGauge.swift in Sources */,
+				A1BB0000000000000000000A /* MeasurementCSV.swift in Sources */,
+				A1BB0000000000000000000B /* HealthWriter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -437,6 +480,8 @@
 				A10000000000000000000011 /* AudioMeterEngine.swift in Sources */,
 				A10000000000000000000012 /* MeterTheme.swift in Sources */,
 				A10000000000000000000013 /* NoiseLevel.swift in Sources */,
+				A1000000000000000000002E /* MeasurementRecorder.swift in Sources */,
+				A1000000000000000000002F /* WatchSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +504,13 @@
 				AABB00000000000000000002 /* ReportRenderer.swift in Sources */,
 				AABB00000000000000000003 /* ImageCanvas.swift in Sources */,
 				AABB00000000000000000004 /* ReportExporter.swift in Sources */,
+				AABB00000000000000000005 /* MeasurementHistoryStore.swift in Sources */,
+				AABB00000000000000000006 /* NoiseAlertNotifier.swift in Sources */,
+				AABB00000000000000000007 /* LiveStatsBar.swift in Sources */,
+				AABB00000000000000000008 /* HistoryOverlayView.swift in Sources */,
+				AA0000000000000000000024 /* MenuBarController.swift in Sources */,
+				AABB00000000000000000009 /* DBRulerGauge.swift in Sources */,
+				AABB0000000000000000000A /* MeasurementCSV.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -576,6 +628,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "iOS/SoundSenseApp/Info.plist";
+				CODE_SIGN_ENTITLEMENTS = "iOS/SoundSenseApp/SoundSense.entitlements";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -612,6 +665,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "iOS/SoundSenseApp/Info.plist";
+				CODE_SIGN_ENTITLEMENTS = "iOS/SoundSenseApp/SoundSense.entitlements";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SoundSenseCore
 
 struct SettingsView: View {
     @ObservedObject var viewModel: MeterViewModel
@@ -30,11 +31,111 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 24) {
                 CalibrationCard(viewModel: viewModel)
+                MeasurementCard(viewModel: viewModel)
+                HealthCard(viewModel: viewModel)
                 AboutCard()
             }
             .padding(20)
         }
         .background(MeterTheme.backgroundGradient.ignoresSafeArea())
+    }
+}
+
+// MARK: - 测量卡片(计权 / 警告阈值)
+
+private struct MeasurementCard: View {
+    @ObservedObject var viewModel: MeterViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("测量")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            // 频率计权
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("频率计权").foregroundColor(.white.opacity(0.85))
+                    Spacer()
+                    Text(viewModel.weighting == .a ? "A 计权(环境噪音)" : "C 计权(低频噪音)")
+                        .font(.system(size: 12))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+                Picker("频率计权", selection: Binding(
+                    get: { viewModel.weighting },
+                    set: { viewModel.weighting = $0 }
+                )) {
+                    Text("A").tag(Weighting.a)
+                    Text("C").tag(Weighting.c)
+                }
+                .pickerStyle(.segmented)
+                Text("A 计权模拟人耳感受,适合日常噪音;C 计权保留低频能量,适合音响、空调、机械等低频噪音。")
+                    .font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
+            }
+
+            Divider().overlay(MeterTheme.hairline)
+
+            // 警告阈值
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("警告阈值").foregroundColor(.white.opacity(0.85))
+                    Spacer()
+                    Text(String(format: "%.0f dB", viewModel.warningThreshold))
+                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .foregroundColor(MeterTheme.waveColor)
+                }
+                Slider(value: Binding(
+                    get: { Double(viewModel.warningThreshold) },
+                    set: { viewModel.warningThreshold = Float($0) }
+                ), in: 40...120, step: 1)
+                .tint(MeterTheme.waveColor)
+                HStack {
+                    Text("40"); Spacer(); Text("85"); Spacer(); Text("120")
+                }
+                .font(.caption2)
+                .foregroundColor(MeterTheme.secondaryText)
+                Text("连续超过该值 30 秒后提醒。85 dB 是长期暴露的听力安全上限;测卧室可调到 45~50。")
+                    .font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
+            }
+        }
+        .modifier(CardStyle())
+    }
+}
+
+// MARK: - 健康卡片(Apple 健康)
+
+private struct HealthCard: View {
+    @ObservedObject var viewModel: MeterViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: Binding(
+                get: { viewModel.healthEnabled },
+                set: { newValue in
+                    if newValue {
+                        Task {
+                            let ok = await HealthWriter.requestAuthorization()
+                            viewModel.healthEnabled = ok
+                        }
+                    } else {
+                        viewModel.healthEnabled = false
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("写入健康 App")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.white)
+                    Text("测量超过 1 分钟后,把等效声级写入健康 App 的「环境声级暴露」。数据仅保存在本机。")
+                        .font(.system(size: 12))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+            }
+            .tint(MeterTheme.waveColor)
+        }
+        .modifier(CardStyle())
     }
 }
 
@@ -49,17 +150,22 @@ private struct CalibrationCard: View {
                 .font(.title3.bold())
                 .foregroundColor(.white)
 
-            Text("iOS 麦克风采集的是数字分贝(dBFS),需要加上偏移量才能换算成真实声压级(SPL)。")
+            Text("iOS 麦克风采集的是数字分贝(dBFS),需要加上偏移量才能换算成真实声压级(SPL)。默认 +93 dB 适用多数 iPhone 麦克风。")
                 .font(.system(size: 13))
                 .foregroundColor(MeterTheme.secondaryText)
 
             offsetRow
             sliderRow
 
+            HStack(spacing: 8) {
+                presetButton(label: "内建麦克风", offset: 93)
+                presetButton(label: "外接麦克风", offset: 85)
+            }
+
             Button {
-                viewModel.calibrationOffset = 0
+                viewModel.calibrationOffset = 93
             } label: {
-                Text("重置为 0")
+                Text("恢复默认 (+93 dB)")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -72,6 +178,24 @@ private struct CalibrationCard: View {
                 .foregroundColor(MeterTheme.secondaryText)
         }
         .modifier(CardStyle())
+    }
+
+    private func presetButton(label: String, offset: Float) -> some View {
+        Button {
+            viewModel.calibrationOffset = offset
+        } label: {
+            VStack(spacing: 2) {
+                Text(label).font(.system(size: 13, weight: .medium))
+                Text(String(format: "+%.0f dB", offset))
+                    .font(.system(size: 11, design: .monospaced))
+                    .opacity(0.7)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 10).fill(MeterTheme.cardBackground))
+        }
+        .buttonStyle(.plain)
     }
 
     private var offsetRow: some View {
@@ -89,7 +213,7 @@ private struct CalibrationCard: View {
             Slider(value: Binding(
                 get: { Double(viewModel.calibrationOffset) },
                 set: { viewModel.calibrationOffset = Float($0) }
-            ), in: -30...60, step: 0.5)
+            ), in: 60...110, step: 0.5)
             .tint(MeterTheme.waveColor)
             scaleLabels
         }
@@ -97,7 +221,7 @@ private struct CalibrationCard: View {
 
     private var scaleLabels: some View {
         HStack {
-            Text("-30"); Spacer(); Text("0"); Spacer(); Text("+60")
+            Text("60"); Spacer(); Text("85"); Spacer(); Text("110")
         }
         .font(.caption2)
         .foregroundColor(MeterTheme.secondaryText)

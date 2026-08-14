@@ -30,18 +30,29 @@ public struct MeterResult: CustomStringConvertible, Equatable {
     }
 }
 
+/// 计权方式
+public enum Weighting: String, Equatable {
+    /// A 计权:模拟人耳响度感受,环境噪音标准(默认)
+    case a
+    /// C 计权:低频衰减少,适合测低频噪音(音响、空调、机械)
+    case c
+}
+
 /// 分贝计配置
 public struct MeterConfig {
     public var sampleRate: Float
     public var fftSize: Int
     public var calibrationOffset: Float
+    public var weighting: Weighting
 
     public init(sampleRate: Float = 48000,
                 fftSize: Int = 4096,
-                calibrationOffset: Float = 0) {
+                calibrationOffset: Float = 0,
+                weighting: Weighting = .a) {
         self.sampleRate = sampleRate
         self.fftSize = fftSize
         self.calibrationOffset = calibrationOffset
+        self.weighting = weighting
     }
 }
 
@@ -81,6 +92,37 @@ public enum AWeighting {
     }
 
     /// 批量计算频率数组对应的 A 计权线性振幅倍数。
+    public static func linearGains(for frequencies: [Float]) -> [Float] {
+        frequencies.map { f in pow(10.0, gain(at: f) / 20.0) }
+    }
+}
+
+/// IEC 61672 C 计权:低频衰减远小于 A 计权,
+/// 用于评估低频噪音(音响、空调、机械振动)的实际声能。
+public enum CWeighting {
+
+    public static func gain(at frequency: Float) -> Float {
+        if frequency <= 0 { return -.greatestFiniteMagnitude }
+
+        let f2 = frequency * frequency
+        let numerator = 12194.0 * 12194.0 * f2
+        let denominator = (f2 + 20.6 * 20.6)
+            * sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9))
+            * (f2 + 12194.0 * 12194.0)
+        let rc = numerator / denominator
+
+        // 归一化:f = 1000 Hz 时的 Rc
+        let f0: Float = 1000
+        let f02 = f0 * f0
+        let num0 = 12194.0 * 12194.0 * f02
+        let den0 = (f02 + 20.6 * 20.6)
+            * sqrt((f02 + 107.7 * 107.7) * (f02 + 737.9 * 737.9))
+            * (f02 + 12194.0 * 12194.0)
+        let rcMax = num0 / den0
+
+        return 20.0 * log10(rc / rcMax)
+    }
+
     public static func linearGains(for frequencies: [Float]) -> [Float] {
         frequencies.map { f in pow(10.0, gain(at: f) / 20.0) }
     }
@@ -131,12 +173,18 @@ public final class DBMeter {
         vDSP_hann_window(&window, vDSP_Length(n), Int32(vDSP_HANN_NORM))
         self.hannWindow = window
 
-        // 频率轴 & A 计权功率域权重
+        // 频率轴 & 计权功率域权重(A 或 C)
         self.binFrequencies = (0..<halfSize).map { k in
             Float(k) * config.sampleRate / Float(n)
         }
-        // A 计权线性增益的平方，用于功率域加权
-        self.aWeightPowerSq = AWeighting.linearGains(for: binFrequencies).map { $0 * $0 }
+        let linearGains: [Float]
+        switch config.weighting {
+        case .a:
+            linearGains = AWeighting.linearGains(for: binFrequencies)
+        case .c:
+            linearGains = CWeighting.linearGains(for: binFrequencies)
+        }
+        self.aWeightPowerSq = linearGains.map { $0 * $0 }
 
         // FFT setup
         self.fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))!

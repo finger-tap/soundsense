@@ -61,6 +61,13 @@ public final class AudioMeterEngine: ObservableObject {
         }
     }
 
+    /// 频率计权方式(A/C)。改动会立即在 worker 里重建 DBMeter。
+    public var weighting: Weighting {
+        didSet {
+            worker?.updateWeighting(weighting)
+        }
+    }
+
     /// 回调节流间隔(秒)。两次回调间隔小于此值时丢弃中间帧。
     public let throttleInterval: TimeInterval
 
@@ -81,12 +88,15 @@ public final class AudioMeterEngine: ObservableObject {
     ///   - fftSize: FFT 点数,默认 4096(与核心算法一致)。
     public init(calibrationOffset: Float = 0,
                 throttleInterval: TimeInterval = 0.06,
-                fftSize: Int = 4096) {
+                fftSize: Int = 4096,
+                weighting: Weighting = .a) {
         self.calibrationOffset = calibrationOffset
         self.throttleInterval = throttleInterval
+        self.weighting = weighting
         self.worker = MeterWorker(fftSize: fftSize,
                                   throttleInterval: throttleInterval,
-                                  calibrationOffset: calibrationOffset) { [weak self] result in
+                                  calibrationOffset: calibrationOffset,
+                                  weighting: weighting) { [weak self] result in
             // worker 回调发生在 meterQueue 上;切回主线程更新状态
             Task { @MainActor in
                 self?.latestResult = result
@@ -248,17 +258,26 @@ private final class MeterWorker: @unchecked Sendable {
     private var meter: DBMeter
     private var sampleBuffer: [Float] = []
     private var lastCallbackTime: CFTimeInterval = 0
+    // 当前 meter 的构建参数(rebuild 用)
+    private var currentSampleRate: Float
+    private var currentOffset: Float
+    private var currentWeighting: Weighting
 
     init(fftSize: Int,
          throttleInterval: TimeInterval,
          calibrationOffset: Float,
+         weighting: Weighting,
          callback: @escaping (MeterResult) -> Void) {
         self.fftSize = fftSize
         self.throttleInterval = throttleInterval
         self.callback = callback
+        self.currentSampleRate = 48000
+        self.currentOffset = calibrationOffset
+        self.currentWeighting = weighting
         self.meter = DBMeter(config: MeterConfig(sampleRate: 48000,
                                                   fftSize: fftSize,
-                                                  calibrationOffset: calibrationOffset))
+                                                  calibrationOffset: calibrationOffset,
+                                                  weighting: weighting))
     }
 
     /// 投递一批样本(可从任意线程调用)
@@ -268,14 +287,20 @@ private final class MeterWorker: @unchecked Sendable {
         }
     }
 
+    /// 在 meterQueue 上按当前参数重建 meter
+    private func rebuildMeter() {
+        meter = DBMeter(config: MeterConfig(sampleRate: currentSampleRate,
+                                            fftSize: fftSize,
+                                            calibrationOffset: currentOffset,
+                                            weighting: currentWeighting))
+    }
+
     /// 更新采样率(下次处理前生效)
     func updateSampleRate(_ sampleRate: Float) {
         meterQueue.async { [weak self] in
             guard let self = self else { return }
-            // 重建 meter(保留当前 offset)
-            self.meter = DBMeter(config: MeterConfig(sampleRate: sampleRate,
-                                                      fftSize: self.fftSize,
-                                                      calibrationOffset: self.meter.config.calibrationOffset))
+            self.currentSampleRate = sampleRate
+            self.rebuildMeter()
         }
     }
 
@@ -283,9 +308,17 @@ private final class MeterWorker: @unchecked Sendable {
     func updateCalibration(_ offset: Float) {
         meterQueue.async { [weak self] in
             guard let self = self else { return }
-            self.meter = DBMeter(config: MeterConfig(sampleRate: self.meter.config.sampleRate,
-                                                      fftSize: self.fftSize,
-                                                      calibrationOffset: offset))
+            self.currentOffset = offset
+            self.rebuildMeter()
+        }
+    }
+
+    /// 更新频率计权(A/C)
+    func updateWeighting(_ weighting: Weighting) {
+        meterQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.currentWeighting = weighting
+            self.rebuildMeter()
         }
     }
 

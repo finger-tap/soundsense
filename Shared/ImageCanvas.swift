@@ -116,17 +116,41 @@ final class ImageCanvas {
 
     // MARK: - 文字(Core Text,跨平台一致)
 
+    /// 测量文字宽度(用于右对齐 / 居中绘制)
     #if os(iOS)
+    func textWidth(_ string: String, font: UIFont) -> CGFloat {
+        measureWidth(string, fontName: font.fontName, size: font.pointSize)
+    }
     func text(_ string: String, at point: CGPoint, font: UIFont, color: CGColor) {
         drawText(string, at: point, fontName: font.fontName, size: font.pointSize,
                  color: color)
     }
     #elseif os(macOS)
+    func textWidth(_ string: String, font: NSFont) -> CGFloat {
+        measureWidth(string, fontName: font.fontName, size: font.pointSize)
+    }
     func text(_ string: String, at point: CGPoint, font: NSFont, color: CGColor) {
         drawText(string, at: point, fontName: font.fontName, size: font.pointSize,
                  color: color)
     }
     #endif
+
+    private func measureWidth(_ string: String, fontName: String, size: CGFloat) -> CGFloat {
+        let ctFont = CTFontCreateWithName(fontName as CFString, size, nil)
+        let attr: [CFString: Any] = [kCTFontAttributeName: ctFont]
+        guard let attrString = CFAttributedStringCreate(nil, string as CFString,
+                                                        attr as CFDictionary),
+              let line = CTLineCreateWithAttributedString(attrString) else { return 0 }
+        return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+    }
+
+    /// 填充圆点(指针 / 装饰)
+    func fillCircle(center: CGPoint, radius: CGFloat, color: CGColor) {
+        cgContext.setFillColor(color)
+        cgContext.fillEllipse(in: CGRect(x: center.x - radius,
+                                         y: fy(center.y) - radius,
+                                         width: radius * 2, height: radius * 2))
+    }
 
     private func drawText(_ string: String, at point: CGPoint,
                            fontName: String, size: CGFloat, color: CGColor) {

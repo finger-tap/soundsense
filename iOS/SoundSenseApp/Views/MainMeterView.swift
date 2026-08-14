@@ -12,6 +12,7 @@ struct MainMeterView: View {
     @StateObject private var viewModel = MeterViewModel()
     @State private var showingSettings = false
     @State private var showingShare = false
+    @State private var showingHistory = false
 
     var body: some View {
         ZStack {
@@ -26,6 +27,14 @@ struct MainMeterView: View {
                         .foregroundColor(.white)
                     Spacer()
                     Button {
+                        showingHistory = true
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.title3)
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(width: 40, height: 40)
+                    }
+                    Button {
                         showingSettings = true
                     } label: {
                         Image(systemName: "gearshape.fill")
@@ -39,28 +48,36 @@ struct MainMeterView: View {
 
                 ScrollView {
                     VStack(spacing: 20) {
-                        // —— 仪表盘 + 中央大数字 ——
-                        ZStack {
-                            SPLGaugeView(
-                                spl: viewModel.currentSPL,
-                                levelColor: viewModel.noiseLevel?.color ?? MeterTheme.waveColor
-                            )
-                            .frame(width: 280, height: 280)
-
-                            VStack(spacing: 2) {
-                                Text(splText(viewModel.currentSPL))
-                                    .font(.system(size: 64, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .monospacedDigit()
-                                Text("dB(A)")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(MeterTheme.secondaryText)
-                            }
+                        // —— 主读数:大数字 + dB 标尺(仪器面板式) ——
+                        VStack(spacing: 10) {
+                            Text(splText(viewModel.currentSPL))
+                                .font(.system(size: 80, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+                                .padding(.top, 16)
+                            Text("dB(A)")
+                                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                .foregroundColor(MeterTheme.secondaryText)
                         }
-                        .padding(.top, 8)
+                        DBRulerGauge(spl: viewModel.currentSPL,
+                                     levelColor: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
+                            .padding(.horizontal, 24)
 
                         // —— 等级徽章 ——
                         LevelBadge(level: viewModel.noiseLevel)
+
+                        // —— 实时统计(测量中显示) ——
+                        if let live = viewModel.liveStats {
+                            LiveStatsBar(stats: live)
+                                .padding(.horizontal, 20)
+                                .animation(.easeInOut(duration: 0.25), value: viewModel.liveStats != nil)
+                        }
+
+                        // —— 噪声暴露警告 ——
+                        if viewModel.exposureWarning {
+                            ExposureWarningBanner()
+                                .padding(.horizontal, 20)
+                        }
 
                         // —— 声波条 ——
                         VStack(alignment: .leading, spacing: 8) {
@@ -121,6 +138,11 @@ struct MainMeterView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView(viewModel: viewModel)
         }
+        .sheet(isPresented: $showingHistory) {
+            HistoryView(store: viewModel.historyStore,
+                        deviceName: viewModel.deviceName,
+                        calibrationOffset: viewModel.calibrationOffset)
+        }
         .sheet(isPresented: $showingShare) {
             if let stats = viewModel.lastStats {
                 ReportShareSheet(stats: stats,
@@ -145,7 +167,8 @@ struct MainMeterView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: .semibold))
+            .font(MeterTheme.sectionLabel(10))
+            .tracking(1.5)
             .foregroundColor(MeterTheme.secondaryText)
             .textCase(.uppercase)
     }

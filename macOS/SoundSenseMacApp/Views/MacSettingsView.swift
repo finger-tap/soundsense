@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SoundSenseCore
 
 struct SettingsOverlay: View {
     @ObservedObject var viewModel: MeterViewModel
@@ -43,6 +44,7 @@ struct SettingsOverlay: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 16) {
                         calibrationCard
+                        measurementCard
                         aboutCard
                     }
                     .padding(.horizontal, 20).padding(.bottom, 20)
@@ -51,7 +53,7 @@ struct SettingsOverlay: View {
             .frame(width: 420, height: 480)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(red: 0.10, green: 0.11, blue: 0.14))
+                    .fill(MeterTheme.panel)
                     .overlay(RoundedRectangle(cornerRadius: 18)
                         .stroke(.white.opacity(0.1), lineWidth: 1))
             )
@@ -81,13 +83,18 @@ struct SettingsOverlay: View {
                 Slider(value: Binding(
                     get: { Double(viewModel.calibrationOffset) },
                     set: { viewModel.calibrationOffset = Float($0) }
-                ), in: -30...60, step: 0.5)
+                ), in: 60...110, step: 0.5)
                 .tint(Color(red: 0.24, green: 0.83, blue: 0.69))
                 HStack {
-                    Text("-30").font(.system(size: 9)); Spacer()
-                    Text("0").font(.system(size: 9)); Spacer()
-                    Text("+60").font(.system(size: 9))
+                    Text("60").font(.system(size: 9)); Spacer()
+                    Text("85").font(.system(size: 9)); Spacer()
+                    Text("110").font(.system(size: 9))
                 }.foregroundColor(.white.opacity(0.3))
+            }
+
+            HStack(spacing: 8) {
+                presetButton(label: "Mac 内建麦克风", offset: 93)
+                presetButton(label: "外接麦克风", offset: 85)
             }
 
             Button {
@@ -99,6 +106,76 @@ struct SettingsOverlay: View {
                     .background(RoundedRectangle(cornerRadius: 9).fill(.white.opacity(0.06)))
             }
             .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(.white.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: 13)
+                    .stroke(.white.opacity(0.07), lineWidth: 1))
+        )
+    }
+
+    private func presetButton(label: String, offset: Float) -> some View {
+        Button {
+            viewModel.calibrationOffset = offset
+        } label: {
+            VStack(spacing: 2) {
+                Text(label).font(.system(size: 12, weight: .medium))
+                Text(String(format: "+%.0f dB", offset))
+                    .font(.system(size: 10, design: .monospaced))
+                    .opacity(0.7)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 9).fill(.white.opacity(0.06)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - 测量卡片(计权 / 警告阈值 / 预设)
+
+    private var measurementCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("测量").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+
+            // 频率计权
+            HStack {
+                Text("频率计权").font(.system(size: 12)).foregroundColor(.white.opacity(0.8))
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { viewModel.weighting },
+                    set: { viewModel.weighting = $0 }
+                )) {
+                    Text("A(环境噪音)").tag(Weighting.a)
+                    Text("C(低频噪音)").tag(Weighting.c)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+            }
+            Text("A 计权模拟人耳感受,适合日常噪音;C 计权保留低频能量,适合音响、空调、机械等低频噪音。")
+                .font(.system(size: 10.5)).foregroundColor(.white.opacity(0.45))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider().overlay(MeterTheme.hairline)
+
+            // 警告阈值
+            HStack {
+                Text("警告阈值").font(.system(size: 12)).foregroundColor(.white.opacity(0.8))
+                Spacer()
+                Text(String(format: "%.0f dB", viewModel.warningThreshold))
+                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+            }
+            Slider(value: Binding(
+                get: { Double(viewModel.warningThreshold) },
+                set: { viewModel.warningThreshold = Float($0) }
+            ), in: 40...120, step: 1)
+            .tint(Color(red: 0.24, green: 0.83, blue: 0.69))
+            Text("连续超过该值 30 秒后提醒。85 dB 是长期暴露的听力安全上限;测卧室可调到 45~50。")
+                .font(.system(size: 10.5)).foregroundColor(.white.opacity(0.45))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .background(

@@ -25,14 +25,16 @@ enum ReportExporter {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.nameFieldStringValue = defaultFilename(stats: stats)
-
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd HH:mm"
         panel.title = "导出测量报告"
 
-        if panel.runModal() == .OK {
-            if let url = panel.url {
-                try? png.write(to: url)
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try png.write(to: url)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "导出失败"
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
             }
         }
     }

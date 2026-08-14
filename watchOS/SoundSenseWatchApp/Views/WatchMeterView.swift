@@ -13,6 +13,7 @@ import SoundSenseCore
 struct WatchMeterView: View {
     @StateObject private var viewModel = WatchMeterViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showingSettings = false
 
     var body: some View {
         ZStack {
@@ -51,6 +52,18 @@ struct WatchMeterView: View {
                         .foregroundColor(MeterTheme.secondaryText)
                 }
 
+                // —— 实时统计(时长 / LAeq / 峰值) ——
+                if let live = viewModel.liveStats {
+                    HStack(spacing: 0) {
+                        watchStat(String(format: "%02d:%02d",
+                                         Int(live.duration) / 60, Int(live.duration) % 60),
+                                  label: "时长")
+                        watchStat(String(format: "%.0f", live.laeq), label: "LAeq")
+                        watchStat(String(format: "%.0f", live.peak), label: "峰值")
+                    }
+                    .padding(.horizontal, 6)
+                }
+
                 // —— 迷你声波条 ——
                 miniWaveform
                     .frame(height: 28)
@@ -63,6 +76,16 @@ struct WatchMeterView: View {
                         .frame(height: 32)
                         .padding(.horizontal, 8)
                 }
+
+                // —— 校准入口 ——
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.55))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 4)
         }
@@ -82,6 +105,23 @@ struct WatchMeterView: View {
                 viewModel.consume(result)
             }
         }
+        // 下滑 / 点击齿轮进入校准设置
+        .sheet(isPresented: $showingSettings) {
+            WatchSettingsView(viewModel: viewModel)
+        }
+    }
+
+    private func watchStat(_ value: String, label: String) -> some View {
+        VStack(spacing: 1) {
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 8))
+                .foregroundColor(MeterTheme.secondaryText)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - 子视图
