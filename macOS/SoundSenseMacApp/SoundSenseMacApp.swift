@@ -14,7 +14,7 @@ import AppKit
 struct SoundSenseMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     /// 全局共享:主窗口与菜单栏控制器使用同一个视图模型
-    @StateObject private var appModel = MacAppModel()
+    @StateObject private var appModel = MacAppModel.shared
 
     var body: some Scene {
         WindowGroup {
@@ -28,12 +28,12 @@ struct SoundSenseMacApp: App {
 /// 应用级模型:持有主视图模型 + 菜单栏控制器
 @MainActor
 final class MacAppModel: ObservableObject {
+    static let shared = MacAppModel()
+
     let meterModel = MeterViewModel()
     let menuBar = MenuBarController()
 
-    init() {
-        menuBar.attach(viewModel: meterModel)
-    }
+    private init() {}
 }
 
 /// 固定窗口大小:禁止缩放、禁止全屏(避免全屏白边),仍可移动、最小化。
@@ -41,6 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.main.async {
             self.configureWindows()
+        }
+        // 菜单栏图标必须在 App 完全启动后创建:
+        // 在 SwiftUI App 构造阶段创建 NSStatusItem 会因尚未建立
+        // 窗口服务器连接而断言崩溃(macOS 12 实测 SIGABRT)。
+        Task { @MainActor in
+            MacAppModel.shared.menuBar.attach(viewModel: MacAppModel.shared.meterModel)
         }
     }
 
