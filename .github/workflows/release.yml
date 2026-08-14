@@ -70,7 +70,7 @@ jobs:
             exit 1
           fi
 
-      # 打 DMG(拖拽安装),复用 build.sh 里成熟的 hdiutil 流程
+      # 打 DMG(拖拽安装),带品牌背景图
       - name: Package DMG
         run: |
           VERSION="${RELEASE_VERSION}"
@@ -79,6 +79,11 @@ jobs:
           mkdir -p "$STAGING"
           cp -R build/app/SoundSense.app "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
+
+          # 生成品牌背景图(1280×800 @2x)并放入隐藏目录
+          swift scripts/make_dmg_background.swift build/dmg_background.png
+          mkdir -p "$STAGING/.background"
+          cp build/dmg_background.png "$STAGING/.background/background.png"
 
           TMP_DMG="build/tmp-$DMG_NAME"
           hdiutil create -volname "闻声 SoundSense" \
@@ -98,10 +103,11 @@ jobs:
               set current view of container window to icon view
               set toolbar visible of container window to false
               set statusbar visible of container window to false
-              set the bounds of container window to {100, 100, 500, 320}
-              set view options of icon view of container window to {icon size: 96, arrangement: row}
-              set position of item "SoundSense.app" of container window to {120, 120}
-              set position of item "Applications" of container window to {350, 120}
+              set the bounds of container window to {100, 100, 740, 500}
+              set view options of icon view of container window to {icon size: 128, arrangement: row}
+              set background picture of view options of container window to file ".background:background.png"
+              set position of item "SoundSense.app" of container window to {140, 140}
+              set position of item "Applications" of container window to {480, 140}
               close
             end tell
           end tell
