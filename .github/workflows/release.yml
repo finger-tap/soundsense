@@ -1,14 +1,28 @@
 name: Release
 
-# 仅 tag (v*) 触发,产出三端产物并发 GitHub Release。
-# 编译检查由 ci.yml(push/PR)负责。
+# 两种触发方式:
+#   1. push tag (v*) —— 传统方式,保留兼容
+#   2. 手动触发(workflow_dispatch)—— 推荐流程:平时推 main 只跑 CI,
+#      想发版时在 Actions 页面点 "Run workflow" 输入版本号,一次打包+发 Release,
+#      不需要再打 tag(gh 会自动在当前 main HEAD 上创建 tag)。
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号(如 1.6.2,不带 v)'
+        required: true
 
 permissions:
   contents: write
+
+env:
+  # 纯数字版本(去掉 v 前缀)
+  RELEASE_VERSION: ${{ replace(inputs.version || github.ref_name, 'v', '') }}
+  # tag 名(手动触发时自动加 v 前缀)
+  RELEASE_TAG: ${{ inputs.version && format('v{0}', inputs.version) || github.ref_name }}
 
 jobs:
   # ─────────────────────────────────────────────────
@@ -59,7 +73,7 @@ jobs:
       # 打 DMG(拖拽安装),复用 build.sh 里成熟的 hdiutil 流程
       - name: Package DMG
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_VERSION}"
           DMG_NAME="SoundSense-${VERSION}.dmg"
           STAGING="build/dmg-staging"
           mkdir -p "$STAGING"
@@ -157,7 +171,7 @@ jobs:
           mkdir -p build/Payload
           cp -R build/app/SoundSense.app build/Payload/
           cd build
-          zip -qr "SoundSense-iOS-${GITHUB_REF_NAME#v}.ipa" Payload
+          zip -qr "SoundSense-iOS-${RELEASE_VERSION}.ipa" Payload
           cd ..
           ls -la build/*.ipa
 
@@ -215,7 +229,7 @@ jobs:
           mkdir -p build/Payload
           cp -R build/app/SoundSenseWatch.app build/Payload/
           cd build
-          zip -qr "SoundSense-watchOS-${GITHUB_REF_NAME#v}.ipa" Payload
+          zip -qr "SoundSense-watchOS-${RELEASE_VERSION}.ipa" Payload
           cd ..
           ls -la build/*.ipa
 
@@ -255,10 +269,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" release/* \
-            --title "闻声 SoundSense $GITHUB_REF_NAME" \
-            --notes "## 闻声 SoundSense $GITHUB_REF_NAME
+          VERSION="${RELEASE_VERSION}"
+          gh release create "$RELEASE_TAG" release/* \
+            --title "闻声 SoundSense $RELEASE_TAG" \
+            --notes "## 闻声 SoundSense $RELEASE_TAG
 
           ### 📦 下载
 
