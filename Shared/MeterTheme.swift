@@ -13,8 +13,6 @@ import SwiftUI
 public enum MeterTheme {
 
     // MARK: - 背景(深石墨,微冷调;告别蓝紫渐变的模板感)
-    /// 主背景色
-    public static let inkBackground = Color(red: 0.043, green: 0.063, blue: 0.078)
     /// 与旧名兼容:全局背景"渐变"(现在是极轻的上下明度过渡)
     public static let backgroundGradient = LinearGradient(
         colors: [
@@ -37,7 +35,6 @@ public enum MeterTheme {
     // MARK: - 强调色
     /// 信号青(安静档的主色,与 AppIcon 呼应)
     public static let waveColor = Color(red: 0.24, green: 0.85, blue: 0.75)
-    public static let glowColor = Color(red: 0.55, green: 0.95, blue: 0.90)
 
     // MARK: - 文字
     public static let primaryText = Color.white

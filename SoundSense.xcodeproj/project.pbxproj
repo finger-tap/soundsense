@@ -10,7 +10,6 @@
 		A10000000000000000000001 /* MeterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* MeterViewModel.swift */; };
 		A10000000000000000000002 /* SoundSenseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* SoundSenseApp.swift */; };
 		A10000000000000000000003 /* MainMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* MainMeterView.swift */; };
-		A10000000000000000000004 /* SPLGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* SPLGaugeView.swift */; };
 		A10000000000000000000005 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* WaveformView.swift */; };
 		A10000000000000000000006 /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* SpectrumView.swift */; };
 		A10000000000000000000007 /* LevelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LevelBadge.swift */; };
@@ -56,8 +55,7 @@
 		AA0000000000000000000019 /* MeterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000002 /* MeterViewModel.swift */; };
 		AA000000000000000000001A /* MacMainMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000003 /* MacMainMeterView.swift */; };
 		AA000000000000000000001B /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000004 /* MacSettingsView.swift */; };
-		/* 复用 iOS 的纯 UI 组件(SPLGaugeView/WaveformView/SpectrumView/LevelBadge)+ Shared */
-		AA000000000000000000001C /* SPLGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* SPLGaugeView.swift */; };
+		/* 复用 iOS 的纯 UI 组件(WaveformView/SpectrumView/LevelBadge)+ Shared */
 		AA000000000000000000001D /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* WaveformView.swift */; };
 		AA000000000000000000001E /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* SpectrumView.swift */; };
 		AA000000000000000000001F /* LevelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LevelBadge.swift */; };
@@ -82,7 +80,6 @@
 		A20000000000000000000001 /* MeterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterViewModel.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* SoundSenseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundSenseApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* MainMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMeterView.swift; sourceTree = "<group>"; };
-		A20000000000000000000004 /* SPLGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SPLGaugeView.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		A20000000000000000000006 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
 		A20000000000000000000007 /* LevelBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelBadge.swift; sourceTree = "<group>"; };
@@ -256,7 +253,6 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000003 /* MainMeterView.swift */,
-				A20000000000000000000004 /* SPLGaugeView.swift */,
 				A20000000000000000000005 /* WaveformView.swift */,
 				A20000000000000000000006 /* SpectrumView.swift */,
 				A20000000000000000000007 /* LevelBadge.swift */,
@@ -447,7 +443,6 @@
 				A10000000000000000000002 /* SoundSenseApp.swift in Sources */,
 				A10000000000000000000001 /* MeterViewModel.swift in Sources */,
 				A10000000000000000000003 /* MainMeterView.swift in Sources */,
-				A10000000000000000000004 /* SPLGaugeView.swift in Sources */,
 				A10000000000000000000005 /* WaveformView.swift in Sources */,
 				A10000000000000000000006 /* SpectrumView.swift in Sources */,
 				A10000000000000000000007 /* LevelBadge.swift in Sources */,
@@ -493,7 +488,6 @@
 				AA0000000000000000000019 /* MeterViewModel.swift in Sources */,
 				AA000000000000000000001A /* MacMainMeterView.swift in Sources */,
 				AA000000000000000000001B /* MacSettingsView.swift in Sources */,
-				AA000000000000000000001C /* SPLGaugeView.swift in Sources */,
 				AA000000000000000000001D /* WaveformView.swift in Sources */,
 				AA000000000000000000001E /* SpectrumView.swift in Sources */,
 				AA000000000000000000001F /* LevelBadge.swift in Sources */,

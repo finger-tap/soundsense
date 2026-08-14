@@ -45,11 +45,11 @@ public enum MeasurementCSV {
         return "闻声数据_\(df.string(from: stats.startTime)).csv"
     }
 
-    private static var isoFormatter: DateFormatter {
+    private static let isoFormatter: DateFormatter = {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return df
-    }
+    }()
 
     private static func iso(_ date: Date) -> String {
         isoFormatter.string(from: date)

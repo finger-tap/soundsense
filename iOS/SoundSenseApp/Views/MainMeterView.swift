@@ -150,11 +150,6 @@ struct MainMeterView: View {
                                  calibrationOffset: viewModel.calibrationOffset)
             }
         }
-        // 监听引擎状态变化:状态机变化时处理
-        .onChange(of: viewModel.engine.state) { newState in
-            // 可在此扩展:例如 denied 时弹设置引导。首版仅记录。
-            _ = newState
-        }
         // 监听最新一帧结果
         .onChange(of: viewModel.engine.latestResult) { result in
             if let result = result {

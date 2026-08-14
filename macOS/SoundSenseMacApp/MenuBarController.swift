@@ -29,12 +29,7 @@ final class MenuBarController: NSObject, ObservableObject {
         statusItem = item
 
         // 数值/状态变化 → 刷新标题与菜单
-        Publishers.CombineLatest(viewModel.$liveStats, viewModel.engine.$latestResult)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _, _ in
-                self?.refresh()
-            }
-            .store(in: &cancellables)
+        // (objectWillChange 覆盖所有 @Published 变化,含转发的 engine 状态)
         viewModel.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] in

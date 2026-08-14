@@ -150,6 +150,13 @@ mkdir -p "$STAGING_DIR"
 cp -R "$APP_DIR" "$STAGING_DIR/"
 ln -s /Applications "$STAGING_DIR/Applications"
 
+# 生成品牌背景图(1120×720 @2x,对应 560×360 窗口)并放入隐藏目录
+echo "  → 生成品牌背景图..."
+swift scripts/make_dmg_background.swift "$OUTPUT_DIR/dmg_background.png" >/dev/null 2>&1 \
+  || echo "  ⚠️ 背景图生成失败,DMG 将无背景"
+mkdir -p "$STAGING_DIR/.background"
+cp "$OUTPUT_DIR/dmg_background.png" "$STAGING_DIR/.background/background.png" 2>/dev/null || true
+
 # 创建临时 DMG
 TMP_DMG="$OUTPUT_DIR/tmp-$DMG_NAME"
 rm -f "$TMP_DMG" "$DMG_PATH"
@@ -165,7 +172,12 @@ MOUNT_POINT=$(hdiutil attach -readwrite -noverify -noautoopen "$TMP_DMG" 2>/dev/
 
 # 设置窗口布局（图标大小、位置等）
 if [ -n "$MOUNT_POINT" ]; then
-    # 用 AppleScript 设置 DMG 窗口外观
+    # 等 Finder 完成挂载识别,否则设置背景/位置可能不生效
+    sleep 3
+    # 用 AppleScript 设置 DMG 窗口外观。
+    # 注意:必须是 "icon view options of container window"(逐属性设置),
+    # 旧写法 "view options of icon view of container window" 在 macOS 12
+    # 上直接语法报错,导致背景一直不生效。
     osascript << APPLESCRIPT 2>/dev/null || true
 tell application "Finder"
     tell disk "$(basename "$MOUNT_POINT")"
@@ -173,16 +185,27 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {100, 100, 500, 320}
-        set view options of icon view of container window to \
-            {icon size: 96, arrangement: row}
-        set position of item "SoundSense.app" of container window to {120, 120}
-        set position of item "Applications" of container window to {350, 120}
+        set the bounds of container window to {100, 100, 660, 460}
+        set icon size of icon view options of container window to 96
+        set arrangement of icon view options of container window to not arranged
+        -- 背景图:先试 HFS 相对路径,失败再用 POSIX 绝对路径
+        try
+            set background picture of icon view options of container window to file ".background:background.png"
+        on error
+            set background picture of icon view options of container window to POSIX file "$MOUNT_POINT/.background/background.png"
+        end try
+        -- 两个图标当"眼睛"
+        set position of item "SoundSense.app" of container window to {150, 120}
+        set position of item "Applications" of container window to {410, 120}
+        close
+        -- 重开一次让背景设置稳定生效
+        open
         close
     end tell
 end tell
 APPLESCRIPT
     # 卸载
+    sleep 2
     hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1
 fi
 
@@ -193,7 +216,7 @@ hdiutil convert "$TMP_DMG" \
   -o "$DMG_PATH" >/dev/null 2>&1
 
 # 清理临时文件
-rm -f "$TMP_DMG"
+rm -f "$TMP_DMG" "$OUTPUT_DIR/dmg_background.png"
 rm -rf "$STAGING_DIR"
 
 if [ -f "$DMG_PATH" ]; then

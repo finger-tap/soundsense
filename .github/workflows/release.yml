@@ -97,6 +97,9 @@ jobs:
           if [ -n "$MOUNT_POINT" ]; then
             # 等 Finder 完成挂载识别,否则设置背景/位置可能不生效
             sleep 3
+            # 注意:必须是 "icon view options of container window"(逐属性设置),
+            # 旧写法 "view options of icon view of container window" 语法报错,
+            # 会被下方 2>/dev/null 吞掉导致背景不生效。
             osascript <<APPLESCRIPT 2>/dev/null || true
           tell application "Finder"
             tell disk "$(basename "$MOUNT_POINT")"
@@ -105,15 +108,17 @@ jobs:
               set toolbar visible of container window to false
               set statusbar visible of container window to false
               set the bounds of container window to {100, 100, 660, 460}
-              set view options of icon view of container window to {icon size: 96, arrangement: row}
+              set icon size of icon view options of container window to 96
+              set arrangement of icon view options of container window to not arranged
               -- 背景图:先试 HFS 相对路径,失败再用 POSIX 绝对路径
               try
-                set background picture of view options of container window to file ".background:background.png"
+                set background picture of icon view options of container window to file ".background:background.png"
               on error
-                set background picture of view options of container window to POSIX file "$MOUNT_POINT/.background/background.png"
+                set background picture of icon view options of container window to POSIX file "$MOUNT_POINT/.background/background.png"
               end try
-              set position of item "SoundSense.app" of container window to {90, 140}
-              set position of item "Applications" of container window to {430, 140}
+              -- 两个图标当"眼睛"
+              set position of item "SoundSense.app" of container window to {150, 120}
+              set position of item "Applications" of container window to {410, 120}
               close
               -- 重开一次让背景设置稳定生效
               open
