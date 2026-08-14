@@ -40,7 +40,7 @@ final class MeterViewModel: ObservableObject {
     /// 频率计权(A/C),持久化
     @AppStorage("weighting") private var storedWeighting: String = "A"
     /// 暴露警告阈值(dB),持久化
-    @AppStorage("warningThreshold") private var storedThreshold: Double = MeasurementRecorder.defaultExposureLimit
+    @AppStorage("warningThreshold") private var storedThreshold: Double = Double(MeasurementRecorder.defaultExposureLimit)
 
     var calibrationOffset: Float {
         get { Float(storedOffset) }
@@ -147,8 +147,8 @@ final class MeterViewModel: ObservableObject {
 
     private func startLiveTimer() {
         liveTimer?.invalidate()
-        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 guard let self = self, self.engine.state == .running else { return }
                 self.liveStats = self.recorder.liveStats()
             }

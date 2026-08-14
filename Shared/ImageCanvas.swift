@@ -139,8 +139,8 @@ final class ImageCanvas {
         let ctFont = CTFontCreateWithName(fontName as CFString, size, nil)
         let attr: [CFString: Any] = [kCTFontAttributeName: ctFont]
         guard let attrString = CFAttributedStringCreate(nil, string as CFString,
-                                                        attr as CFDictionary),
-              let line = CTLineCreateWithAttributedString(attrString) else { return 0 }
+                                                        attr as CFDictionary) else { return 0 }
+        let line = CTLineCreateWithAttributedString(attrString)
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 

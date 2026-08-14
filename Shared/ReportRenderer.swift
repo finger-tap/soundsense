@@ -105,7 +105,6 @@ public enum ReportRenderer {
         let toX: (Float) -> CGFloat = { db in
             x0 + CGFloat((db - minDB) / (maxDB - minDB)) * (x1 - x0)
         }
-        let bandBottom = baseline + 9
 
         // 分区色带
         let zones: [(Float, Float, CGColor)] = [
@@ -154,7 +153,7 @@ public enum ReportRenderer {
     // MARK: - 统计条(四列,发丝线分隔,无卡片)
 
     private static func drawStatStrip(_ r: ImageCanvas, stats: MeasurementStats) {
-        let y = 660
+        let y: CGFloat = 660
         let colW: CGFloat = (1000 - 80) / 4
         let items: [(String, String, CGColor)] = [
             (String(format: "%.1f", stats.peakSPL), "峰值 PEAK", coral),

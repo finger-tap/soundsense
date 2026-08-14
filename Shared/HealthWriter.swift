@@ -24,7 +24,7 @@ enum HealthWriter {
     /// 请求写入授权(用户在设置里打开开关时调用一次)
     static func requestAuthorization() async -> Bool {
         guard isAvailable,
-              let type = HKObjectType.quantityType(forIdentifier: .environmentalSoundExposure)
+              let type = HKObjectType.quantityType(forIdentifier: .environmentalAudioExposure)
         else { return false }
         let store = HKHealthStore()
         return await withCheckedContinuation { continuation in
@@ -37,10 +37,9 @@ enum HealthWriter {
     /// 写入一次测量的等效声级(测量停止时调用)
     static func save(stats: MeasurementStats) async {
         guard isAvailable, stats.duration >= 60,
-              let type = HKObjectType.quantityType(forIdentifier: .environmentalSoundExposure)
+              let type = HKObjectType.quantityType(forIdentifier: .environmentalAudioExposure)
         else { return }
         let store = HKHealthStore()
-        let type = HKQuantityType(.environmentalSoundExposure)
         let unit = HKUnit.decibelAWeightedSoundPressureLevel()
         let quantity = HKQuantity(unit: unit, doubleValue: Double(stats.laeqSPL))
         let sample = HKQuantitySample(type: type,
