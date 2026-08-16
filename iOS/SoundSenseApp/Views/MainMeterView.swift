@@ -15,6 +15,8 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
+    /// 导出方式选择(相册 / 分享)
+    @State private var showingExportOptions = false
     /// 保存结果浮层文案(自动消失)
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
@@ -145,17 +147,17 @@ struct MainMeterView: View {
 
                     // —— 底部操作区(固定) ——
                     VStack(spacing: 10) {
-                        // 保存报告:仅"停止后"显示;点击直接存相册,长按弹出分享
+                        // 导出报告:仅"停止后"显示;点击弹出保存到相册 / 分享选项
                         if viewModel.lastStats != nil,
                            viewModel.engine.state != .running,
                            viewModel.engine.state != .starting {
                             Button {
-                                saveReportToPhotos()
+                                showingExportOptions = true
                             } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "photo.badge.arrow.down")
+                                    Image(systemName: "square.and.arrow.up")
                                         .font(.system(size: 12, weight: .semibold))
-                                    Text("保存报告到相册")
+                                    Text("导出报告")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
                                 .foregroundColor(.white.opacity(0.9))
@@ -163,13 +165,6 @@ struct MainMeterView: View {
                                 .background(Capsule().fill(Color.white.opacity(0.12)))
                             }
                             .buttonStyle(.plain)
-                            .contextMenu {
-                                Button {
-                                    showingShare = true
-                                } label: {
-                                    Label("分享 / 其他方式导出", systemImage: "square.and.arrow.up")
-                                }
-                            }
                             .transition(.opacity)
                         }
                         controlButton
@@ -177,6 +172,11 @@ struct MainMeterView: View {
                     .padding(.horizontal, 40)
                     .padding(.bottom, 12)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.engine.state)
+                    .confirmationDialog("导出测量报告", isPresented: $showingExportOptions, titleVisibility: .visible) {
+                        Button("保存到相册") { saveReportToPhotos() }
+                        Button("分享") { showingShare = true }
+                        Button("取消", role: .cancel) {}
+                    }
                 }
 
                 // —— 保存结果浮层 ——
