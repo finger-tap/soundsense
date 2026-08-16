@@ -18,8 +18,8 @@ struct MainMeterView: View {
     var body: some View {
         GeometryReader { geo in
             let vSpace = geo.size.height
-            // 读数字号随屏高自适应(SE 667pt ~ 56;Pro Max ~ 72)
-            let heroSize: CGFloat = max(52, min(72, vSpace / 10.5))
+            // 读数字号随屏高自适应(SE 667pt ~ 50;Pro Max ~ 66)
+            let heroSize: CGFloat = max(46, min(66, vSpace / 12))
 
             ZStack {
                 MeterTheme.backgroundGradient.ignoresSafeArea()
@@ -52,10 +52,12 @@ struct MainMeterView: View {
                     .padding(.top, 4)
 
                     // —— 状态提示(固定在顶部,任何机型都可见) ——
-                    statusText
-                        .padding(.top, 2)
+                    Group {
+                        statusText
+                            .padding(.top, 2)
 
-                    Spacer(minLength: 8)
+                        Spacer(minLength: 8)
+                    }
 
                     // —— 主读数:大数字 + dB 标尺 ——
                     VStack(spacing: 4) {
@@ -75,57 +77,59 @@ struct MainMeterView: View {
                         .padding(.horizontal, 22)
                         .padding(.top, 2)
 
-                    // —— 等级徽章 ——
-                    LevelBadge(level: viewModel.noiseLevel)
-                        .padding(.top, 10)
-
-                    // —— 实时统计(测量中显示) ——
-                    if let live = viewModel.liveStats {
-                        LiveStatsBar(stats: live)
-                            .padding(.horizontal, 18)
+                    // —— 等级徽章 / 实时统计 / 暴露警告(分组以规避 ViewBuilder 10 子视图上限) ——
+                    Group {
+                        LevelBadge(level: viewModel.noiseLevel)
                             .padding(.top, 10)
-                    }
 
-                    // —— 噪声暴露警告 ——
-                    if viewModel.exposureWarning {
-                        ExposureWarningBanner(threshold: viewModel.warningThreshold)
-                            .padding(.horizontal, 18)
-                            .padding(.top, 8)
+                        // —— 实时统计(测量中显示) ——
+                        if let live = viewModel.liveStats {
+                            LiveStatsBar(stats: live)
+                                .padding(.horizontal, 18)
+                                .padding(.top, 10)
+                        }
+
+                        // —— 噪声暴露警告 ——
+                        if viewModel.exposureWarning {
+                            ExposureWarningBanner(threshold: viewModel.warningThreshold)
+                                .padding(.horizontal, 18)
+                                .padding(.top, 8)
+                        }
                     }
 
                     Spacer(minLength: 8)
 
-                    // —— 声波 + 频谱(紧凑一行,可完整显示在小屏) ——
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 4) {
+                    // —— 声波 / 频谱(各占一行,紧凑高度,小屏也一屏放下) ——
+                    VStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 3) {
                             sectionLabel("声波")
                             WaveformView(values: viewModel.history,
                                          color: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
-                                .frame(height: 44)
+                                .frame(height: 38)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(MeterTheme.cardBackground)
                         )
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 3) {
                             sectionLabel("频谱")
                             if let result = viewModel.engine.latestResult {
                                 SpectrumView(spectrum: result.spectrum,
                                              frequencies: result.frequencies)
-                                    .frame(height: 44)
+                                    .frame(height: 38)
                                     .clipped()
                             } else {
                                 Text("等待测量")
                                     .font(.system(size: 11))
                                     .foregroundColor(MeterTheme.secondaryText)
-                                    .frame(height: 44)
+                                    .frame(height: 38)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(MeterTheme.cardBackground)
