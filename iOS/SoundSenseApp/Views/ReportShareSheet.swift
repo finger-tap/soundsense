@@ -20,18 +20,10 @@ struct ReportShareSheet: UIViewControllerRepresentable {
                                            deviceName: deviceName,
                                            calibrationOffset: calibrationOffset)
 
-        // 写临时文件(分享文件比分享 UIImage 更兼容微信)
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd_HHmm"
-        let filename = "闻声报告_\(df.string(from: stats.startTime)).png"
-        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        if let pngData = image.pngData() {
-            try? pngData.write(to: tmpURL)
-        }
-
-        let items: [Any] = [image, tmpURL]
-        let controller = UIActivityViewController(activityItems: items,
-                                                    applicationActivities: nil)
+        // 只分享 UIImage:保证"存储图像"(存相册)选项稳定出现,
+        // 微信等收图方对 UIImage 的兼容也没问题
+        let controller = UIActivityViewController(activityItems: [image],
+                                                  applicationActivities: nil)
         controller.excludedActivityTypes = [.assignToContact, .addToReadingList]
         return controller
     }

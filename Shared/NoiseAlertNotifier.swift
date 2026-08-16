@@ -14,17 +14,20 @@ public enum NoiseAlertNotifier {
 
     private static let notificationID = "com.dinghao.soundsense.exposure"
 
-    /// 请求通知权限(App 内警告横幅不依赖此权限;系统通知需要)。
+    /// 请求通知权限:每次安装只请求一次(用户拒绝/同意后不再打扰,
+    /// 之后想改去系统设置)。App 内警告横幅不依赖此权限。
     public static func requestAuthorization() {
         let center = UNUserNotificationCenter.current()
         center.delegate = NoiseAlertNotifierDelegate.shared
+        // 已请求过(无论结果)就不再弹
+        guard !UserDefaults.standard.bool(forKey: "notifAuthRequested") else { return }
         center.getNotificationSettings { settings in
-            switch settings.authorizationStatus {
-            case .notDetermined:
-                center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
-            default:
-                break
+            guard settings.authorizationStatus == .notDetermined else {
+                UserDefaults.standard.set(true, forKey: "notifAuthRequested")
+                return
             }
+            UserDefaults.standard.set(true, forKey: "notifAuthRequested")
+            center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
         }
     }
 
