@@ -19,7 +19,7 @@ struct MainMeterView: View {
         GeometryReader { geo in
             let vSpace = geo.size.height
             // 读数字号随屏高自适应(SE 667pt ~ 50;Pro Max ~ 66)
-            let heroSize: CGFloat = max(46, min(66, vSpace / 12))
+            let heroSize: CGFloat = max(48, min(76, vSpace / 10.5))
 
             ZStack {
                 MeterTheme.backgroundGradient.ignoresSafeArea()
@@ -54,13 +54,13 @@ struct MainMeterView: View {
                     // —— 状态提示(固定在顶部,任何机型都可见) ——
                     Group {
                         statusText
-                            .padding(.top, 2)
+                            .padding(.top, 6)
 
                         Spacer(minLength: 8)
                     }
 
                     // —— 主读数:大数字 + dB 标尺 ——
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Text(splText(viewModel.currentSPL))
                             .font(.system(size: heroSize, weight: .heavy, design: .rounded))
                             .foregroundColor(.white)
@@ -75,12 +75,12 @@ struct MainMeterView: View {
                     DBRulerGauge(spl: viewModel.currentSPL,
                                  levelColor: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
                         .padding(.horizontal, 22)
-                        .padding(.top, 2)
+                        .padding(.top, 8)
 
                     // —— 等级徽章 / 实时统计 / 暴露警告(分组以规避 ViewBuilder 10 子视图上限) ——
                     Group {
                         LevelBadge(level: viewModel.noiseLevel)
-                            .padding(.top, 10)
+                            .padding(.top, 12)
 
                         // —— 实时统计(测量中显示) ——
                         if let live = viewModel.liveStats {
@@ -100,12 +100,12 @@ struct MainMeterView: View {
                     Spacer(minLength: 8)
 
                     // —— 声波 / 频谱(各占一行,紧凑高度,小屏也一屏放下) ——
-                    VStack(spacing: 8) {
-                        VStack(alignment: .leading, spacing: 3) {
+                    VStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
                             sectionLabel("声波")
                             WaveformView(values: viewModel.history,
                                          color: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
-                                .frame(height: 38)
+                                .frame(height: 52)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 10).padding(.vertical, 8)
@@ -114,18 +114,18 @@ struct MainMeterView: View {
                                 .fill(MeterTheme.cardBackground)
                         )
 
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 4) {
                             sectionLabel("频谱")
                             if let result = viewModel.engine.latestResult {
                                 SpectrumView(spectrum: result.spectrum,
                                              frequencies: result.frequencies)
-                                    .frame(height: 38)
+                                    .frame(height: 52)
                                     .clipped()
                             } else {
                                 Text("等待测量")
                                     .font(.system(size: 11))
                                     .foregroundColor(MeterTheme.secondaryText)
-                                    .frame(height: 38)
+                                    .frame(height: 52)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,7 +156,7 @@ struct MainMeterView: View {
                                         .font(.system(size: 13, weight: .semibold))
                                 }
                                 .foregroundColor(.white.opacity(0.9))
-                                .padding(.horizontal, 16).padding(.vertical, 9)
+                                .padding(.horizontal, 16).padding(.vertical, 8)
                                 .background(Capsule().fill(Color.white.opacity(0.12)))
                             }
                             .buttonStyle(.plain)
@@ -197,7 +197,7 @@ struct MainMeterView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(MeterTheme.sectionLabel(9))
+            .font(MeterTheme.sectionLabel(10))
             .tracking(1.2)
             .foregroundColor(MeterTheme.secondaryText)
             .textCase(.uppercase)
@@ -242,13 +242,13 @@ struct MainMeterView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: viewModel.engine.state == .running ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                 Text(viewModel.engine.state == .running ? "停止" : "开始测量")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 13)
             .background(
                 Capsule().fill(
                     viewModel.engine.state == .running
