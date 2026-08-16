@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Photos
 import SoundSenseCore
 
 struct MainMeterView: View {
@@ -14,12 +15,26 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
+    /// 导出方式选择(相册 / 分享)
+    @State private var showingExportOptions = false
+    /// 保存结果浮层文案(自动消失)
+    @State private var toast: String?
+    @State private var toastTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geo in
-            let vSpace = geo.size.height
-            // 读数字号随屏高自适应(SE 667pt ~ 50;Pro Max ~ 66)
-            let heroSize: CGFloat = max(48, min(76, vSpace / 10.5))
+            // —— 百分比布局:所有关键尺寸随屏幕等比缩放,夹上下限防极端 ——
+            let H = geo.size.height
+            let W = geo.size.width
+            let clamp = { (v: CGFloat, lo: CGFloat, hi: CGFloat) in
+                max(lo, min(hi, v))
+            }
+            // 主读数字号:屏高 10.5%(SE≈60 / 14ProMax≈88)
+            let heroSize = clamp(H * 0.105, 48, 88)
+            // 横向边距:屏宽 4.5%(390pt 屏 ≈ 18)
+            let marginX = clamp(W * 0.045, 14, 24)
+            // 卡片高度:屏高 8.8%(SE≈52 / ProMax≈74)
+            let cardH = clamp(H * 0.088, 44, 66)
 
             ZStack {
                 MeterTheme.backgroundGradient.ignoresSafeArea()
@@ -48,13 +63,13 @@ struct MainMeterView: View {
                                 .frame(width: 38, height: 38)
                         }
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, marginX)
                     .padding(.top, 4)
 
                     // —— 状态提示(固定在顶部,任何机型都可见) ——
                     Group {
                         statusText
-                            .padding(.top, 6)
+                            .padding(.top, 2)
 
                         Spacer(minLength: 8)
                     }
@@ -74,7 +89,7 @@ struct MainMeterView: View {
 
                     DBRulerGauge(spl: viewModel.currentSPL,
                                  levelColor: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
-                        .padding(.horizontal, 22)
+                        .padding(.horizontal, marginX + 4)
                         .padding(.top, 8)
 
                     // —— 等级徽章 / 实时统计 / 暴露警告(分组以规避 ViewBuilder 10 子视图上限) ——
@@ -85,14 +100,14 @@ struct MainMeterView: View {
                         // —— 实时统计(测量中显示) ——
                         if let live = viewModel.liveStats {
                             LiveStatsBar(stats: live)
-                                .padding(.horizontal, 18)
+                                .padding(.horizontal, marginX)
                                 .padding(.top, 10)
                         }
 
                         // —— 噪声暴露警告 ——
                         if viewModel.exposureWarning {
                             ExposureWarningBanner(threshold: viewModel.warningThreshold)
-                                .padding(.horizontal, 18)
+                                .padding(.horizontal, marginX)
                                 .padding(.top, 8)
                         }
                     }
@@ -105,7 +120,7 @@ struct MainMeterView: View {
                             sectionLabel("声波")
                             WaveformView(values: viewModel.history,
                                          color: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
-                                .frame(height: 52)
+                                .frame(height: cardH)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 10).padding(.vertical, 8)
@@ -119,13 +134,13 @@ struct MainMeterView: View {
                             if let result = viewModel.engine.latestResult {
                                 SpectrumView(spectrum: result.spectrum,
                                              frequencies: result.frequencies)
-                                    .frame(height: 52)
+                                    .frame(height: cardH)
                                     .clipped()
                             } else {
                                 Text("等待测量")
                                     .font(.system(size: 11))
                                     .foregroundColor(MeterTheme.secondaryText)
-                                    .frame(height: 52)
+                                    .frame(height: cardH)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,19 +150,18 @@ struct MainMeterView: View {
                                 .fill(MeterTheme.cardBackground)
                         )
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, marginX)
 
-                    Spacer(minLength: 8)
+                    Spacer(minLength: 6)
 
                     // —— 底部操作区(固定) ——
                     VStack(spacing: 10) {
-                        // 导出报告:仅"停止后"显示;直接弹系统分享面板
-                        // (面板自带"存储图像"=保存到相册,另有微信/文件等)
+                        // 导出报告:仅"停止后"显示;点击弹出保存到相册 / 分享
                         if viewModel.lastStats != nil,
                            viewModel.engine.state != .running,
                            viewModel.engine.state != .starting {
                             Button {
-                                showingShare = true
+                                showingExportOptions = true
                             } label: {
                                 HStack(spacing: 6) {
                                     Image(systemName: "square.and.arrow.up")
@@ -164,9 +178,30 @@ struct MainMeterView: View {
                         }
                         controlButton
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, marginX * 2.2)
+                    .padding(.bottom, 10)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.engine.state)
+                    .confirmationDialog("导出测量报告", isPresented: $showingExportOptions,
+                                        titleVisibility: .visible) {
+                        Button("保存到相册") { saveReportToPhotos() }
+                        Button("通过分享导出") { showingShare = true }
+                        Button("取消", role: .cancel) {}
+                    }
+                }
+
+                // —— 保存结果浮层 ——
+                if let message = toast {
+                    VStack {
+                        Spacer()
+                        Text(message)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Capsule().fill(Color.black.opacity(0.75)))
+                            .padding(.bottom, 96)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    .allowsHitTesting(false)
                 }
             }
         }
@@ -261,6 +296,42 @@ struct MainMeterView: View {
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - 保存报告到相册
+
+    /// 把上次测量报告渲染成 PNG 存进系统相册(只申请"添加"权限,不读相册)
+    private func saveReportToPhotos() {
+        guard let stats = viewModel.lastStats else { return }
+        Task { @MainActor in
+            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+            guard status == .authorized || status == .limited else {
+                showToast("相册权限被拒绝,请到系统设置 → 闻声 开启")
+                return
+            }
+            let image = ReportRenderer.render(stats: stats,
+                                              deviceName: viewModel.deviceName,
+                                              calibrationOffset: viewModel.calibrationOffset)
+            let ok: Bool = await withCheckedContinuation { continuation in
+                PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAsset(from: image)
+                } completionHandler: { success, _ in
+                    continuation.resume(returning: success)
+                }
+            }
+            showToast(ok ? "已保存到相册" : "保存失败,请重试")
+        }
+    }
+
+    /// 浮层提示,2 秒后自动消失
+    private func showToast(_ message: String) {
+        withAnimation { toast = message }
+        toastTask?.cancel()
+        toastTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation { toast = nil }
+        }
     }
 
     // MARK: - 工具
