@@ -51,5 +51,7 @@
     </array>
     <key>NSHealthUpdateUsageDescription</key>
     <string>闻声会把每次测量的等效声级写入健康 App 的"环境声级暴露",数据仅保存在本机。</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>闻声需要把测量报告图片保存到你的相册(仅添加,不读取)。</string>
 </dict>
 </plist>

@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Photos
 import SoundSenseCore
 
 struct MainMeterView: View {
@@ -14,6 +15,9 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
+    /// 保存结果浮层文案(自动消失)
+    @State private var toast: String?
+    @State private var toastTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geo in
@@ -141,17 +145,17 @@ struct MainMeterView: View {
 
                     // —— 底部操作区(固定) ——
                     VStack(spacing: 10) {
-                        // 导出报告:仅"停止后"显示,重新测量时隐藏
-                        if let stats = viewModel.lastStats,
+                        // 保存报告:仅"停止后"显示;点击直接存相册,长按弹出分享
+                        if viewModel.lastStats != nil,
                            viewModel.engine.state != .running,
                            viewModel.engine.state != .starting {
                             Button {
-                                showingShare = true
+                                saveReportToPhotos()
                             } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "square.and.arrow.up")
+                                    Image(systemName: "photo.badge.arrow.down")
                                         .font(.system(size: 12, weight: .semibold))
-                                    Text("导出上次报告")
+                                    Text("保存报告到相册")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
                                 .foregroundColor(.white.opacity(0.9))
@@ -159,6 +163,13 @@ struct MainMeterView: View {
                                 .background(Capsule().fill(Color.white.opacity(0.12)))
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button {
+                                    showingShare = true
+                                } label: {
+                                    Label("分享 / 其他方式导出", systemImage: "square.and.arrow.up")
+                                }
+                            }
                             .transition(.opacity)
                         }
                         controlButton
@@ -166,6 +177,20 @@ struct MainMeterView: View {
                     .padding(.horizontal, 40)
                     .padding(.bottom, 12)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.engine.state)
+                }
+
+                // —— 保存结果浮层 ——
+                if let message = toast {
+                    VStack {
+                        Spacer()
+                        Text(message)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Capsule().fill(Color.black.opacity(0.75)))
+                            .padding(.bottom, 90)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
         }
@@ -260,6 +285,42 @@ struct MainMeterView: View {
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - 保存报告到相册
+
+    /// 把上次测量报告渲染成 PNG 存进系统相册(只申请"添加"权限,不读相册)
+    private func saveReportToPhotos() {
+        guard let stats = viewModel.lastStats else { return }
+        Task {
+            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+            guard status == .authorized || status == .limited else {
+                showToast("相册权限被拒绝,请到系统设置开启")
+                return
+            }
+            let image = ReportRenderer.render(stats: stats,
+                                              deviceName: viewModel.deviceName,
+                                              calibrationOffset: viewModel.calibrationOffset)
+            let ok = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAsset(from: image)
+                } completionHandler: { success, _ in
+                    continuation.resume(returning: success)
+                }
+            }
+            showToast(ok ? "已保存到相册" : "保存失败,请重试")
+        }
+    }
+
+    /// 显示浮层提示,2 秒后自动消失
+    private func showToast(_ message: String) {
+        withAnimation { toast = message }
+        toastTask?.cancel()
+        toastTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation { toast = nil }
+        }
     }
 
     // MARK: - 工具
