@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Photos
 import SoundSenseCore
 
 struct MainMeterView: View {
@@ -15,11 +14,6 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
-    /// 导出方式选择(相册 / 分享)
-    @State private var showingExportOptions = false
-    /// 保存结果浮层文案(自动消失)
-    @State private var toast: String?
-    @State private var toastTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geo in
@@ -147,12 +141,13 @@ struct MainMeterView: View {
 
                     // —— 底部操作区(固定) ——
                     VStack(spacing: 10) {
-                        // 导出报告:仅"停止后"显示;点击弹出保存到相册 / 分享选项
+                        // 导出报告:仅"停止后"显示;直接弹系统分享面板
+                        // (面板自带"存储图像"=保存到相册,另有微信/文件等)
                         if viewModel.lastStats != nil,
                            viewModel.engine.state != .running,
                            viewModel.engine.state != .starting {
                             Button {
-                                showingExportOptions = true
+                                showingShare = true
                             } label: {
                                 HStack(spacing: 6) {
                                     Image(systemName: "square.and.arrow.up")
@@ -172,25 +167,6 @@ struct MainMeterView: View {
                     .padding(.horizontal, 40)
                     .padding(.bottom, 12)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.engine.state)
-                    .confirmationDialog("导出测量报告", isPresented: $showingExportOptions, titleVisibility: .visible) {
-                        Button("保存到相册") { saveReportToPhotos() }
-                        Button("分享") { showingShare = true }
-                        Button("取消", role: .cancel) {}
-                    }
-                }
-
-                // —— 保存结果浮层 ——
-                if let message = toast {
-                    VStack {
-                        Spacer()
-                        Text(message)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(Capsule().fill(Color.black.opacity(0.75)))
-                            .padding(.bottom, 90)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
                 }
             }
         }
@@ -285,42 +261,6 @@ struct MainMeterView: View {
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
-    }
-
-    // MARK: - 保存报告到相册
-
-    /// 把上次测量报告渲染成 PNG 存进系统相册(只申请"添加"权限,不读相册)
-    private func saveReportToPhotos() {
-        guard let stats = viewModel.lastStats else { return }
-        Task {
-            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-            guard status == .authorized || status == .limited else {
-                showToast("相册权限被拒绝,请到系统设置开启")
-                return
-            }
-            let image = ReportRenderer.render(stats: stats,
-                                              deviceName: viewModel.deviceName,
-                                              calibrationOffset: viewModel.calibrationOffset)
-            let ok = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-                PHPhotoLibrary.shared().performChanges {
-                    PHAssetChangeRequest.creationRequestForAsset(from: image)
-                } completionHandler: { success, _ in
-                    continuation.resume(returning: success)
-                }
-            }
-            showToast(ok ? "已保存到相册" : "保存失败,请重试")
-        }
-    }
-
-    /// 显示浮层提示,2 秒后自动消失
-    private func showToast(_ message: String) {
-        withAnimation { toast = message }
-        toastTask?.cancel()
-        toastTask = Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !Task.isCancelled else { return }
-            withAnimation { toast = nil }
-        }
     }
 
     // MARK: - 工具
