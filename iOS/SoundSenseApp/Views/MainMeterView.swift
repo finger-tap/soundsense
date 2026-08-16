@@ -15,8 +15,6 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
-    /// 导出方式选择(相册 / 分享)
-    @State private var showingExportOptions = false
     /// 保存结果浮层文案(自动消失)
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
@@ -156,12 +154,13 @@ struct MainMeterView: View {
 
                     // —— 底部操作区(固定) ——
                     VStack(spacing: 10) {
-                        // 导出报告:仅"停止后"显示;点击弹出保存到相册 / 分享
+                        // 导出报告:仅"停止后"显示;直接弹分享面板
+                        // (面板第二排内置自定义"保存到相册"选项)
                         if viewModel.lastStats != nil,
                            viewModel.engine.state != .running,
                            viewModel.engine.state != .starting {
                             Button {
-                                showingExportOptions = true
+                                showingShare = true
                             } label: {
                                 HStack(spacing: 6) {
                                     Image(systemName: "square.and.arrow.up")
@@ -181,12 +180,6 @@ struct MainMeterView: View {
                     .padding(.horizontal, marginX * 2.2)
                     .padding(.bottom, 10)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.engine.state)
-                    .confirmationDialog("导出测量报告", isPresented: $showingExportOptions,
-                                        titleVisibility: .visible) {
-                        Button("保存到相册") { saveReportToPhotos() }
-                        Button("通过分享导出") { showingShare = true }
-                        Button("取消", role: .cancel) {}
-                    }
                 }
 
                 // —— 保存结果浮层 ——
@@ -218,6 +211,13 @@ struct MainMeterView: View {
                 ReportShareSheet(stats: stats,
                                  deviceName: viewModel.deviceName,
                                  calibrationOffset: viewModel.calibrationOffset)
+            }
+        }
+        // 监听"保存到相册"活动的结果,弹浮层反馈
+        .onReceive(NotificationCenter.default
+            .publisher(for: Notification.Name("reportSaveToPhotosResult"))) { note in
+            if let message = note.userInfo?["message"] as? String {
+                showToast(message)
             }
         }
         // 监听最新一帧结果
@@ -296,31 +296,6 @@ struct MainMeterView: View {
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
-    }
-
-    // MARK: - 保存报告到相册
-
-    /// 把上次测量报告渲染成 PNG 存进系统相册(只申请"添加"权限,不读相册)
-    private func saveReportToPhotos() {
-        guard let stats = viewModel.lastStats else { return }
-        Task { @MainActor in
-            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-            guard status == .authorized || status == .limited else {
-                showToast("相册权限被拒绝,请到系统设置 → 闻声 开启")
-                return
-            }
-            let image = ReportRenderer.render(stats: stats,
-                                              deviceName: viewModel.deviceName,
-                                              calibrationOffset: viewModel.calibrationOffset)
-            let ok: Bool = await withCheckedContinuation { continuation in
-                PHPhotoLibrary.shared().performChanges {
-                    PHAssetChangeRequest.creationRequestForAsset(from: image)
-                } completionHandler: { success, _ in
-                    continuation.resume(returning: success)
-                }
-            }
-            showToast(ok ? "已保存到相册" : "保存失败,请重试")
-        }
     }
 
     /// 浮层提示,2 秒后自动消失
