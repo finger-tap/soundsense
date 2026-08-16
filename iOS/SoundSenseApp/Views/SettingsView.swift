@@ -98,6 +98,24 @@ private struct MeasurementCard: View {
                 Text("连续超过该值 30 秒后提醒。85 dB 是长期暴露的听力安全上限;测卧室可调到 45~50。")
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
+
+                Toggle(isOn: Binding(
+                    get: { viewModel.systemNotificationsEnabled },
+                    set: { newValue in
+                        viewModel.systemNotificationsEnabled = newValue
+                        if newValue { NoiseAlertNotifier.requestAuthorization() }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("超限时发系统通知")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                        Text("关闭时仅 App 内横幅提醒(默认)。开启后会在第一次测量时请求通知权限。")
+                            .font(.system(size: 11))
+                            .foregroundColor(MeterTheme.secondaryText)
+                    }
+                }
+                .tint(MeterTheme.waveColor)
             }
         }
         .modifier(CardStyle())

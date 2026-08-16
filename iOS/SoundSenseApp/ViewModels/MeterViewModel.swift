@@ -47,6 +47,8 @@ final class MeterViewModel: ObservableObject {
     @AppStorage("warningThreshold") private var storedThreshold: Double = Double(MeasurementRecorder.defaultExposureLimit)
     /// 写入健康 App 开关,持久化
     @AppStorage("healthEnabled") var healthEnabled: Bool = false
+    /// 超阈值时发系统通知开关(默认关,不弹权限窗;App 内横幅始终有效)
+    @AppStorage("systemNotificationsEnabled") var systemNotificationsEnabled: Bool = false
 
     var calibrationOffset: Float {
         get { Float(storedOffset) }
@@ -102,7 +104,9 @@ final class MeterViewModel: ObservableObject {
         exposureWarning = false
         exposureNotified = false
         startLiveTimer()
-        NoiseAlertNotifier.requestAuthorization()
+        if systemNotificationsEnabled {
+            NoiseAlertNotifier.requestAuthorization()
+        }
     }
 
     func stop() {
@@ -137,9 +141,11 @@ final class MeterViewModel: ObservableObject {
             exposureWarning = true
             if !exposureNotified {
                 exposureNotified = true
-                NoiseAlertNotifier.notifyExposure(
+                if systemNotificationsEnabled {
+                    NoiseAlertNotifier.notifyExposure(
                     db: recorder.exposureLimit,
-                    seconds: Int(live.overLimitContinuous))
+                        seconds: Int(live.overLimitContinuous))
+                }
             }
         }
     }

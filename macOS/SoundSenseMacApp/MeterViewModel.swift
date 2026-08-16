@@ -58,6 +58,9 @@ final class MeterViewModel: ObservableObject {
         }
     }
 
+    /// 超阈值时发系统通知开关(默认关,不弹权限窗;App 内横幅始终有效)
+    @AppStorage("systemNotificationsEnabled") var systemNotificationsEnabled: Bool = false
+
     var warningThreshold: Float {
         get { Float(storedThreshold) }
         set {
@@ -94,7 +97,9 @@ final class MeterViewModel: ObservableObject {
         exposureWarning = false
         exposureNotified = false
         startLiveTimer()
-        NoiseAlertNotifier.requestAuthorization()
+        if systemNotificationsEnabled {
+            NoiseAlertNotifier.requestAuthorization()
+        }
     }
 
     func stop() {
@@ -127,9 +132,11 @@ final class MeterViewModel: ObservableObject {
             exposureWarning = true
             if !exposureNotified {
                 exposureNotified = true
-                NoiseAlertNotifier.notifyExposure(
+                if systemNotificationsEnabled {
+                    NoiseAlertNotifier.notifyExposure(
                     db: recorder.exposureLimit,
-                    seconds: Int(live.overLimitContinuous))
+                        seconds: Int(live.overLimitContinuous))
+                }
             }
         }
     }
