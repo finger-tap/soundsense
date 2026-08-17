@@ -27,7 +27,7 @@ final class SaveToPhotosActivity: UIActivity {
         UIImage(systemName: "photo.on.rectangle.angled")
     }
 
-    override class func activityCategory() -> UIActivity.Category { .action }
+    override class var activityCategory: UIActivity.Category { .action }
 
     override func canPerform(withActivityItems activityItems: [Any]) -> Bool {
         activityItems.contains { $0 is UIImage }
