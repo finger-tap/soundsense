@@ -81,8 +81,8 @@ SPL(A) = dBFS(A) + 校准偏移量
 # 或手动编译
 swiftc -O \
   -framework Accelerate -framework AVFoundation -framework Foundation \
-  Sources/SoundSenseCore/SoundSenseCore.swift \
-  Sources/soundsense/main.swift \
+  Core/Sources/SoundSenseCore/SoundSenseCore.swift \
+  Core/Sources/soundsense/main.swift \
   -o soundsense
 ```
 
@@ -109,19 +109,23 @@ swiftc -O \
 
 ```
 soundsense/
-├── Sources/
-│   ├── SoundSenseCore/
-│   │   └── SoundSenseCore.swift    # 核心算法（A 计权 + FFT + dBFS）
-│   └── soundsense/
-│       └── main.swift              # 命令行工具（test/sweep/live）
+├── Core/                           # Swift Package（算法核心 + CLI）
+│   ├── Package.swift               # Swift Package Manager 配置
+│   └── Sources/
+│       ├── SoundSenseCore/
+│       │   └── SoundSenseCore.swift    # 核心算法（A 计权 + FFT + dBFS）
+│       └── soundsense/
+│           └── main.swift              # 命令行工具（test/sweep/live）
+├── macOS/ iOS/ watchOS/            # 各平台 GUI 应用
 ├── scripts/
-│   └── build.sh                    # 构建脚本（编译 + 打包 .app + zip）
+│   ├── build.sh                    # 构建脚本（编译 + 打包 .app + DMG）
+│   └── make_icns.sh                # 生成明/暗双变体应用图标
 ├── .github/
 │   └── workflows/
+│       ├── ci.yml                  # 三平台编译验证
 │       └── release.yml             # GitHub Actions 自动发布
-├── generate_icon.swift             # 图标生成器（Core Graphics）
-├── AppIcon.icns                    # 应用图标
-├── Package.swift                   # Swift Package Manager 配置
+├── generate_icon_a3.swift          # 图标生成器（Core Graphics，A3 表盘版）
+├── AppIcon.icns                    # 应用图标（内嵌明/暗双变体）
 └── README.md
 ```
 

@@ -53,7 +53,7 @@ SDK_PATH="$(xcrun --show-sdk-path 2>/dev/null || echo '/Library/Developer/Comman
 # 都能原生运行,无需 Rosetta。
 # macOS 12 最低部署目标:Intel 最后支持到 macOS 12 Monterey;Apple Silicon 全支持。
 MACOS_MIN="12.0"
-SOURCES="Sources/SoundSenseCore/SoundSenseCore.swift Sources/soundsense/main.swift"
+SOURCES="Core/Sources/SoundSenseCore/SoundSenseCore.swift Core/Sources/soundsense/main.swift"
 FRAMEWORKS="-framework Accelerate -framework AVFoundation -framework Foundation"
 
 # 1a. 编译 arm64(Apple Silicon)

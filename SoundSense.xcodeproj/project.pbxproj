@@ -513,7 +513,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		B10000000000000000000001 /* XCLocalSwiftPackageReference "SoundSenseCore" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../soundsense";
+			relativePath = "Core";
 		};
 /* End XCLocalSwiftPackageReference section */
 

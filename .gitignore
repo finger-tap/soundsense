@@ -22,3 +22,7 @@ DerivedData/
 
 # 日志
 *.log
+
+# 本地 xcodebuild 试验产物
+.dd-ios/
+.dd-test/
