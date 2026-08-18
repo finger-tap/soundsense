@@ -294,7 +294,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_VERSION="${VERSION_SOURCE#v}"
-          RELEASE_TAG="v$RELEASE_VERSION"
+          # tag 统一用纯数字(如 1.0),不再加 v 前缀 —— 否则 gh release create
+          # 会在发版时再建一个 v 前缀的重复 tag
+          RELEASE_TAG="$RELEASE_VERSION"
           VERSION="${RELEASE_VERSION}"
           gh release create "$RELEASE_TAG" release/* \
             --title "闻声 SoundSense $RELEASE_TAG" \
