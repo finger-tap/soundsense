@@ -117,15 +117,14 @@ soundsense/
 │       └── soundsense/
 │           └── main.swift              # 命令行工具（test/sweep/live）
 ├── macOS/ iOS/ watchOS/            # 各平台 GUI 应用
+│   └── (macOS/Assets.xcassets      #   应用图标，明/暗双变体)
 ├── scripts/
-│   ├── build.sh                    # 构建脚本（编译 + 打包 .app + DMG）
-│   └── make_icns.sh                # 生成明/暗双变体应用图标
+│   └── build.sh                    # 构建脚本（编译 + 打包 .app + DMG）
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                  # 三平台编译验证
 │       └── release.yml             # GitHub Actions 自动发布
 ├── generate_icon_a3.swift          # 图标生成器（Core Graphics，A3 表盘版）
-├── AppIcon.icns                    # 应用图标（内嵌明/暗双变体）
 └── README.md
 ```
 

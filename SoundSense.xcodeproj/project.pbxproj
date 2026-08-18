@@ -73,7 +73,7 @@
 				AA0000000000000000000024 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000007 /* MenuBarController.swift */; };
 				AABB00000000000000000009 /* DBRulerGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000009 /* DBRulerGauge.swift */; };
 				AABB0000000000000000000A /* MeasurementCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000A /* MeasurementCSV.swift */; };
-				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
+				AA0000000000000000000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000008 /* Assets.xcassets */; };
 /* End PBXBuildFile section - macOS sources */
 
 /* Begin PBXFileReference section */
@@ -118,7 +118,7 @@
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
 				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 			AA02BB000000000000000004 /* ReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportExporter.swift; sourceTree = "<group>"; };
-			AA0200000000000000000006 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = AppIcon.icns; path = ../../AppIcon.icns; sourceTree = "<group>"; };
+			AA0200000000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -212,7 +212,6 @@
 					AA0200000000000000000002 /* MeterViewModel.swift */,
 					AA0200000000000000000007 /* MenuBarController.swift */,
 					AA50000000000000000000032 /* Views */,
-					AA0200000000000000000006 /* AppIcon.icns */,
 					AA0200000000000000000005 /* Info.plist */,
 				);
 				path = SoundSenseMacApp;
@@ -429,7 +428,7 @@
 				isa = PBXResourcesBuildPhase;
 				buildActionMask = 2147483647;
 				files = (
-					AA0000000000000000000023 /* AppIcon.icns in Resources */,
+					AA0000000000000000000023 /* Assets.xcassets in Resources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};
@@ -761,6 +760,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = "macOS/SoundSenseMacApp/Info.plist";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -791,6 +791,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = "macOS/SoundSenseMacApp/Info.plist";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "闻声需要访问麦克风来测量环境噪音水平。";
 				LD_RUNPATH_SEARCH_PATHS = (
