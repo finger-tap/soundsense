@@ -67,6 +67,19 @@ func drawIcon<P: ColorPalette>(size: CGFloat, palette: P.Type) -> NSImage {
     let cy = s / 2
     let colorSpace = CGColorSpaceCreateDeviceRGB()
 
+    // ---- 0. 圆角裁剪：macOS 图标规范 ----
+    // 图形主体绘制在带边距的圆角矩形内,四角保持透明(裸 icns 不做系统自动
+    // 圆角,必须在源图里画出来)。比例参照 Apple 图标网格:边距 ≈ 9.8%,
+    // 圆角半径 ≈ 18.05%(1024 画布上约 100pt / 185pt)。
+    let iconMargin = s * 0.098
+    let iconRect = CGRect(x: iconMargin, y: iconMargin,
+                          width: s - iconMargin * 2, height: s - iconMargin * 2)
+    let clip = CGPath(roundedRect: iconRect,
+                      cornerWidth: s * 0.1805, cornerHeight: s * 0.1805,
+                      transform: nil)
+    ctx.addPath(clip)
+    ctx.clip()
+
     // ---- 1. 背景：径向渐变 ----
     let bgGrad = CGGradient(colorsSpace: colorSpace,
                             colors: [P.bgBottom, P.bgTop] as CFArray,

@@ -7,7 +7,7 @@
 #
 # 功能:
 #   1. 用 swiftc 编译源码
-#   2. 组装 .app bundle（Info.plist + 可执行文件 + Assets.car 图标）
+#   2. 组装 .app bundle（Info.plist + 可执行文件 + AppIcon.icns）
 #   3. 打 zip 包
 #
 # 输出:
@@ -99,21 +99,9 @@ mkdir -p "$APP_DIR/Contents/Resources"
 # 复制可执行文件
 cp "$OUTPUT_DIR/SoundSense" "$APP_DIR/Contents/MacOS/SoundSense"
 
-# 编译图标资产目录 → Assets.car(明/暗双变体,系统按外观自动切换)。
-# 注意:不能用裸 .icns —— 单文件 icns 无法携带深色变体;也不用 actool 附带的
-# AppIcon.icns fallback(Xcode 14.2 上实测为残缺产物),只保留 Assets.car +
-# CFBundleIconName,系统会优先从 car 取图。
-ACTOOL_OUT="$OUTPUT_DIR/actool"
-mkdir -p "$ACTOOL_OUT"
-xcrun actool --compile "$ACTOOL_OUT" \
-  --platform macosx --minimum-deployment-target "$MACOS_MIN" --target-device mac \
-  --app-icon AppIcon \
-  --output-partial-info-plist "$ACTOOL_OUT/partial.plist" \
-  macOS/Assets.xcassets >/dev/null
-if [ -f "$ACTOOL_OUT/Assets.car" ]; then
-    cp "$ACTOOL_OUT/Assets.car" "$APP_DIR/Contents/Resources/Assets.car"
-else
-    echo "❌ Assets.car 编译失败"; exit 1
+# 复制图标
+if [ -f "AppIcon.icns" ]; then
+    cp "AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 fi
 
 # 生成 Info.plist
@@ -136,7 +124,7 @@ cat > "$APP_DIR/Contents/Info.plist" << PLIST
     <string>SoundSense</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-    <key>CFBundleIconName</key>
+    <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
