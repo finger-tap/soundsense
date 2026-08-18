@@ -1,14 +1,15 @@
 name: Release
 
 # 两种触发方式:
-#   1. push tag (v*) —— 传统方式,保留兼容
+#   1. push tag —— 纯数字版本(如 1.0)或 v 前缀(兼容旧约定)
 #   2. 手动触发(workflow_dispatch)—— 推荐流程:平时推 main 只跑 CI,
 #      想发版时在 Actions 页面点 "Run workflow" 输入版本号,一次打包+发 Release,
 #      不需要再打 tag(gh 会自动在当前 main HEAD 上创建 tag)。
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]*'  # 新约定:纯数字版本号(如 1.0、1.1.2)
+      - 'v*'      # 旧约定:v 前缀,保留兼容
   workflow_dispatch:
     inputs:
       version:
