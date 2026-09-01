@@ -8,6 +8,7 @@ swiftc -O \
   Shared/MeasurementRecorder.swift \
   Shared/MeasurementHistoryStore.swift \
   Shared/SessionAudioRecorder.swift \
+  Shared/RecordingPlayer.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests
