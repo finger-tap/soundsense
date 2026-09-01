@@ -78,6 +78,8 @@ inputNode tap ──┬──► MeterWorker（现状不变）
 - `stop()`：先停 sink 再停引擎；统计生成 → 录音文件定稿并随 stats 存 audioID；
   统计未生成 → 丢弃录音文件。
 - 引擎启动失败（权限拒绝等）不产生任何录音文件。
+- 测量中 `LiveStatsBar` 时长数值旁显示红点、标签提示"录音中"（iOS / macOS；
+  watch 不编译该状态），让"正在录音"对用户可见。
 
 ## 错误处理
 
@@ -100,7 +102,9 @@ inputNode tap ──┬──► MeterWorker（现状不变）
 改动：`Shared/AudioMeterEngine.swift`（sampleSink 挂点）、
 `Shared/MeasurementRecorder.swift`（audioID 字段）、
 `Shared/MeasurementHistoryStore.swift`（文件生命周期）、
+`Shared/LiveStatsBar.swift`（录音中红点）、
 `iOS/.../MeterViewModel.swift`、`iOS/.../HistoryView.swift`、
-`iOS/.../ReportShareSheet.swift`、
+`iOS/.../ReportShareSheet.swift`、`iOS/.../MainMeterView.swift`、
 `macOS/.../MeterViewModel.swift`、`macOS/.../HistoryOverlayView.swift`、
-`macOS/.../ReportExporter.swift`、`SoundSense.xcodeproj/project.pbxproj`。
+`macOS/.../ReportExporter.swift`、`macOS/.../MacMainMeterView.swift`、
+`SoundSense.xcodeproj/project.pbxproj`。
