@@ -113,4 +113,88 @@ do {
     expect(!FileManager.default.fileExists(atPath: orphan.path), "孤儿录音被清扫")
 }
 
+// ---- 7. FIR 降采样:任意分块下输出数量正确、正弦幅度保持 ----
+do {
+    var dec = FIRDecimator(taps: SessionAudioRecorder.makeTaps(count: 33, cutoffRatio: 0.225),
+                           factor: 2)
+    let rate: Float = 48000, freq: Float = 1000
+    var out: [Float] = []
+    var totalIn = 0
+    for chunkSize in [7, 13, 1024, 4096, 3] {   // 刁钻分块验证跨块衔接
+        let chunk = (0..<chunkSize).map { sin(2 * Float.pi * freq * Float($0 + totalIn) / rate) }
+        out.append(contentsOf: dec.process(chunk))
+        totalIn += chunkSize
+    }
+    // FIR 有 n-1 个输入样本的启动瞬态:期望输出数 = (输入-(n-1))/factor
+    let tapCount = 33
+    let expectedOut = (totalIn - (tapCount - 1) + 1) / 2
+    expect(abs(out.count - expectedOut) <= 1,
+           "降采样输出数 ≈ (输入-瞬态)/2 (得 \(out.count)/期望 \(expectedOut))")
+    let rmsIn: Float = 0.707                       // 单位幅度正弦的 RMS
+    let rmsOut = sqrt(out.map { $0 * $0 }.reduce(0, +) / Float(out.count))
+    expect(abs(rmsOut - rmsIn) / rmsIn < 0.2, "1kHz 正弦幅度保持(得 \(rmsOut))")
+}
+
+// ---- 8. 完整录音会话:写盘可读、时长正确 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-rec-\(UUID().uuidString)", isDirectory: true)
+    let rec = SessionAudioRecorder()
+    let id = rec.startSession(directory: dir, inputSampleRate: 48000)
+    expect(id != nil, "会话创建返回 audioID")
+    let rate: Float = 48000
+    var written = 0
+    while written < Int(3.0 * rate) {              // 3 秒 1kHz 正弦,按 tap 尺寸分块
+        let chunk = (0..<4096).map { sin(2 * Float.pi * 1000 * Float(written + $0) / rate) }
+        rec.append(chunk)
+        written += 4096
+    }
+    let url = rec.finishSession(keep: true)
+    expect(url != nil, "达标会话返回文件 URL")
+    if let url = url {
+        let audio = try? AVAudioFile(forReading: url)
+        let dur = audio.map { TimeInterval($0.length) / $0.fileFormat.sampleRate } ?? 0
+        expect(abs(dur - 3.0) < 0.5, "写盘时长 ≈ 3s (得 \(dur))")
+        expect(url.deletingPathExtension().lastPathComponent == id, "文件名主干 == audioID")
+    }
+}
+
+// ---- 9. 短会话丢弃 / keep=false 丢弃 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-rec2-\(UUID().uuidString)", isDirectory: true)
+    let rec = SessionAudioRecorder()
+    _ = rec.startSession(directory: dir, inputSampleRate: 48000)
+    rec.append(Array(repeating: 0.3, count: 48000))    // 1 秒 < minKeepDuration
+    let url = rec.finishSession(keep: true)
+    expect(url == nil, "< 3s 会话被丢弃")
+    expect((try? FileManager.default.contentsOfDirectory(atPath: dir.path))?.isEmpty == true,
+           "丢弃后目录为空")
+
+    _ = rec.startSession(directory: dir, inputSampleRate: 48000)
+    rec.append(Array(repeating: 0.3, count: 48000 * 5))
+    expect(rec.finishSession(keep: false) == nil, "keep=false 丢弃")
+    expect((try? FileManager.default.contentsOfDirectory(atPath: dir.path))?.isEmpty == true,
+           "丢弃后目录为空")
+}
+
+// ---- 10. 时长上限自动停写 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-rec3-\(UUID().uuidString)", isDirectory: true)
+    let rec = SessionAudioRecorder()
+    rec.maxDuration = 1.0
+    rec.minKeepDuration = 0.5   // 避免默认 3s 门槛把截断文件当短会话删掉
+    _ = rec.startSession(directory: dir, inputSampleRate: 48000)
+    for _ in 0..<20 { rec.append(Array(repeating: 0.3, count: 48000)) }  // 名义 20s
+    let url = rec.finishSession(keep: true)
+    if let url = url {
+        let audio = try? AVAudioFile(forReading: url)
+        let dur = audio.map { TimeInterval($0.length) / $0.fileFormat.sampleRate } ?? 0
+        expect(dur < 2.0, "到上限停写(得 \(dur)s)")
+    } else {
+        expect(false, "上限截断的文件应保留")
+    }
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }

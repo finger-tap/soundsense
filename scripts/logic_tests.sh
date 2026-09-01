@@ -7,6 +7,7 @@ swiftc -O \
   -framework Foundation -framework Combine \
   Shared/MeasurementRecorder.swift \
   Shared/MeasurementHistoryStore.swift \
+  Shared/SessionAudioRecorder.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests
