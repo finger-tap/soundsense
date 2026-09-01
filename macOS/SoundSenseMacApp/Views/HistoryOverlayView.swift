@@ -36,6 +36,7 @@ struct HistoryOverlay: View {
         }
         .sheet(item: $sharingStats) { stats in
             MacReportPreviewSheet(stats: stats,
+                                  store: store,
                                   deviceName: deviceName,
                                   calibrationOffset: calibrationOffset)
         }
@@ -204,55 +205,120 @@ private struct MacHistoryRow: View {
     }
 }
 
-/// 重新导出旧报告:直接复用 NSSavePanel 导出流程
+/// 历史详情:报告图预览 + 录音回放 + 导出
 struct MacReportPreviewSheet: View {
     let stats: MeasurementStats
+    let store: MeasurementHistoryStore
     let deviceName: String
     let calibrationOffset: Float
     @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("导出测量报告")
-                .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
-            Text("将把 \(Self.df.string(from: stats.startTime)) 的测量报告保存为 PNG 图片。")
-                .font(.system(size: 12)).foregroundColor(.white.opacity(0.5))
-            HStack(spacing: 12) {
-                Button {
-                    dismiss()
-                } label: {
-                    Text("取消")
-                        .font(.system(size: 13, weight: .medium)).foregroundColor(.white.opacity(0.7))
-                        .frame(width: 90, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08)))
-                }
-                .buttonStyle(.plain)
-                Button {
-                    ReportExporter.export(stats: stats,
-                                           deviceName: deviceName,
-                                           calibrationOffset: calibrationOffset)
-                    dismiss()
-                } label: {
-                    Text("导出 PNG")
-                        .font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
-                        .frame(width: 110, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(red: 0.24, green: 0.83, blue: 0.69).opacity(0.85)))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(24)
-        .frame(width: 360)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(MeterTheme.panel)
-        )
-    }
+    @StateObject private var player = RecordingPlayer()
 
     private static let df: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MM-dd HH:mm"
         return f
     }()
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Text("测量简报")
+                .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            Text("\(Self.df.string(from: stats.startTime)) · 时长 \(RecordingPlayer.formatTime(stats.duration))")
+                .font(.system(size: 11)).foregroundColor(.white.opacity(0.5))
+
+            ScrollView(showsIndicators: false) {
+                Image(nsImage: ReportRenderer.render(stats: stats, deviceName: deviceName,
+                                                     calibrationOffset: calibrationOffset))
+                    .resizable().scaledToFit()
+                    .cornerRadius(8)
+                    .padding(.horizontal, 4)
+            }
+            .frame(height: 330)
+
+            if stats.audioID != nil {
+                MacRecordingPlayerBar(player: player)
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("取消")
+                        .font(.system(size: 12, weight: .medium)).foregroundColor(.white.opacity(0.7))
+                        .frame(width: 74, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+                Button {
+                    ReportExporter.export(stats: stats, deviceName: deviceName,
+                                           calibrationOffset: calibrationOffset)
+                } label: {
+                    Text("导出 PNG")
+                        .font(.system(size: 12, weight: .medium)).foregroundColor(.white)
+                        .frame(width: 92, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                Button {
+                    ReportExporter.exportHTML(stats: stats, deviceName: deviceName,
+                                              calibrationOffset: calibrationOffset,
+                                              audioURL: stats.audioID.map { store.audioFileURL(forID: $0) })
+                    dismiss()
+                } label: {
+                    Text("导出完整报告")
+                        .font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
+                        .frame(width: 110, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.24, green: 0.83, blue: 0.69).opacity(0.85)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(20)
+        .frame(width: 400)
+        .background(RoundedRectangle(cornerRadius: 16).fill(MeterTheme.panel))
+        .onAppear {
+            if let id = stats.audioID {
+                player.load(url: store.audioFileURL(forID: id))
+            }
+        }
+    }
+}
+
+/// 录音回放条(macOS 风格)
+struct MacRecordingPlayerBar: View {
+    @ObservedObject var player: RecordingPlayer
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(player.isAvailable ? Color(red: 0.24, green: 0.83, blue: 0.69) : .white.opacity(0.3))
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color(red: 0.24, green: 0.83, blue: 0.69).opacity(0.14)))
+            }
+            .buttonStyle(.plain)
+            .disabled(!player.isAvailable)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("现场录音").font(.system(size: 11)).foregroundColor(.white.opacity(0.7))
+                if player.isAvailable {
+                    Text("\(RecordingPlayer.formatTime(player.progress * player.duration)) / \(RecordingPlayer.formatTime(player.duration))")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                } else {
+                    Text("录音不可用").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                }
+            }
+            Spacer()
+            ProgressView(value: player.progress)
+                .progressViewStyle(.linear)
+                .frame(width: 80)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
+    }
 }
