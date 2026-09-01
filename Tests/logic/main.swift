@@ -197,4 +197,24 @@ do {
     }
 }
 
+// ---- 11. HTML 报告组装 ----
+do {
+    let stats = makeStats(audioID: "x")
+    let html = ReportHTMLBuilder.build(stats: stats, deviceName: "Mac&Book<Pro>",
+                                       calibrationOffset: 93, pngBase64: "PNGDATA==",
+                                       audioBase64: "AUDIODATA==")
+    expect(html.contains("data:image/png;base64,PNGDATA=="), "内嵌报告图")
+    expect(html.contains("data:audio/mp4;base64,AUDIODATA=="), "内嵌录音")
+    expect(html.contains("<audio"), "存在 audio 控件")
+    expect(html.contains("Mac&amp;Book&lt;Pro&gt;"), "设备名 HTML 转义")
+    expect(html.contains(String(format: "%.1f", stats.laeqSPL)), "包含 LAeq 数值")
+    let noAudio = ReportHTMLBuilder.build(stats: stats, deviceName: "d",
+                                          calibrationOffset: 0, pngBase64: "P",
+                                          audioBase64: nil)
+    expect(!noAudio.contains("<audio") && !noAudio.contains("AUDIODATA"),
+           "无录音时不渲染音频块")
+    expect(ReportHTMLBuilder.filename(for: stats).hasSuffix(".html")
+        && ReportHTMLBuilder.filename(for: stats).contains("闻声报告_"), "文件名格式")
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }

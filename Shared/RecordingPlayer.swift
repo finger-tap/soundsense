@@ -86,7 +86,7 @@ public final class RecordingPlayer: NSObject, ObservableObject {
     }
 
     /// m:ss
-    public static func formatTime(_ t: TimeInterval) -> String {
+    nonisolated public static func formatTime(_ t: TimeInterval) -> String {
         let s = max(0, Int(t))
         return String(format: "%d:%02d", s / 60, s % 60)
     }
