@@ -157,8 +157,8 @@ do {
         store.add(makeStats(audioID: id))
     }
     expect(store.records.count == MeasurementHistoryStore.maxRecords, "记录数封顶 50")
-    expect(!FileManager.default.fileExists(atPath: recDir.appendingPathComponent("rec-50.m4a").path),
-           "最旧记录的录音文件被淘汰删除")
+    expect(!FileManager.default.fileExists(atPath: recDir.appendingPathComponent("rec-0.m4a").path),
+           "最旧记录(最先加入)的录音文件被淘汰删除")
     expect(kept.map { FileManager.default.fileExists(atPath: $0.path) } == true, "未被淘汰的录音文件保留")
 }
 
