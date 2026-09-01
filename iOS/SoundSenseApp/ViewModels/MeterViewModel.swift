@@ -34,6 +34,8 @@ final class MeterViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     /// 测量记录器(每秒采样 1 点,停止时生成报告数据)
     private let recorder: MeasurementRecorder
+    /// 检测同步录音器(与测量同源样本写 AAC m4a)
+    private let sessionRecorder = SessionAudioRecorder()
     /// 每秒刷新实时统计的定时器
     private var liveTimer: Timer?
     /// 每场测量只发一次暴露通知
@@ -101,6 +103,11 @@ final class MeterViewModel: ObservableObject {
         await engine.start()
         guard engine.state == .running else { return }
         recorder.start()
+        sessionRecorder.startSession(directory: historyStore.recordingsDirectory,
+                                      inputSampleRate: engine.activeSampleRate)
+        engine.setSampleSink { [weak sessionRecorder] samples in
+            sessionRecorder?.append(samples)
+        }
         exposureWarning = false
         exposureNotified = false
         startLiveTimer()
@@ -111,13 +118,19 @@ final class MeterViewModel: ObservableObject {
 
     func stop() {
         engine.stop()
+        engine.setSampleSink(nil)
         stopLiveTimer()
-        if let stats = recorder.stop() {
+        if var stats = recorder.stop() {
+            if let audioURL = sessionRecorder.finishSession(keep: true) {
+                stats.audioID = audioURL.deletingPathExtension().lastPathComponent
+            }
             lastStats = stats
             historyStore.add(stats)
             if healthEnabled {
                 Task { await HealthWriter.save(stats: stats) }
             }
+        } else {
+            sessionRecorder.finishSession(keep: false)
         }
         liveStats = nil
         exposureWarning = false
@@ -153,6 +166,9 @@ final class MeterViewModel: ObservableObject {
     var currentSPL: Float {
         engine.latestResult?.splA ?? -.greatestFiniteMagnitude
     }
+
+    /// 是否正在同步录音(测量中恒 true,除非录音器启动失败)
+    var isRecording: Bool { sessionRecorder.isActive }
 
     /// 设备名(用于报告页脚)
     var deviceName: String {

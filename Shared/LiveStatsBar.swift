@@ -12,14 +12,17 @@ import SwiftUI
 
 public struct LiveStatsBar: View {
     public let stats: LiveMeasurementStats
+    /// 同步录音进行中:时长旁显示红点提示
+    public var isRecording: Bool = false
 
-    public init(stats: LiveMeasurementStats) {
+    public init(stats: LiveMeasurementStats, isRecording: Bool = false) {
         self.stats = stats
+        self.isRecording = isRecording
     }
 
     public var body: some View {
         HStack(spacing: 0) {
-            statItem(value: formatDuration(stats.duration), label: "时长")
+            statItem(value: formatDuration(stats.duration), label: "时长", recordingDot: isRecording)
             divider
             statItem(value: String(format: "%.1f", stats.laeq), label: "LAeq dB")
             divider
@@ -41,12 +44,20 @@ public struct LiveStatsBar: View {
             .frame(width: 1, height: 30)
     }
 
-    private func statItem(value: String, label: String) -> some View {
+    private func statItem(value: String, label: String, recordingDot: Bool = false) -> some View {
         VStack(spacing: 3) {
-            Text(value)
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .monospacedDigit()
+            HStack(alignment: .top, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
+                if recordingDot {
+                    Circle()
+                        .fill(Color(red: 1.0, green: 0.27, blue: 0.24))
+                        .frame(width: 6, height: 6)
+                        .padding(.top, 3)
+                }
+            }
             Text(label)
                 .font(.system(size: 10))
                 .foregroundColor(.white.opacity(0.45))
