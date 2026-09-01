@@ -29,6 +29,9 @@
 			A1BB00000000000000000009 /* DBRulerGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000009 /* DBRulerGauge.swift */; };
 			A1BB0000000000000000000A /* MeasurementCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000A /* MeasurementCSV.swift */; };
 			A1BB0000000000000000000B /* HealthWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000B /* HealthWriter.swift */; };
+			A1BB0000000000000000000C /* SessionAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000C /* SessionAudioRecorder.swift */; };
+			A1BB0000000000000000000D /* RecordingPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000D /* RecordingPlayer.swift */; };
+			A1BB0000000000000000000E /* ReportHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000E /* ReportHTMLBuilder.swift */; };
 /* End PBXBuildFile section - iOS sources */
 
 /* Begin PBXBuildFile section - watchOS sources */
@@ -73,6 +76,9 @@
 				AA0000000000000000000024 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000007 /* MenuBarController.swift */; };
 				AABB00000000000000000009 /* DBRulerGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000009 /* DBRulerGauge.swift */; };
 				AABB0000000000000000000A /* MeasurementCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000A /* MeasurementCSV.swift */; };
+				AABB0000000000000000000B /* SessionAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000C /* SessionAudioRecorder.swift */; };
+				AABB0000000000000000000C /* RecordingPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000D /* RecordingPlayer.swift */; };
+				AABB0000000000000000000D /* ReportHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000E /* ReportHTMLBuilder.swift */; };
 				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
 /* End PBXBuildFile section - macOS sources */
 
@@ -114,6 +120,9 @@
 			A2BB00000000000000000009 /* DBRulerGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBRulerGauge.swift; sourceTree = "<group>"; };
 			A2BB0000000000000000000A /* MeasurementCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementCSV.swift; sourceTree = "<group>"; };
 			A2BB0000000000000000000B /* HealthWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWriter.swift; sourceTree = "<group>"; };
+			A2BB0000000000000000000C /* SessionAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionAudioRecorder.swift; sourceTree = "<group>"; };
+			A2BB0000000000000000000D /* RecordingPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingPlayer.swift; sourceTree = "<group>"; };
+			A2BB0000000000000000000E /* ReportHTMLBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportHTMLBuilder.swift; sourceTree = "<group>"; };
 			A20000000000000000000015 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
 				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
@@ -183,6 +192,9 @@
 				A2BB00000000000000000009 /* DBRulerGauge.swift */,
 				A2BB0000000000000000000A /* MeasurementCSV.swift */,
 				A2BB0000000000000000000B /* HealthWriter.swift */,
+				A2BB0000000000000000000C /* SessionAudioRecorder.swift */,
+				A2BB0000000000000000000D /* RecordingPlayer.swift */,
+				A2BB0000000000000000000E /* ReportHTMLBuilder.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -461,6 +473,9 @@
 				A1BB00000000000000000009 /* DBRulerGauge.swift in Sources */,
 				A1BB0000000000000000000A /* MeasurementCSV.swift in Sources */,
 				A1BB0000000000000000000B /* HealthWriter.swift in Sources */,
+				A1BB0000000000000000000C /* SessionAudioRecorder.swift in Sources */,
+				A1BB0000000000000000000D /* RecordingPlayer.swift in Sources */,
+				A1BB0000000000000000000E /* ReportHTMLBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +520,9 @@
 				AA0000000000000000000024 /* MenuBarController.swift in Sources */,
 				AABB00000000000000000009 /* DBRulerGauge.swift in Sources */,
 				AABB0000000000000000000A /* MeasurementCSV.swift in Sources */,
+				AABB0000000000000000000B /* SessionAudioRecorder.swift in Sources */,
+				AABB0000000000000000000C /* RecordingPlayer.swift in Sources */,
+				AABB0000000000000000000D /* ReportHTMLBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
