@@ -12,6 +12,7 @@ swiftc -O \
   Shared/ReportHTMLBuilder.swift \
   Shared/NoiseEventEngine.swift \
   Shared/SourceTendencyAnalyzer.swift \
+  Shared/SourceTestStore.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests

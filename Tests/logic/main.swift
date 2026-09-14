@@ -362,4 +362,44 @@ do {
            == "隔壁(推测·标定一致)", "连续声+标定邻居 → 标定一致")
 }
 
+// ---- 19. 三点测试存储:生命周期 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-st-\(UUID().uuidString)", isDirectory: true)
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let json = dir.appendingPathComponent("source_tests.json")
+    let store = SourceTestStore(fileURL: json)
+    func result(_ id: String) -> SourceTestResult {
+        SourceTestResult(startTime: Date(), duration: 90,
+                         positions: [PositionStats(name: "中央", laeq: 40, minSPL: 35, maxSPL: 50,
+                                                   eventCount: 3, avgLowRatio: 0.7, steadyRatio: 0.4)],
+                         verdict: .upstairs, confidence: .medium,
+                         noiseType: .impact, audioID: id)
+    }
+    // 增 + audioID 往返
+    store.add(result("t-1"))
+    let reloaded = SourceTestStore(fileURL: json)
+    expect(reloaded.results.first?.audioID == "t-1", "三点测试结果持久化往返")
+    // 删除连带文件
+    let f = try? Data("x".utf8).write(to: store.audioFileURL(forID: "t-1"))
+    expect(f != nil, "测试前置:文件已建")
+    store.delete(at: IndexSet(integer: 0))
+    expect(!FileManager.default.fileExists(atPath: store.audioFileURL(forID: "t-1").path),
+           "删除结果连带录音文件")
+    // 清空连带文件 + 孤儿清扫
+    store.add(result("k")); store.add(result("orphan"))
+    try? Data("x".utf8).write(to: store.audioFileURL(forID: "keep2"))
+    store.removeAll()
+    let left = (try? FileManager.default.contentsOfDirectory(
+        atPath: store.recordingsDirectory.path)) ?? []
+    expect(left.isEmpty, "清空后录音目录为空 (得 \(left))")
+    // 超 20 条淘汰
+    for i in 0..<(SourceTestStore.maxResults + 1) {
+        store.add(result("e-\(i)"))
+    }
+    expect(store.results.count == SourceTestStore.maxResults, "结果封顶 20")
+    expect(!FileManager.default.fileExists(atPath: store.audioFileURL(forID: "e-0").path),
+           "最旧结果录音被淘汰删除")
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }
