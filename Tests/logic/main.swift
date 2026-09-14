@@ -217,4 +217,70 @@ do {
         && ReportHTMLBuilder.filename(for: stats).contains("闻声报告_"), "文件名格式")
 }
 
+// ---- 12. lowFrequencyRatio 频谱低频占比 ----
+do {
+    let ratio = lowFrequencyRatio(spectrum: [1, 1, 2], frequencies: [100, 500, 1000])
+    // 功率: 100Hz=1, 500Hz=1, 1kHz=4 → 低频(≤200Hz)占比 = 1/6
+    expect(abs(ratio! - 1.0/6.0) < 1e-6, "lowFrequencyRatio 功率占比 (得 \(ratio!))")
+    expect(lowFrequencyRatio(spectrum: [], frequencies: []) == nil, "空频谱返回 nil")
+}
+
+// ---- 13. 事件引擎:背景+三次脉冲 → 3 个事件 ----
+do {
+    let e = NoiseEventEngine()
+    e.beginSession()
+    var t = 0.0
+    func run(_ seconds: Double, _ spl: Float, _ low: Float? = nil) {
+        let steps = Int(seconds / 0.1)
+        for _ in 0..<steps { e.feed(t: t, spl: spl, lowRatio: low); t += 0.1 }
+    }
+    run(60, 35)                                  // 背景 0→60
+    run(0.5, 55, 0.8); run(5.5, 35)              // 脉冲1 @60.0
+    run(0.5, 55, 0.8); run(5.5, 35)              // 脉冲2 @66.0(间隔 5.5s > 合并窗)
+    run(0.5, 55, 0.8); run(4.0, 35)              // 脉冲3 @72.0
+    expect(e.events.count == 3, "三次脉冲检出 3 个事件 (得 \(e.events.count))")
+    if let ev = e.events.first {
+        expect(abs(ev.startTime - 60.0) < 0.3, "事件起点 ≈60s (得 \(ev.startTime))")
+        expect(abs(ev.peakSPL - 55) < 0.01, "事件峰值 55 (得 \(ev.peakSPL))")
+        expect(abs(ev.avgLowRatio! - 0.8) < 0.01, "事件低频占比 0.8 (得 \(ev.avgLowRatio!))")
+        expect(ev.attackRate >= 0, "起振陡度非负 (得 \(ev.attackRate))")
+    }
+    // 聚合:35dB 背景 + 少量 55dB 脉冲 → LAeq ≈ 39.7
+    expect(abs(e.currentLaeq() - 39.7) < 1.0, "LAeq ≈39.7 (得 \(e.currentLaeq()))")
+    expect(e.steadyCount > 0, "稳态帧计数 > 0")
+    expect(e.frameCount == 765, "帧计数正确 (得 \(e.frameCount))")
+}
+
+// ---- 14. 事件引擎:mergeWindow 内合并、窗外独立 ----
+do {
+    let e = NoiseEventEngine()
+    e.beginSession()
+    var t = 0.0
+    func run(_ seconds: Double, _ spl: Float) {
+        for _ in 0..<Int(seconds / 0.1) { e.feed(t: t, spl: spl, lowRatio: nil); t += 0.1 }
+    }
+    run(60, 35)                              // 背景 0→60
+    run(0.5, 55); run(2.5, 35)               // 脉冲1 @60.0,结束 60.5
+    run(0.5, 55); run(3.0, 35)               // 脉冲2 @63.0(间隔 2.5s ≤ 5s)→ 合并
+    expect(e.events.count == 1, "间隔 2.5s 的双脉冲合并为 1 (得 \(e.events.count))")
+    if let ev = e.events.first {
+        expect(abs(ev.endTime - 63.5) < 0.3, "合并事件终点 ≈63.5 (得 \(ev.endTime))")
+    }
+    run(0.5, 55); run(5.5, 35)               // 脉冲3 @66.5(间隔 3s ≤ 5s)→ 仍合并
+    expect(e.events.count == 1, "间隔 3s 仍合并 (得 \(e.events.count))")
+    run(0.5, 55); run(8.0, 35)               // 脉冲4 @72.5(间隔 72.5−67.0 = 5.5s > 5s)→ 独立
+    expect(e.events.count == 2, "间隔 >5s 不合并 (得 \(e.events.count))")
+}
+
+// ---- 15. 事件引擎:短脉冲(低于最小时长)忽略 ----
+do {
+    let e = NoiseEventEngine()
+    e.beginSession()
+    var t = 0.0
+    for _ in 0..<600 { e.feed(t: t, spl: 35, lowRatio: nil); t += 0.1 }
+    for _ in 0..<1 { e.feed(t: t, spl: 55, lowRatio: nil); t += 0.1 }   // 0.1s < 0.2s
+    for _ in 0..<60 { e.feed(t: t, spl: 35, lowRatio: nil); t += 0.1 }
+    expect(e.events.isEmpty, "0.1s 瞬态被忽略 (得 \(e.events.count))")
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }

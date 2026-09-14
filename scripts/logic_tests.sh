@@ -10,6 +10,7 @@ swiftc -O \
   Shared/SessionAudioRecorder.swift \
   Shared/RecordingPlayer.swift \
   Shared/ReportHTMLBuilder.swift \
+  Shared/NoiseEventEngine.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests
