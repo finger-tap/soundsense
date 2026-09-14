@@ -98,28 +98,15 @@ public enum SourceTestHTMLBuilder {
     }
 
     static func verdictText(_ v: TendencyVerdict) -> String {
-        switch v {
-        case .upstairs: return "倾向楼上"
-        case .neighbor: return "倾向隔壁"
-        case .inconclusive: return "无法判断"
-        }
+        SourceTendencyAnalyzer.verdictText(v)
     }
 
     static func confidenceText(_ c: Confidence) -> String {
-        switch c {
-        case .high: return "较高"
-        case .medium: return "中等"
-        case .low: return "较低"
-        }
+        SourceTendencyAnalyzer.confidenceText(c)
     }
 
     static func typeText(_ t: NoiseType) -> String {
-        switch t {
-        case .impact: return "脚步/撞击类"
-        case .continuous: return "说话/电视类"
-        case .mixed: return "混合"
-        case .unknown: return "未知"
-        }
+        SourceTendencyAnalyzer.typeText(t)
     }
 
     static func escape(_ s: String) -> String {

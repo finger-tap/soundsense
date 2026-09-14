@@ -14,6 +14,7 @@ struct WatchMeterView: View {
     @StateObject private var viewModel = WatchMeterViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingSettings = false
+    @State private var showingSourceTest = false
 
     var body: some View {
         ZStack {
@@ -77,15 +78,26 @@ struct WatchMeterView: View {
                         .padding(.horizontal, 8)
                 }
 
-                // —— 校准入口 ——
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.55))
+                // —— 声源定位 / 校准入口 ——
+                HStack(spacing: 18) {
+                    Button {
+                        viewModel.stop()
+                        showingSourceTest = true
+                    } label: {
+                        Image(systemName: "location")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.bottom, 4)
         }
@@ -108,6 +120,10 @@ struct WatchMeterView: View {
         // 下滑 / 点击齿轮进入校准设置
         .sheet(isPresented: $showingSettings) {
             WatchSettingsView(viewModel: viewModel)
+        }
+        // 声源定位测试(结果同步到 iPhone)
+        .sheet(isPresented: $showingSourceTest) {
+            WatchSourceTestView()
         }
     }
 

@@ -181,4 +181,31 @@ public enum SourceTendencyAnalyzer {
         if calibration?.verdict == .neighbor { return "隔壁(推测·标定一致)" }
         return "隔壁(推测)"
     }
+
+    // MARK: - 展示文案(多端共用)
+
+    public static func verdictText(_ v: TendencyVerdict) -> String {
+        switch v {
+        case .upstairs: return "倾向楼上"
+        case .neighbor: return "倾向隔壁"
+        case .inconclusive: return "无法判断"
+        }
+    }
+
+    public static func confidenceText(_ c: Confidence) -> String {
+        switch c {
+        case .high: return "较高"
+        case .medium: return "中等"
+        case .low: return "较低"
+        }
+    }
+
+    public static func typeText(_ t: NoiseType) -> String {
+        switch t {
+        case .impact: return "脚步/撞击类"
+        case .continuous: return "说话/电视类"
+        case .mixed: return "混合"
+        case .unknown: return "未知"
+        }
+    }
 }

@@ -53,6 +53,8 @@
 		A1000000000000000000002F /* WatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* WatchSettingsView.swift */; };
 		A10000000000000000000030 /* NoiseEventEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB0000000000000000000F /* NoiseEventEngine.swift */; };
 		A10000000000000000000031 /* SourceTendencyAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000010 /* SourceTendencyAnalyzer.swift */; };
+		A10000000000000000000035 /* WatchSourceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* WatchSourceTestView.swift */; };
+		A10000000000000000000036 /* WatchSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* WatchSyncManager.swift */; };
 		A10000000000000000000012 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
 		A10000000000000000000013 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
 		A10000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* Assets.xcassets */; };
@@ -148,6 +150,8 @@
 			A20000000000000000000022 /* SourceTestViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestViewModel.swift; sourceTree = "<group>"; };
 			A20000000000000000000023 /* SourceTestFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestFlowView.swift; sourceTree = "<group>"; };
 			A20000000000000000000024 /* SourceTestListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestListView.swift; sourceTree = "<group>"; };
+			A20000000000000000000025 /* WatchSourceTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSourceTestView.swift; sourceTree = "<group>"; };
+			A20000000000000000000026 /* WatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncManager.swift; sourceTree = "<group>"; };
 			A20000000000000000000015 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
 				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
@@ -284,6 +288,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000002 /* SoundSenseApp.swift */,
+				A20000000000000000000026 /* WatchSyncManager.swift */,
 				A50000000000000000000012 /* Views */,
 				A50000000000000000000013 /* ViewModels */,
 				A2000000000000000000000D /* Assets.xcassets */,
@@ -343,6 +348,7 @@
 				A20000000000000000000012 /* WatchMeterView.swift */,
 				A20000000000000000000013 /* WatchSpectrumView.swift */,
 				A20000000000000000000015 /* WatchSettingsView.swift */,
+				A20000000000000000000025 /* WatchSourceTestView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -519,6 +525,7 @@
 				A10000000000000000000032 /* SourceTestViewModel.swift in Sources */,
 				A10000000000000000000033 /* SourceTestFlowView.swift in Sources */,
 				A10000000000000000000034 /* SourceTestListView.swift in Sources */,
+				A10000000000000000000036 /* WatchSyncManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -537,6 +544,7 @@
 				A1000000000000000000002F /* WatchSettingsView.swift in Sources */,
 				A10000000000000000000030 /* NoiseEventEngine.swift in Sources */,
 				A10000000000000000000031 /* SourceTendencyAnalyzer.swift in Sources */,
+				A10000000000000000000035 /* WatchSourceTestView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
