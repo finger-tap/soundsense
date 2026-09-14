@@ -43,9 +43,10 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
     public let startTime: Date
     /// nil = 仍在进行/异常中断未落
     public var endTime: Date?
-    public let overallLaeq: Float
-    public let minSPL: Float
-    public let maxSPL: Float
+    /// 会话结束(或当前累计)的统计
+    public var overallLaeq: Float
+    public var minSPL: Float
+    public var maxSPL: Float
     public let thresholdOverBackground: Float
     public var events: [MonitorEvent]
     /// 被系统回收等异常结束

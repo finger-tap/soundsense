@@ -41,6 +41,9 @@
 			A10000000000000000000032 /* SourceTestViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* SourceTestViewModel.swift */; };
 			A10000000000000000000033 /* SourceTestFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* SourceTestFlowView.swift */; };
 			A10000000000000000000034 /* SourceTestListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* SourceTestListView.swift */; };
+			A10000000000000000000037 /* MonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000027 /* MonitorViewModel.swift */; };
+			A10000000000000000000038 /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000028 /* MonitorView.swift */; };
+			A1BB00000000000000000015 /* MonitorHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000015 /* MonitorHTMLBuilder.swift */; };
 /* End PBXBuildFile section - iOS sources */
 
 /* Begin PBXBuildFile section - watchOS sources */
@@ -152,6 +155,9 @@
 			A20000000000000000000024 /* SourceTestListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestListView.swift; sourceTree = "<group>"; };
 			A20000000000000000000025 /* WatchSourceTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSourceTestView.swift; sourceTree = "<group>"; };
 			A20000000000000000000026 /* WatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncManager.swift; sourceTree = "<group>"; };
+			A20000000000000000000027 /* MonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorViewModel.swift; sourceTree = "<group>"; };
+			A20000000000000000000028 /* MonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorView.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000015 /* MonitorHTMLBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorHTMLBuilder.swift; sourceTree = "<group>"; };
 			A20000000000000000000015 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
 				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
@@ -230,6 +236,7 @@
 				A2BB00000000000000000012 /* EventClipRecorder.swift */,
 				A2BB00000000000000000013 /* MonitorSessionStore.swift */,
 				A2BB00000000000000000014 /* SourceTestHTMLBuilder.swift */,
+				A2BB00000000000000000015 /* MonitorHTMLBuilder.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -309,6 +316,7 @@
 				A2BB00000000000000000008 /* HistoryView.swift */,
 				A20000000000000000000023 /* SourceTestFlowView.swift */,
 				A20000000000000000000024 /* SourceTestListView.swift */,
+				A20000000000000000000028 /* MonitorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -318,6 +326,7 @@
 			children = (
 				A20000000000000000000001 /* MeterViewModel.swift */,
 				A20000000000000000000022 /* SourceTestViewModel.swift */,
+				A20000000000000000000027 /* MonitorViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -526,6 +535,9 @@
 				A10000000000000000000033 /* SourceTestFlowView.swift in Sources */,
 				A10000000000000000000034 /* SourceTestListView.swift in Sources */,
 				A10000000000000000000036 /* WatchSyncManager.swift in Sources */,
+				A10000000000000000000037 /* MonitorViewModel.swift in Sources */,
+				A10000000000000000000038 /* MonitorView.swift in Sources */,
+				A1BB00000000000000000015 /* MonitorHTMLBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

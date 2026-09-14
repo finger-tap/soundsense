@@ -34,9 +34,6 @@ final class SourceTestViewModel: ObservableObject {
     /// 测完的最近一次结果(展示用;已入库)
     @Published private(set) var latestResult: SourceTestResult?
 
-    /// 最近一次入库结果(监听模式的标定数据源)
-    var latest: SourceTestResult? { store.results.first }
-
     let store = SourceTestStore.shared
     /// 引擎(视图通过 onChange(engine.latestResult) 转发 consume)
     let engine: AudioMeterEngine

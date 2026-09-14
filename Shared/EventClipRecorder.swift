@@ -105,6 +105,11 @@ public final class EventClipRecorder: @unchecked Sendable {
         queue.sync { open }
     }
 
+    /// 最近一次 beginClip 的文件 URL(片段收尾期间仍有效,定稿后为 nil)
+    public var lastClipURL: URL? {
+        queue.sync { fileURL }
+    }
+
     /// 等待队列排空(post-roll 定稿完成;停止监听/测试断言前调用)
     public func flush() {
         queue.sync {}

@@ -20,6 +20,9 @@ public final class SourceTestStore: ObservableObject {
 
     @Published public private(set) var results: [SourceTestResult] = []
 
+    /// 最近一次测试结果(监听模式的位置推测标定数据源)
+    public var latest: SourceTestResult? { results.first }
+
     private let fileURL: URL
     public let recordingsDirectory: URL
 
