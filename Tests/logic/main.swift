@@ -445,4 +445,48 @@ do {
            "第二个片段正常落盘")
 }
 
+// ---- 21. 监听会话存储:生命周期 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-mon-\(UUID().uuidString)", isDirectory: true)
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let json = dir.appendingPathComponent("monitor_sessions.json")
+    let store = MonitorSessionStore(fileURL: json)
+
+    func session(id: UUID = UUID(), clips: [String] = []) -> MonitorSession {
+        let events = clips.enumerated().map { i, clip in
+            MonitorEvent(id: UUID(), time: Date(), peakSPL: 55, duration: 1.2,
+                         avgLowRatio: 0.8, type: .impact, guess: "楼上(推测)", clipFile: clip)
+        }
+        return MonitorSession(startTime: Date().addingTimeInterval(-3600),
+                              endTime: Date(), overallLaeq: 42, minSPL: 33, maxSPL: 58,
+                              thresholdOverBackground: 10, events: events)
+    }
+    // 增删 + 片段目录生命周期
+    let s1 = session()
+    store.add(s1)
+    let clipURL = store.clipsDirectory(sessionID: s1.id).appendingPathComponent("e1.m4a")
+    try? Data("x".utf8).write(to: clipURL)
+    let reloaded = MonitorSessionStore(fileURL: json)
+    expect(reloaded.sessions.first?.id == s1.id, "监听会话持久化往返")
+    expect(FileManager.default.fileExists(atPath: clipURL.path), "前置:片段文件已建")
+    store.delete(at: IndexSet(integer: 0))
+    expect(!FileManager.default.fileExists(atPath: clipURL.path), "删除会话连带删片段目录")
+    // 孤儿子目录清扫
+    let orphanDir = store.baseClipsDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try? FileManager.default.createDirectory(at: orphanDir, withIntermediateDirectories: true)
+    try? Data("x".utf8).write(to: orphanDir.appendingPathComponent("junk.m4a"))
+    _ = MonitorSessionStore(fileURL: json)   // 重新加载触发清扫
+    expect(!FileManager.default.fileExists(atPath: orphanDir.path), "孤儿片段目录被清扫")
+    // 清空
+    store.add(session()); store.add(session())
+    store.removeAll()
+    expect(store.sessions.isEmpty, "清空后会话为空")
+    expect(((try? FileManager.default.contentsOfDirectory(
+        atPath: store.baseClipsDirectory.path)) ?? []).isEmpty, "清空后片段目录空")
+    // 超 20 条淘汰
+    for _ in 0..<(MonitorSessionStore.maxSessions + 1) { store.add(session()) }
+    expect(store.sessions.count == MonitorSessionStore.maxSessions, "会话封顶 20")
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }

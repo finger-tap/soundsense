@@ -14,6 +14,7 @@ swiftc -O \
   Shared/SourceTendencyAnalyzer.swift \
   Shared/SourceTestStore.swift \
   Shared/EventClipRecorder.swift \
+  Shared/MonitorSessionStore.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests
