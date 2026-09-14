@@ -283,4 +283,83 @@ do {
     expect(e.events.isEmpty, "0.1s 瞬态被忽略 (得 \(e.events.count))")
 }
 
+// ---- 16. 判定器:方向倾向 ----
+do {
+    func pos(_ name: String, _ laeq: Float, events: Int = 0,
+             low: Float = 0.3, steady: Float = 0.5) -> PositionStats {
+        PositionStats(name: name, laeq: laeq, minSPL: laeq - 5, maxSPL: laeq + 10,
+                      eventCount: events, avgLowRatio: low, steadyRatio: steady)
+    }
+    let center = { pos("中央", 40) }
+    // 靠墙显著更响(+5dB) → 邻居,高置信
+    let r1 = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", 45), pos("靠顶", 41)], duration: 90)
+    expect(r1.verdict == .neighbor, "墙增益主导 → 邻居")
+    expect(r1.confidence == .high, "增益 5dB → 高置信 (得 \(r1.confidence.rawValue))")
+    // 靠顶显著更响 → 楼上
+    let r2 = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", 41), pos("靠顶", 46)], duration: 90)
+    expect(r2.verdict == .upstairs, "顶增益主导 → 楼上")
+    // 平坦无梯度 → 无法判断/低置信
+    let r3 = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", 40.5), pos("靠顶", 40.5)], duration: 90)
+    expect(r3.verdict == .inconclusive && r3.confidence == .low, "无梯度 → 无法判断/低置信")
+    // 双侧同升,无主导 → 无法判断
+    let r4 = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", 42.5), pos("靠顶", 42.5)], duration: 90)
+    expect(r4.verdict == .inconclusive, "双侧同升 → 无法判断")
+    // 增益 3dB → 中置信
+    let r5 = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", 43), pos("靠顶", 40.5)], duration: 90)
+    expect(r5.confidence == .medium, "增益 3dB → 中置信 (得 \(r5.confidence.rawValue))")
+}
+
+// ---- 17. 判定器:噪音类型 ----
+do {
+    func pos(_ events: Int, low: Float, steady: Float) -> PositionStats {
+        PositionStats(name: "x", laeq: 40, minSPL: 35, maxSPL: 55,
+                      eventCount: events, avgLowRatio: low, steadyRatio: steady)
+    }
+    let impact = SourceTendencyAnalyzer.analyze(
+        positions: [pos(60, low: 0.8, steady: 0.3),
+                    pos(60, low: 0.8, steady: 0.3),
+                    pos(60, low: 0.8, steady: 0.3)], duration: 90)
+    expect(impact.noiseType == .impact, "事件密集 → impact (得 \(impact.noiseType.rawValue))")
+    let sparseImpact = SourceTendencyAnalyzer.analyze(
+        positions: [pos(1, low: 0.8, steady: 0.3),
+                    pos(1, low: 0.8, steady: 0.3),
+                    pos(1, low: 0.8, steady: 0.3)], duration: 90)
+    expect(sparseImpact.noiseType == .impact, "2/min 且低频重 → impact (得 \(sparseImpact.noiseType.rawValue))")
+    let continuous = SourceTendencyAnalyzer.analyze(
+        positions: [pos(0, low: 0.2, steady: 0.8),
+                    pos(0, low: 0.2, steady: 0.8),
+                    pos(0, low: 0.2, steady: 0.8)], duration: 90)
+    expect(continuous.noiseType == .continuous, "稳态连续 → continuous (得 \(continuous.noiseType.rawValue))")
+    let mixed = SourceTendencyAnalyzer.analyze(
+        positions: [pos(1, low: 0.2, steady: 0.7),
+                    pos(1, low: 0.2, steady: 0.7),
+                    pos(1, low: 0.2, steady: 0.7)], duration: 90)
+    expect(mixed.noiseType == .mixed, "事件+稳态并存 → mixed (得 \(mixed.noiseType.rawValue))")
+    let unknown = SourceTendencyAnalyzer.analyze(
+        positions: [pos(1, low: 0.2, steady: 0.3),
+                    pos(1, low: 0.2, steady: 0.3),
+                    pos(1, low: 0.2, steady: 0.3)], duration: 180)
+    expect(unknown.noiseType == .unknown, "特征不足 → unknown (得 \(unknown.noiseType.rawValue))")
+}
+
+// ---- 18. 位置推测 ----
+do {
+    expect(SourceTendencyAnalyzer.guessPosition(lowRatio: 0.8, isImpact: true, calibration: nil)
+           == "楼上(推测)", "低频冲击 → 楼上(推测)")
+    expect(SourceTendencyAnalyzer.guessPosition(lowRatio: 0.2, isImpact: true, calibration: nil)
+           == "不确定", "中频冲击 → 不确定")
+    expect(SourceTendencyAnalyzer.guessPosition(lowRatio: 0.2, isImpact: false, calibration: nil)
+           == "隔壁(推测)", "连续声 → 隔壁(推测)")
+    let cal = SourceTestResult(id: UUID(), startTime: Date(), duration: 90,
+                               positions: [], verdict: .neighbor,
+                               confidence: .medium, noiseType: .continuous, audioID: nil)
+    expect(SourceTendencyAnalyzer.guessPosition(lowRatio: 0.2, isImpact: false, calibration: cal)
+           == "隔壁(推测·标定一致)", "连续声+标定邻居 → 标定一致")
+}
+
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }

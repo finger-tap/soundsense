@@ -11,6 +11,7 @@ swiftc -O \
   Shared/RecordingPlayer.swift \
   Shared/ReportHTMLBuilder.swift \
   Shared/NoiseEventEngine.swift \
+  Shared/SourceTendencyAnalyzer.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests
