@@ -15,6 +15,53 @@
 import Foundation
 import AVFoundation
 
+/// AAC m4a 写盘共享辅助(SessionAudioRecorder / EventClipRecorder 复用)
+enum AACWriteSupport {
+
+    /// Hamming 窗 sinc 低通系数(cutoffRatio = fc / 输入速率,归一化增益 1)
+    static func makeTaps(count: Int, cutoffRatio: Float) -> [Float] {
+        let m = count - 1
+        var taps = (0..<count).map { i -> Float in
+            let k = Float(i) - Float(m) / 2
+            let sinc = abs(k) < 1e-6
+                ? 2 * Float.pi * cutoffRatio
+                : sin(2 * Float.pi * cutoffRatio * k) / k
+            let window = 0.54 - 0.46 * cos(2 * Float.pi * Float(i) / Float(m))
+            return sinc * window
+        }
+        let sum = taps.reduce(0, +)
+        if sum != 0 { for i in taps.indices { taps[i] /= sum } }
+        return taps
+    }
+
+    /// 打开 AAC 24kHz 单声道写盘(码率设置被拒时回退 quality 设置)
+    static func openFile(forWriting url: URL, targetSampleRate: Float) -> AVAudioFile? {
+        let base: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: Double(targetSampleRate),
+            AVNumberOfChannelsKey: 1,
+        ]
+        var withBitrate = base
+        withBitrate[AVEncoderBitRateKey] = 48000
+        var withQuality = base
+        withQuality[AVEncoderAudioQualityKey] = AVAudioQuality.high.rawValue
+        return (try? AVAudioFile(forWriting: url, settings: withBitrate))
+            ?? (try? AVAudioFile(forWriting: url, settings: withQuality))
+    }
+
+    static func pcmBuffer(samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard samples.count <= Int(AVAudioFrameCount.max),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format,
+                                            frameCapacity: AVAudioFrameCount(samples.count))
+        else { return nil }
+        buffer.frameLength = AVAudioFrameCount(samples.count)
+        if let dst = buffer.floatChannelData?[0] {
+            for i in 0..<samples.count { dst[i] = samples[i] }
+        }
+        return buffer
+    }
+}
+
 /// FIR 低通 + 整数倍抽取(跨块连续,输出点为输入绝对位置 factor-1, 2·factor-1, …)
 struct FIRDecimator {
     let taps: [Float]
@@ -80,28 +127,13 @@ public final class SessionAudioRecorder: @unchecked Sendable {
                                                      withIntermediateDirectories: true)
             let id = UUID().uuidString
             let url = directory.appendingPathComponent("\(id).m4a")
-            let base: [String: Any] = [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: Double(targetSampleRate),
-                AVNumberOfChannelsKey: 1,
-            ]
-            var withBitrate = base
-            withBitrate[AVEncoderBitRateKey] = 48000
-            var withQuality = base
-            withQuality[AVEncoderAudioQualityKey] = AVAudioQuality.high.rawValue
-            if let f = try? AVAudioFile(forWriting: url, settings: withBitrate) {
-                file = f
-            } else if let f = try? AVAudioFile(forWriting: url, settings: withQuality) {
-                file = f
-            } else {
-                return nil
-            }
+            file = AACWriteSupport.openFile(forWriting: url, targetSampleRate: targetSampleRate)
+            if file == nil { return nil }
             fileURL = url
             let factor = Int(inputSampleRate / targetSampleRate)
             if Float(factor) * targetSampleRate == inputSampleRate && factor > 1 {
-                decimator = FIRDecimator(taps: Self.makeTaps(count: 33,
-                                                             cutoffRatio: 0.45 / Float(factor)),
-                                         factor: factor)
+                decimator = FIRDecimator(taps: AACWriteSupport.makeTaps(
+                    count: 33, cutoffRatio: 0.45 / Float(factor)), factor: factor)
             } else {
                 decimator = nil   // 速率不整除:原速率直写(AAC 编码器自适配)
             }
@@ -168,32 +200,8 @@ public final class SessionAudioRecorder: @unchecked Sendable {
         TimeInterval(writtenFrames) / TimeInterval(targetSampleRate)
     }
 
-    /// Hamming 窗 sinc 低通系数(cutoffRatio = fc / 输入速率,归一化增益 1)
-    static func makeTaps(count: Int, cutoffRatio: Float) -> [Float] {
-        let m = count - 1
-        var taps = (0..<count).map { i -> Float in
-            let k = Float(i) - Float(m) / 2
-            let sinc = abs(k) < 1e-6
-                ? 2 * Float.pi * cutoffRatio
-                : sin(2 * Float.pi * cutoffRatio * k) / k
-            let window = 0.54 - 0.46 * cos(2 * Float.pi * Float(i) / Float(m))
-            return sinc * window
-        }
-        let sum = taps.reduce(0, +)
-        if sum != 0 { for i in taps.indices { taps[i] /= sum } }
-        return taps
-    }
-
     private static func pcmBuffer(samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        guard samples.count <= Int(AVAudioFrameCount.max),
-              let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                                            frameCapacity: AVAudioFrameCount(samples.count))
-        else { return nil }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-        if let dst = buffer.floatChannelData?[0] {
-            for i in 0..<samples.count { dst[i] = samples[i] }
-        }
-        return buffer
+        AACWriteSupport.pcmBuffer(samples: samples, format: format)
     }
 }
 

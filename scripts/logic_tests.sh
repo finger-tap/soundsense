@@ -13,6 +13,7 @@ swiftc -O \
   Shared/NoiseEventEngine.swift \
   Shared/SourceTendencyAnalyzer.swift \
   Shared/SourceTestStore.swift \
+  Shared/EventClipRecorder.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests

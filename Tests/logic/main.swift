@@ -115,7 +115,7 @@ do {
 
 // ---- 7. FIR 降采样:任意分块下输出数量正确、正弦幅度保持 ----
 do {
-    var dec = FIRDecimator(taps: SessionAudioRecorder.makeTaps(count: 33, cutoffRatio: 0.225),
+    var dec = FIRDecimator(taps: AACWriteSupport.makeTaps(count: 33, cutoffRatio: 0.225),
                            factor: 2)
     let rate: Float = 48000, freq: Float = 1000
     var out: [Float] = []
@@ -400,6 +400,49 @@ do {
     expect(store.results.count == SourceTestStore.maxResults, "结果封顶 20")
     expect(!FileManager.default.fileExists(atPath: store.audioFileURL(forID: "e-0").path),
            "最旧结果录音被淘汰删除")
+}
+
+// ---- 20. 事件片段录音器 ----
+do {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("ss-clip-\(UUID().uuidString)", isDirectory: true)
+    let rec = EventClipRecorder()
+    rec.configure(directory: dir, inputSampleRate: 48000)
+    let rate = 48000
+    func feed(_ seconds: Double) {
+        var n = 0
+        while n < Int(seconds * Double(rate)) {
+            rec.append(Array(repeating: 0.3, count: 4096))
+            n += 4096
+        }
+    }
+    // 未开始片段:只进环形缓冲,不落盘
+    feed(2.5)
+    expect(!rec.isClipOpen, "喂流但未开片段 → 不算打开")
+    // 开片段(含 2s pre-roll)→ 0.5s 事件 → 收口后补 3s post-roll
+    let url = rec.beginClip()
+    expect(url != nil, "beginClip 返回片段文件 URL")
+    expect(rec.isClipOpen, "片段打开中")
+    feed(0.5)                                   // 事件本体
+    expect(rec.endClip(), "endClip 成功(有打开的片段)")
+    expect(!rec.isClipOpen, "endClip 后关闭")
+    feed(3.0)                                   // post-roll 数据到位后异步定稿
+    rec.flush()                                 // 等队列排空,文件定稿
+    if let url = url {
+        let audio = try? AVAudioFile(forReading: url)
+        let dur = audio.map { TimeInterval($0.length) / $0.fileFormat.sampleRate } ?? 0
+        expect(abs(dur - 5.5) < 0.4, "片段时长 ≈ pre+事件+post=5.5s (得 \(dur))")
+    }
+    // 无片段时 endClip → false
+    expect(!rec.endClip(), "无片段 endClip 返回 false")
+    // 第二个片段独立工作
+    let url2 = rec.beginClip()
+    feed(0.3)
+    _ = rec.endClip()
+    feed(3.0)
+    rec.flush()
+    expect(url2 != nil && FileManager.default.fileExists(atPath: url2!.path),
+           "第二个片段正常落盘")
 }
 
 if failures > 0 { print("\(failures) FAILURES"); exit(1) }
