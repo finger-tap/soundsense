@@ -12,6 +12,29 @@ import Foundation
 
 public enum ReportHTMLBuilder {
 
+    /// 与 App 同款的深色主题 CSS(SourceTestHTMLBuilder 等复用)
+    public static let themeCSS = """
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0b1014; color: #fff;
+             font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 48px; }
+      .brand { color: #3dd9bf; font-size: 13px; letter-spacing: 3px; font-weight: 700; }
+      h1 { font-size: 26px; margin: 6px 0 4px; }
+      .meta { color: rgba(255,255,255,.55); font-size: 13px; margin-bottom: 20px; }
+      .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+              border-radius: 14px; padding: 16px 18px; margin-top: 16px; }
+      .card h2 { font-size: 14px; color: rgba(255,255,255,.6); margin: 0 0 10px; }
+      .stats { display: flex; flex-wrap: wrap; gap: 8px; }
+      .stat { flex: 1 1 100px; text-align: center; padding: 10px 4px;
+              background: rgba(255,255,255,.03); border-radius: 10px; }
+      .stat b { font-size: 19px; display: block; color: #3dd9bf; }
+      .stat span { font-size: 11px; color: rgba(255,255,255,.45); }
+      audio { width: 100%; }
+      footer { margin-top: 22px; color: rgba(255,255,255,.35); font-size: 12px;
+               border-top: 1px solid rgba(255,255,255,.08); padding-top: 12px;
+               line-height: 1.8; }
+    """
+
     public static func build(stats: MeasurementStats,
                              deviceName: String,
                              calibrationOffset: Float,
@@ -46,27 +69,9 @@ public enum ReportHTMLBuilder {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>闻声 SoundSense 噪音测量报告</title>
         <style>
-          :root { color-scheme: dark; }
-          body { margin: 0; background: #0b1014; color: #fff;
-                 font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
-          .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 48px; }
-          .brand { color: #3dd9bf; font-size: 13px; letter-spacing: 3px; font-weight: 700; }
-          h1 { font-size: 26px; margin: 6px 0 4px; }
-          .meta { color: rgba(255,255,255,.55); font-size: 13px; margin-bottom: 20px; }
+          \(themeCSS)
           img.report { width: 100%; border-radius: 14px; display: block;
                        box-shadow: 0 8px 30px rgba(0,0,0,.45); }
-          .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-                  border-radius: 14px; padding: 16px 18px; margin-top: 16px; }
-          .card h2 { font-size: 14px; color: rgba(255,255,255,.6); margin: 0 0 10px; }
-          .stats { display: flex; flex-wrap: wrap; gap: 8px; }
-          .stat { flex: 1 1 100px; text-align: center; padding: 10px 4px;
-                  background: rgba(255,255,255,.03); border-radius: 10px; }
-          .stat b { font-size: 19px; display: block; color: #3dd9bf; }
-          .stat span { font-size: 11px; color: rgba(255,255,255,.45); }
-          audio { width: 100%; }
-          footer { margin-top: 22px; color: rgba(255,255,255,.35); font-size: 12px;
-                   border-top: 1px solid rgba(255,255,255,.08); padding-top: 12px;
-                   line-height: 1.8; }
         </style>
         </head>
         <body>

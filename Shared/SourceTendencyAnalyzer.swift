@@ -75,6 +75,45 @@ public struct SourceTestResult: Codable, Equatable, Identifiable {
     }
 }
 
+/// 点位统计累积器(与 NoiseEventEngine 配合使用;iOS/watch VM 共用)
+public struct PositionStatsBuilder {
+    public private(set) var frameCount = 0
+    public private(set) var energySum: Double = 0
+    public private(set) var minSPL: Float = .greatestFiniteMagnitude
+    public private(set) var maxSPL: Float = -.greatestFiniteMagnitude
+    public private(set) var steadyCount = 0
+
+    public init() {}
+
+    public mutating func observe(spl: Float) {
+        let laeq = currentLaeq()
+        frameCount += 1
+        if laeq.isFinite, abs(spl - laeq) <= 3 { steadyCount += 1 }
+        energySum += pow(10.0, Double(spl) / 10.0)
+        if spl < minSPL { minSPL = spl }
+        if spl > maxSPL { maxSPL = spl }
+    }
+
+    public func currentLaeq() -> Float {
+        guard frameCount > 0, energySum > 0 else { return -.greatestFiniteMagnitude }
+        return Float(10 * log10(energySum / Double(frameCount)))
+    }
+
+    /// 结合该点位的事件引擎,生成 PositionStats
+    public func snapshot(name: String, engine: NoiseEventEngine) -> PositionStats {
+        let events = engine.events
+        let lows = events.compactMap { $0.avgLowRatio }
+        return PositionStats(
+            name: name,
+            laeq: currentLaeq(),
+            minSPL: minSPL.isFinite ? minSPL : 0,
+            maxSPL: maxSPL.isFinite ? maxSPL : 0,
+            eventCount: events.count,
+            avgLowRatio: lows.isEmpty ? 0 : lows.reduce(0, +) / Float(lows.count),
+            steadyRatio: frameCount > 0 ? Float(steadyCount) / Float(frameCount) : 0)
+    }
+}
+
 public enum SourceTendencyAnalyzer {
 
     /// 判定常量(调参入口)

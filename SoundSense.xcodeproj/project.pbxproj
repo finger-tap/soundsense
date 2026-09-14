@@ -37,6 +37,10 @@
 			A1BB00000000000000000011 /* SourceTestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000011 /* SourceTestStore.swift */; };
 			A1BB00000000000000000012 /* EventClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000012 /* EventClipRecorder.swift */; };
 			A1BB00000000000000000013 /* MonitorSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000013 /* MonitorSessionStore.swift */; };
+			A1BB00000000000000000014 /* SourceTestHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000014 /* SourceTestHTMLBuilder.swift */; };
+			A10000000000000000000032 /* SourceTestViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* SourceTestViewModel.swift */; };
+			A10000000000000000000033 /* SourceTestFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* SourceTestFlowView.swift */; };
+			A10000000000000000000034 /* SourceTestListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* SourceTestListView.swift */; };
 /* End PBXBuildFile section - iOS sources */
 
 /* Begin PBXBuildFile section - watchOS sources */
@@ -140,6 +144,10 @@
 			A2BB00000000000000000011 /* SourceTestStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestStore.swift; sourceTree = "<group>"; };
 			A2BB00000000000000000012 /* EventClipRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventClipRecorder.swift; sourceTree = "<group>"; };
 			A2BB00000000000000000013 /* MonitorSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorSessionStore.swift; sourceTree = "<group>"; };
+			A2BB00000000000000000014 /* SourceTestHTMLBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestHTMLBuilder.swift; sourceTree = "<group>"; };
+			A20000000000000000000022 /* SourceTestViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestViewModel.swift; sourceTree = "<group>"; };
+			A20000000000000000000023 /* SourceTestFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestFlowView.swift; sourceTree = "<group>"; };
+			A20000000000000000000024 /* SourceTestListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTestListView.swift; sourceTree = "<group>"; };
 			A20000000000000000000015 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlayView.swift; sourceTree = "<group>"; };
 				AA0200000000000000000007 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
@@ -217,6 +225,7 @@
 				A2BB00000000000000000011 /* SourceTestStore.swift */,
 				A2BB00000000000000000012 /* EventClipRecorder.swift */,
 				A2BB00000000000000000013 /* MonitorSessionStore.swift */,
+				A2BB00000000000000000014 /* SourceTestHTMLBuilder.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -293,6 +302,8 @@
 				A20000000000000000000008 /* SettingsView.swift */,
 				A2BB00000000000000000004 /* ReportShareSheet.swift */,
 				A2BB00000000000000000008 /* HistoryView.swift */,
+				A20000000000000000000023 /* SourceTestFlowView.swift */,
+				A20000000000000000000024 /* SourceTestListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -301,6 +312,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* MeterViewModel.swift */,
+				A20000000000000000000022 /* SourceTestViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -503,6 +515,10 @@
 				A1BB00000000000000000011 /* SourceTestStore.swift in Sources */,
 				A1BB00000000000000000012 /* EventClipRecorder.swift in Sources */,
 				A1BB00000000000000000013 /* MonitorSessionStore.swift in Sources */,
+				A1BB00000000000000000014 /* SourceTestHTMLBuilder.swift in Sources */,
+				A10000000000000000000032 /* SourceTestViewModel.swift in Sources */,
+				A10000000000000000000033 /* SourceTestFlowView.swift in Sources */,
+				A10000000000000000000034 /* SourceTestListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

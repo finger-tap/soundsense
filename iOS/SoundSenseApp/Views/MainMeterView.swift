@@ -15,6 +15,7 @@ struct MainMeterView: View {
     @State private var showingSettings = false
     @State private var showingShare = false
     @State private var showingHistory = false
+    @State private var showingSourceTest = false
     /// 保存结果浮层文案(自动消失)
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
@@ -44,6 +45,18 @@ struct MainMeterView: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.white)
                         Spacer()
+                        Button {
+                            // 声源定位与测量互斥:进入前先停掉主测量
+                            if viewModel.engine.state == .running {
+                                viewModel.stop()
+                            }
+                            showingSourceTest = true
+                        } label: {
+                            Image(systemName: "location")
+                                .font(.body)
+                                .foregroundColor(.white.opacity(0.8))
+                                .frame(width: 38, height: 38)
+                        }
                         Button {
                             showingHistory = true
                         } label: {
@@ -205,6 +218,9 @@ struct MainMeterView: View {
             HistoryView(store: viewModel.historyStore,
                         deviceName: viewModel.deviceName,
                         calibrationOffset: viewModel.calibrationOffset)
+        }
+        .sheet(isPresented: $showingSourceTest) {
+            SourceTestFlowView(calibrationOffset: viewModel.calibrationOffset)
         }
         .sheet(isPresented: $showingShare) {
             if let stats = viewModel.lastStats {
