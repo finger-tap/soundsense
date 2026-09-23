@@ -41,7 +41,7 @@ struct MacMainMeterView: View {
 
                         // 实时统计(测量中显示)
                         if let live = viewModel.liveStats {
-                            LiveStatsBar(stats: live)
+                            LiveStatsBar(stats: live, isRecording: viewModel.isRecording)
                                 .padding(.horizontal, 28)
                                 .transition(.opacity)
                         }

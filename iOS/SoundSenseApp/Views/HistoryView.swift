@@ -29,6 +29,7 @@ struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var sharingStats: MeasurementStats?
     @State private var sharingCSV: CSVItem?
+    @State private var selectedRecord: MeasurementStats?
 
     var body: some View {
         NavigationView {
@@ -72,6 +73,11 @@ struct HistoryView: View {
                              deviceName: deviceName,
                              calibrationOffset: calibrationOffset)
         }
+        .sheet(item: $selectedRecord) { record in
+            HistoryDetailSheet(record: record, store: store,
+                               deviceName: deviceName,
+                               calibrationOffset: calibrationOffset)
+        }
         .sheet(item: $sharingCSV) { item in
             CSVShareSheet(text: item.text, filename: item.filename)
         }
@@ -82,9 +88,13 @@ struct HistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(Array(store.records.enumerated()), id: \.offset) { index, record in
                     HistoryRow(record: record) {
-                        sharingStats = record
-                    }
-                    .contextMenu {
+                        selectedRecord = record
+                    } .contextMenu {
+                        Button {
+                            selectedRecord = record
+                        } label: {
+                            Label("查看详情与录音", systemImage: "waveform")
+                        }
                         Button {
                             sharingStats = record
                         } label: {
@@ -202,4 +212,147 @@ struct HistoryRow: View {
         }
         .frame(maxWidth: .infinity)
     }
+}
+
+/// 历史详情:完整简报(报告图)+ 录音回放 + 双格式导出
+struct HistoryDetailSheet: View {
+    let record: MeasurementStats
+    let store: MeasurementHistoryStore
+    let deviceName: String
+    let calibrationOffset: Float
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var player = RecordingPlayer()
+    @State private var sharingPNG = false
+    @State private var sharingHTML = false
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 14) {
+                    Image(uiImage: ReportRenderer.render(stats: record,
+                                                         deviceName: deviceName,
+                                                         calibrationOffset: calibrationOffset))
+                        .resizable().scaledToFit()
+                        .cornerRadius(12)
+                    if record.audioID != nil {
+                        RecordingPlayerBar(player: player)
+                    }
+                    HStack(spacing: 12) {
+                        Button {
+                            sharingPNG = true
+                        } label: {
+                            Label("分享图片", systemImage: "photo")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, minHeight: 38)
+                                .background(RoundedRectangle(cornerRadius: 10)
+                                    .fill(.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            sharingHTML = true
+                        } label: {
+                            Label("分享完整报告", systemImage: "doc.richtext")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, minHeight: 38)
+                                .background(RoundedRectangle(cornerRadius: 10)
+                                    .fill(MeterTheme.waveColor.opacity(0.85)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
+            }
+            .background(MeterTheme.backgroundGradient.ignoresSafeArea())
+            .navigationTitle("测量简报")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") { dismiss() }
+                        .foregroundColor(MeterTheme.waveColor)
+                }
+            }
+            .onAppear {
+                if let id = record.audioID {
+                    player.load(url: store.audioFileURL(forID: id))
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+        .sheet(isPresented: $sharingPNG) {
+            ReportShareSheet(stats: record, deviceName: deviceName,
+                             calibrationOffset: calibrationOffset)
+        }
+        .sheet(isPresented: $sharingHTML) {
+            HTMLShareSheet(stats: record, deviceName: deviceName,
+                           calibrationOffset: calibrationOffset,
+                           audioURL: record.audioID.map { store.audioFileURL(forID: $0) })
+        }
+    }
+}
+
+/// 录音回放条(iOS 风格)
+struct RecordingPlayerBar: View {
+    @ObservedObject var player: RecordingPlayer
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(player.isAvailable ? MeterTheme.waveColor : .white.opacity(0.3))
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(MeterTheme.waveColor.opacity(0.14)))
+            }
+            .buttonStyle(.plain)
+            .disabled(!player.isAvailable)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("现场录音").font(.system(size: 12)).foregroundColor(.white.opacity(0.7))
+                if player.isAvailable {
+                    Text("\(RecordingPlayer.formatTime(player.progress * player.duration)) / \(RecordingPlayer.formatTime(player.duration))")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(MeterTheme.secondaryText)
+                } else {
+                    Text("录音不可用").font(.system(size: 10))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+            }
+            Spacer()
+            ProgressView(value: player.progress)
+                .progressViewStyle(.linear)
+                .tint(MeterTheme.waveColor)
+                .frame(width: 90)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
+    }
+}
+
+/// HTML 完整报告分享(临时文件 + ActivityViewController)
+struct HTMLShareSheet: UIViewControllerRepresentable {
+    let stats: MeasurementStats
+    let deviceName: String
+    let calibrationOffset: Float
+    let audioURL: URL?
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let image = ReportRenderer.render(stats: stats, deviceName: deviceName,
+                                          calibrationOffset: calibrationOffset)
+        let pngBase64 = (image.pngData() ?? Data()).base64EncodedString()
+        let audioBase64 = audioURL.flatMap { try? Data(contentsOf: $0) }?.base64EncodedString()
+        let html = ReportHTMLBuilder.build(stats: stats, deviceName: deviceName,
+                                           calibrationOffset: calibrationOffset,
+                                           pngBase64: pngBase64, audioBase64: audioBase64)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(ReportHTMLBuilder.filename(for: stats))
+        if let data = html.data(using: .utf8) {
+            try? data.write(to: url, options: [.atomic])
+        }
+        return UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
