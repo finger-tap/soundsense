@@ -15,14 +15,14 @@ struct MonitorView: View {
 
     var body: some View {
         NavigationView {
-            Group {
+            ZStack {
+                MeterTheme.backgroundGradient.ignoresSafeArea()
                 if vm.phase == .running {
                     running
                 } else {
                     idle
                 }
             }
-            .background(MeterTheme.backgroundGradient.ignoresSafeArea())
             .navigationTitle("噪音监听")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -187,7 +187,8 @@ struct MonitorSessionListView: View {
 
     var body: some View {
         NavigationView {
-            Group {
+            ZStack {
+                MeterTheme.backgroundGradient.ignoresSafeArea()
                 if store.sessions.isEmpty {
                     VStack(spacing: 10) {
                         Image(systemName: "list.bullet")
@@ -222,7 +223,6 @@ struct MonitorSessionListView: View {
                     }
                 }
             }
-            .background(MeterTheme.backgroundGradient.ignoresSafeArea())
             .navigationTitle("监听记录")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

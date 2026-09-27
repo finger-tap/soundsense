@@ -17,7 +17,10 @@ struct SourceTestFlowView: View {
 
     var body: some View {
         NavigationView {
-            Group {
+            ZStack {
+                // 背景独立满铺:不能挂在 Group 上(Group 修饰符逐子视图生效,
+                // 内容窄时两侧会露出系统底色)
+                MeterTheme.backgroundGradient.ignoresSafeArea()
                 switch vm.phase {
                 case .idle:
                     instruction
@@ -29,7 +32,6 @@ struct SourceTestFlowView: View {
                     failed(message)
                 }
             }
-            .background(MeterTheme.backgroundGradient.ignoresSafeArea())
             .navigationTitle("声源定位")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
