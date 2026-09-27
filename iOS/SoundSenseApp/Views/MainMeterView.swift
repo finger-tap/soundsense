@@ -16,12 +16,13 @@ struct MainMeterView: View {
     #if DEBUG
     @State private var showingSettings = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_SETTINGS")
     @State private var showingHistory = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_HISTORY")
+    @State private var showingSourceTest = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_SOURCETEST")
     #else
     @State private var showingSettings = false
     @State private var showingHistory = false
+    @State private var showingSourceTest = false
     #endif
     @State private var showingShare = false
-    @State private var showingSourceTest = false
     @State private var showingMonitor = false
     /// 保存结果浮层文案(自动消失)
     @State private var toast: String?

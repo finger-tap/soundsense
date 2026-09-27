@@ -35,7 +35,7 @@ struct MonitorView: View {
                         vm.stop()
                         dismiss()
                     }
-                    .foregroundColor(MeterTheme.waveColor)
+                    .foregroundColor(.white)
                 }
             }
         }
@@ -228,7 +228,7 @@ struct MonitorSessionListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(MeterTheme.waveColor)
+                        .foregroundColor(.white)
                 }
             }
         }
@@ -332,7 +332,7 @@ struct MonitorSessionDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(MeterTheme.waveColor)
+                        .foregroundColor(.white)
                 }
             }
         }

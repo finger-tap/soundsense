@@ -173,7 +173,7 @@ struct SourceTestDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(MeterTheme.waveColor)
+                        .foregroundColor(.white)
                 }
             }
         }

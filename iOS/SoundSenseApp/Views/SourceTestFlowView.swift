@@ -38,7 +38,7 @@ struct SourceTestFlowView: View {
                         vm.abandon()
                         dismiss()
                     }
-                    .foregroundColor(MeterTheme.waveColor)
+                    .foregroundColor(.white)
                 }
             }
         }
