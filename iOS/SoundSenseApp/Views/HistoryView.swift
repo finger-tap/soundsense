@@ -44,7 +44,7 @@ struct HistoryView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(MeterTheme.waveColor)
+                        .foregroundColor(.white)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !store.records.isEmpty {
@@ -55,11 +55,13 @@ struct HistoryView: View {
                                     filename: "闻声数据_全部记录.csv")
                             } label: {
                                 Text("CSV").font(.system(size: 14))
+                                    .foregroundColor(.white.opacity(0.9))
                             }
                             Button(role: .destructive) {
                                 store.removeAll()
                             } label: {
                                 Text("清空").font(.system(size: 14))
+                                    .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.4))
                             }
                         }
                     }

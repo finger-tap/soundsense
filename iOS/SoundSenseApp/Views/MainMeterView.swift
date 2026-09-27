@@ -12,9 +12,15 @@ import SoundSenseCore
 
 struct MainMeterView: View {
     @StateObject private var viewModel = MeterViewModel()
+    // UI 自动化用:启动参数直接打开浮层(DEBUG 限定,Release 无影响)
+    #if DEBUG
+    @State private var showingSettings = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_SETTINGS")
+    @State private var showingHistory = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_HISTORY")
+    #else
     @State private var showingSettings = false
-    @State private var showingShare = false
     @State private var showingHistory = false
+    #endif
+    @State private var showingShare = false
     /// 保存结果浮层文案(自动消失)
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
