@@ -11,7 +11,6 @@ import UIKit
 struct MonitorView: View {
     @StateObject private var vm = MonitorViewModel()
     @Environment(\.dismiss) private var dismiss
-    @State private var showingSessions = false
 
     var body: some View {
         NavigationView {
@@ -26,10 +25,6 @@ struct MonitorView: View {
             .navigationTitle("噪音监听")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("记录") { showingSessions = true }
-                        .foregroundColor(MeterTheme.waveColor)
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("关闭") {
                         vm.stop()
@@ -40,9 +35,6 @@ struct MonitorView: View {
             }
         }
         .navigationViewStyle(.stack)
-        .sheet(isPresented: $showingSessions) {
-            MonitorSessionListView(store: vm.store)
-        }
         .onChange(of: vm.engine.latestResult) { result in
             if let result = result { vm.consume(result) }
         }
@@ -176,104 +168,6 @@ struct MonitorView: View {
         }
         .padding(20)
     }
-}
-
-// MARK: - 会话列表
-
-struct MonitorSessionListView: View {
-    @ObservedObject var store: MonitorSessionStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var selected: MonitorSession?
-
-    var body: some View {
-        NavigationView {
-            ZStack {
-                MeterTheme.backgroundGradient.ignoresSafeArea()
-                if store.sessions.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 36))
-                            .foregroundColor(.white.opacity(0.3))
-                        Text("还没有监听记录")
-                            .font(.system(size: 14))
-                            .foregroundColor(MeterTheme.secondaryText)
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(store.sessions) { session in
-                                Button {
-                                    selected = session
-                                } label: {
-                                    sessionRow(session)
-                                }
-                                .buttonStyle(.plain)
-                                .contextMenu {
-                                    if let index = store.sessions.firstIndex(where: { $0.id == session.id }) {
-                                        Button(role: .destructive) {
-                                            store.delete(at: IndexSet(integer: index))
-                                        } label: {
-                                            Label("删除", systemImage: "trash")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20).padding(.vertical, 12)
-                    }
-                }
-            }
-            .navigationTitle("监听记录")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") { dismiss() }
-                        .foregroundColor(MeterTheme.waveColor)
-                }
-            }
-        }
-        .navigationViewStyle(.stack)
-        .sheet(item: $selected) { session in
-            MonitorSessionDetailView(session: session, store: store)
-        }
-    }
-
-    private func sessionRow(_ session: MonitorSession) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(Self.df.string(from: session.startTime))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                Spacer()
-                if session.endTime == nil {
-                    Text("进行中").font(.system(size: 12))
-                        .foregroundColor(MeterTheme.waveColor)
-                } else if session.abnormalEnd {
-                    Text("异常结束").font(.system(size: 12))
-                        .foregroundColor(.orange)
-                }
-            }
-            HStack {
-                Text("LAeq \(String(format: "%.1f", session.overallLaeq)) dB · \(session.events.count) 次事件")
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.55))
-                Spacer()
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(MeterTheme.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 14)
-                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
-        )
-    }
-
-    private static let df: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MM-dd HH:mm"
-        return f
-    }()
 }
 
 // MARK: - 时间线详情
