@@ -37,6 +37,7 @@ struct SettingsOverlay: View {
                             .background(Circle().fill(.white.opacity(0.1)))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("关闭")
                 }
                 .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 14)
 

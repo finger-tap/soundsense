@@ -26,3 +26,6 @@ DerivedData/
 # 本地 xcodebuild 试验产物
 .dd-ios/
 .dd-test/
+
+# Xcode 自动生成的工作区目录
+SoundSense.xcodeproj/project.xcworkspace/

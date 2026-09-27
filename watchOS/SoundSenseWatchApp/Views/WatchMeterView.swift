@@ -86,10 +86,18 @@ struct WatchMeterView: View {
                         .foregroundColor(.white.opacity(0.55))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("设置")
             }
             .padding(.bottom, 4)
         }
-        // 抬腕即测:进入前台自动启动
+        // 抬腕即测:进入前台自动启动。
+        // 首次冷启动时 scenePhase 可能已是 .active,onChange 不会再触发,
+        // 因此用 task 兜底执行一次启动判断。
+        .task {
+            if scenePhase == .active {
+                await viewModel.start()
+            }
+        }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .active:

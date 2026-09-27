@@ -23,7 +23,7 @@
     <key>WKApplication</key>
     <true/>
     <key>WKWatchOnly</key>
-    <false/>
+    <true/>
     <key>NSMicrophoneUsageDescription</key>
     <string>闻声需要访问麦克风来测量环境噪音水平。</string>
 </dict>

@@ -52,6 +52,7 @@ struct MainMeterView: View {
                                 .foregroundColor(.white.opacity(0.8))
                                 .frame(width: 38, height: 38)
                         }
+                        .accessibilityLabel("测量历史")
                         Button {
                             showingSettings = true
                         } label: {
@@ -60,6 +61,7 @@ struct MainMeterView: View {
                                 .foregroundColor(.white.opacity(0.8))
                                 .frame(width: 38, height: 38)
                         }
+                        .accessibilityLabel("设置")
                     }
                     .padding(.horizontal, marginX)
                     .padding(.top, 4)

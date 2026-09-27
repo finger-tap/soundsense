@@ -91,21 +91,25 @@ public struct DBRulerGauge: View {
                                style: StrokeStyle(lineWidth: 1))
 
                     // 主刻度数字(每 20 dB)+ 风险刻度数字
+                    // 首尾标签向内夹取,避免中心对齐到画布边缘被裁一半
                     for labelDB in [30, 50, 70, 110] {
+                        let labelX = max(14, min(size.width - 14, toX(Float(labelDB))))
                         ctx.draw(Text("\(labelDB)")
                                     .font(MeterTheme.mono(9))
                                     .foregroundColor(.white.opacity(0.45)),
-                                 at: CGPoint(x: toX(Float(labelDB)), y: bandBottom + 8))
+                                 at: CGPoint(x: labelX, y: bandBottom + 8))
                     }
+                    let riskX = max(14, min(size.width - 14, toX(riskDB)))
                     ctx.draw(Text("85")
                                 .font(MeterTheme.mono(9, weight: .semibold))
                                 .foregroundColor(Color(red: 1.0, green: 0.35, blue: 0.30)),
-                             at: CGPoint(x: toX(riskDB), y: bandBottom + 8))
+                             at: CGPoint(x: riskX, y: bandBottom + 8))
                 }
 
                 // 动态部分:指针(独立图层,弹簧动画)
                 let progress = CGFloat(max(0, min(1, (spl - minDB) / (maxDB - minDB))))
-                let needleX = progress * w
+                // 指针 x 夹在刻度尺内,避免静止在 0 位时被裁一半
+                let needleX = min(w - 1.5, max(1.5, progress * w))
                 let active = spl.isFinite && spl > -80
 
                 Capsule()

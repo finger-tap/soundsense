@@ -132,6 +132,7 @@ struct MacMainMeterView: View {
                     .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
                     .frame(width: 32, height: 32)
                     .background(Circle().fill(.white.opacity(showingHistory ? 0.12 : 0)))
+                    .accessibilityLabel("测量历史")
             }
             .buttonStyle(.plain)
             Button { showingSettings = true } label: {
@@ -139,6 +140,7 @@ struct MacMainMeterView: View {
                     .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
                     .frame(width: 32, height: 32)
                     .background(Circle().fill(.white.opacity(showingSettings ? 0.12 : 0)))
+                    .accessibilityLabel("设置")
             }
             .buttonStyle(.plain)
         }
