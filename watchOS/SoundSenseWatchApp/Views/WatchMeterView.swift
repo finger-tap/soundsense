@@ -99,7 +99,8 @@ struct WatchMeterView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("设置")
                 }
-                .padding(.bottom, 4)
+            }
+            .padding(.bottom, 4)
         }
         // 抬腕即测:进入前台自动启动。
         // 首次冷启动时 scenePhase 可能已是 .active,onChange 不会再触发,
