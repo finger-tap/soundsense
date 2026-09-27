@@ -46,10 +46,13 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
     /// 整场测量中 SPL ≥ 85 dB 的累计时长(秒)
     public let overLimitTotal: TimeInterval
     public let samples: [ReportSample]  // 趋势曲线用
+    /// 关联录音文件名主干(Recordings/<audioID>.m4a);旧记录/无录音为 nil
+    public var audioID: String?
 
     public init(startTime: Date, endTime: Date, duration: TimeInterval,
                 avgSPL: Float, laeqSPL: Float, peakSPL: Float, minSPL: Float,
-                overLimitTotal: TimeInterval, samples: [ReportSample]) {
+                overLimitTotal: TimeInterval, samples: [ReportSample],
+                audioID: String? = nil) {
         self.startTime = startTime
         self.endTime = endTime
         self.duration = duration
@@ -59,6 +62,7 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
         self.minSPL = minSPL
         self.overLimitTotal = overLimitTotal
         self.samples = samples
+        self.audioID = audioID
     }
 }
 

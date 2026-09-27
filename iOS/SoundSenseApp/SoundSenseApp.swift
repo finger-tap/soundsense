@@ -20,6 +20,9 @@ struct SoundSenseApp: App {
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
+
+        // 手表三点测试结果接收
+        WatchSyncManager.shared.activate()
     }
 
     var body: some Scene {

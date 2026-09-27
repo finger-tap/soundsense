@@ -78,6 +78,10 @@ public final class AudioMeterEngine: ObservableObject {
     private let engine = AVAudioEngine()
     /// 标记 tap 是否已安装(installTap 重复装会抛异常)
     private var tapInstalled = false
+    /// 活跃输入采样率(tap 安装时确定;录音器据此设计降采样)
+    public private(set) var activeSampleRate: Float = 48000
+    /// 样本挂点:录音器等外部消费者由此收到与测量同源的 PCM 分块
+    private let sinkBox = SampleSinkBox()
 
     // MARK: - 初始化
 
@@ -176,9 +180,17 @@ public final class AudioMeterEngine: ObservableObject {
         try? AVAudioSession.sharedInstance().setActive(false,
                                                         options: [.notifyOthersOnDeactivation])
         #endif
+        sinkBox.set(nil)
         worker?.reset()
         latestResult = nil
         state = .stopped
+    }
+
+    // MARK: - 样本挂点
+
+    /// 设置/清除样本挂点(线程安全;tap 在音频线程每帧调用)
+    public func setSampleSink(_ sink: (@Sendable ([Float]) -> Void)?) {
+        sinkBox.set(sink)
     }
 
     // MARK: - 内部实现
@@ -220,6 +232,7 @@ public final class AudioMeterEngine: ObservableObject {
         let sampleRate = (format.sampleRate > 0 && format.sampleRate.isFinite)
                          ? Float(format.sampleRate) : 48000
         worker?.updateSampleRate(sampleRate)
+        activeSampleRate = sampleRate
 
         // 防御性移除旧 tap(installTap 重复装会抛 "tap already installed")。
         inputNode.removeTap(onBus: 0)
@@ -231,6 +244,7 @@ public final class AudioMeterEngine: ObservableObject {
             guard let channelData = buffer.floatChannelData?[0] else { return }
             let frameLength = Int(buffer.frameLength)
             let samples = Array(UnsafeBufferPointer(start: channelData, count: frameLength))
+            self.sinkBox.deliver(samples)
             self.worker?.enqueue(samples)
         }
         tapInstalled = true
@@ -241,6 +255,22 @@ public final class AudioMeterEngine: ObservableObject {
         // 这里只做尽力清理。
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+    }
+}
+
+// MARK: - 线程安全的样本挂点盒子(音频线程读,主线程写)
+
+private final class SampleSinkBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var sink: (@Sendable ([Float]) -> Void)?
+
+    func set(_ s: (@Sendable ([Float]) -> Void)?) {
+        lock.lock(); sink = s; lock.unlock()
+    }
+
+    func deliver(_ samples: [Float]) {
+        lock.lock(); let s = sink; lock.unlock()
+        s?(samples)
     }
 }
 
