@@ -20,7 +20,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.waveColor)
                 }
             }
         }

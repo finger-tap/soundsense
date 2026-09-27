@@ -60,11 +60,12 @@ struct MainMeterView: View {
                             }
                             showingMonitor = true
                         } label: {
-                            Image(systemName: "waveform.circle")
+                            Image(systemName: "moon.zzz")
                                 .font(.body)
                                 .foregroundColor(.white.opacity(0.8))
                                 .frame(width: 38, height: 38)
                         }
+                        .accessibilityLabel("长时间监听")
                         Button {
                             // 声源定位与测量互斥:进入前先停掉主测量
                             if viewModel.engine.state == .running {
@@ -72,11 +73,12 @@ struct MainMeterView: View {
                             }
                             showingSourceTest = true
                         } label: {
-                            Image(systemName: "location")
+                            Image(systemName: "dot.radiowaves.left.and.right")
                                 .font(.body)
                                 .foregroundColor(.white.opacity(0.8))
                                 .frame(width: 38, height: 38)
                         }
+                        .accessibilityLabel("声源定位")
                         Button {
                             showingHistory = true
                         } label: {

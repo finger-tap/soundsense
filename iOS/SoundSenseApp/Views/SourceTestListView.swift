@@ -51,7 +51,7 @@ struct SourceTestListView: View {
 
     private var empty: some View {
         VStack(spacing: 10) {
-            Image(systemName: "location")
+            Image(systemName: "dot.radiowaves.left.and.right")
                 .font(.system(size: 40))
                 .foregroundColor(.white.opacity(0.3))
             Text("还没有测试记录")
@@ -173,7 +173,7 @@ struct SourceTestDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.waveColor)
                 }
             }
         }

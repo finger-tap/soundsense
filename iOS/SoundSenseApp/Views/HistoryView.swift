@@ -24,31 +24,59 @@ struct CSVShareSheet: UIViewControllerRepresentable {
 
 struct HistoryView: View {
     @ObservedObject var store: MeasurementHistoryStore
+    @ObservedObject var sourceStore = SourceTestStore.shared
+    @ObservedObject var monitorStore = MonitorSessionStore.shared
     let deviceName: String
     let calibrationOffset: Float
     @Environment(\.dismiss) private var dismiss
+    /// 0 测量 / 1 声源测试 / 2 监听(UI 自动化可用启动参数预选分段)
+    #if DEBUG
+    @State private var tab: Int = {
+        if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("UITEST_HISTORY_TAB=") }),
+           let value = Int(arg.dropFirst("UITEST_HISTORY_TAB=".count)) { return value }
+        return 0
+    }()
+    #else
+    @State private var tab = 0
+    #endif
     @State private var sharingStats: MeasurementStats?
     @State private var sharingCSV: CSVItem?
     @State private var selectedRecord: MeasurementStats?
+    @State private var selectedSource: SourceTestResult?
+    @State private var sharingSourceHTML: SourceTestResult?
+    @State private var selectedSession: MonitorSession?
 
     var body: some View {
         NavigationView {
-            Group {
-                if store.records.isEmpty {
-                    emptyState
-                } else {
-                    list
+            VStack(spacing: 0) {
+                Picker("记录类型", selection: $tab) {
+                    Text("测量").tag(0)
+                    Text("声源测试").tag(1)
+                    Text("监听").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .tint(MeterTheme.waveColor)
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 4)
+
+                switch tab {
+                case 0:
+                    if store.records.isEmpty { emptyState } else { list }
+                case 1:
+                    if sourceStore.results.isEmpty { sourceEmpty } else { sourceList }
+                default:
+                    if monitorStore.sessions.isEmpty { monitorEmpty } else { monitorList }
                 }
             }
+            .background(MeterTheme.backgroundGradient.ignoresSafeArea())
             .navigationTitle("测量历史")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("完成") { dismiss() }
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.waveColor)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if !store.records.isEmpty {
+                    if tab == 0, !store.records.isEmpty {
                         HStack(spacing: 14) {
                             Button {
                                 sharingCSV = CSVItem(
@@ -56,7 +84,7 @@ struct HistoryView: View {
                                     filename: "闻声数据_全部记录.csv")
                             } label: {
                                 Text("CSV").font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.9))
+                                    .foregroundColor(MeterTheme.waveColor)
                             }
                             Button(role: .destructive) {
                                 store.removeAll()
@@ -83,7 +111,173 @@ struct HistoryView: View {
         .sheet(item: $sharingCSV) { item in
             CSVShareSheet(text: item.text, filename: item.filename)
         }
+        .sheet(item: $selectedSource) { result in
+            SourceTestDetailView(result: result, store: sourceStore,
+                                 deviceName: deviceName)
+        }
+        .sheet(item: $sharingSourceHTML) { result in
+            SourceTestHTMLShareSheet(result: result, deviceName: deviceName,
+                                     audioURL: result.audioID.map { sourceStore.audioFileURL(forID: $0) })
+        }
+        .sheet(item: $selectedSession) { session in
+            MonitorSessionDetailView(session: session, store: monitorStore)
+        }
     }
+
+    // MARK: - 声源测试记录
+
+    private var sourceList: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(sourceStore.results) { result in
+                    Button {
+                        selectedSource = result
+                    } label: {
+                        sourceRow(result)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            sharingSourceHTML = result
+                        } label: {
+                            Label("分享完整报告", systemImage: "doc.richtext")
+                        }
+                        if let index = sourceStore.results.firstIndex(where: { $0.id == result.id }) {
+                            Button(role: .destructive) {
+                                sourceStore.delete(at: IndexSet(integer: index))
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20).padding(.vertical, 12)
+        }
+    }
+
+    private func sourceRow(_ result: SourceTestResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(Self.rowDate.string(from: result.startTime))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+                Text(SourceTestHTMLBuilder.verdictText(result.verdict))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(MeterTheme.waveColor)
+            }
+            HStack {
+                Text("置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType))")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.55))
+                Spacer()
+                if result.audioID != nil {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 11))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(MeterTheme.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 14)
+                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
+        )
+    }
+
+    private var sourceEmpty: some View {
+        recordEmpty(icon: "dot.radiowaves.left.and.right",
+                    title: "还没有声源测试记录",
+                    subtitle: "完成一次声源倾向测试后,结果会保存在这里")
+    }
+
+    // MARK: - 监听记录
+
+    private var monitorList: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(monitorStore.sessions) { session in
+                    Button {
+                        selectedSession = session
+                    } label: {
+                        monitorRow(session)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        if let index = monitorStore.sessions.firstIndex(where: { $0.id == session.id }) {
+                            Button(role: .destructive) {
+                                monitorStore.delete(at: IndexSet(integer: index))
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20).padding(.vertical, 12)
+        }
+    }
+
+    private func monitorRow(_ session: MonitorSession) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(Self.rowDate.string(from: session.startTime))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+                if session.endTime == nil {
+                    Text("进行中").font(.system(size: 12))
+                        .foregroundColor(MeterTheme.waveColor)
+                } else if session.abnormalEnd {
+                    Text("异常结束").font(.system(size: 12))
+                        .foregroundColor(.orange)
+                }
+            }
+            HStack {
+                Text("LAeq \(String(format: "%.1f", session.overallLaeq)) dB · \(session.events.count) 次事件")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.55))
+                Spacer()
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(MeterTheme.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 14)
+                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
+        )
+    }
+
+    private var monitorEmpty: some View {
+        recordEmpty(icon: "moon.zzz",
+                    title: "还没有监听记录",
+                    subtitle: "开启一次长时间监听后,会话会保存在这里")
+    }
+
+    private func recordEmpty(icon: String, title: String, subtitle: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 40))
+                .foregroundColor(.white.opacity(0.3))
+            Text(title)
+                .font(.system(size: 15))
+                .foregroundColor(MeterTheme.secondaryText)
+            Text(subtitle)
+                .font(.system(size: 12))
+                .foregroundColor(MeterTheme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private static let rowDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MM-dd HH:mm"
+        return f
+    }()
 
     private var list: some View {
         ScrollView {

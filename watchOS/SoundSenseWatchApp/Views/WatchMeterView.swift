@@ -84,7 +84,7 @@ struct WatchMeterView: View {
                         viewModel.stop()
                         showingSourceTest = true
                     } label: {
-                        Image(systemName: "location")
+                        Image(systemName: "dot.radiowaves.left.and.right")
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.55))
                     }
