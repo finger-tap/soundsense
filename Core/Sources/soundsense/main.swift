@@ -227,6 +227,28 @@ func runSweep() {
               "\(String(format: "%+12.2f", ref))  \(mark)")
     }
     print()
+
+    // C 计权曲线(IEC 61672-1 表 A.2 关键点)
+    // 回归背景:C 曾错把 A 的 107.7/737.9 中频因子抄进分母,
+    // 导致 20Hz 放大 +17dB、10kHz 衰减 -42dB,宽带读数严重失真。
+    let cReference: [Float: Float] = [
+        20: -6.2, 31.5: -3.0, 63: -0.8, 125: -0.2, 500: 0.0,
+        1000: 0.0, 2000: -0.2, 4000: -0.8, 8000: -3.0,
+        10000: -4.4, 20000: -11.2,
+    ]
+    print("  C 计权曲线扫描 (IEC 61672-1 表 A.2)\n")
+    print("  频率         C计权增益(dB)   参考标准值(dB)")
+    print("  ──────────   ─────────────   ──────────────")
+    let cFreqs: [Float] = [20, 31.5, 63, 125, 500, 1000, 2000, 4000, 8000, 10000, 20000]
+    for f in cFreqs {
+        let calc = CWeighting.gain(at: f)
+        let ref = cReference[f] ?? 0
+        let mark = abs(calc - ref) < 0.5 ? "✅" : "❌"
+        print("  \(String(format: "%8.1f Hz", f))   " +
+              "\(String(format: "%+12.2f", calc))   " +
+              "\(String(format: "%+12.2f", ref))  \(mark)")
+    }
+    print()
     print("  ✅ = 偏差 < 0.5 dB，符合 IEC 61672 容差")
 }
 

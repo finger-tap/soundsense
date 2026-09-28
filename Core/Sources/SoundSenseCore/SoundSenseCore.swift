@@ -104,20 +104,19 @@ public enum CWeighting {
     public static func gain(at frequency: Float) -> Float {
         if frequency <= 0 { return -.greatestFiniteMagnitude }
 
+        // IEC 61672-1 C 计权只有两个极点(A 计权专属的 107.7/737.9
+        // 中频谐振因子不属于 C):
+        //   Rc(f) = 12194²·f² / ((f²+20.6²)·(f²+12194²))
         let f2 = frequency * frequency
         let numerator = 12194.0 * 12194.0 * f2
-        let denominator = (f2 + 20.6 * 20.6)
-            * sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9))
-            * (f2 + 12194.0 * 12194.0)
+        let denominator = (f2 + 20.6 * 20.6) * (f2 + 12194.0 * 12194.0)
         let rc = numerator / denominator
 
         // 归一化:f = 1000 Hz 时的 Rc
         let f0: Float = 1000
         let f02 = f0 * f0
         let num0 = 12194.0 * 12194.0 * f02
-        let den0 = (f02 + 20.6 * 20.6)
-            * sqrt((f02 + 107.7 * 107.7) * (f02 + 737.9 * 737.9))
-            * (f02 + 12194.0 * 12194.0)
+        let den0 = (f02 + 20.6 * 20.6) * (f02 + 12194.0 * 12194.0)
         let rcMax = num0 / den0
 
         return 20.0 * log10(rc / rcMax)
