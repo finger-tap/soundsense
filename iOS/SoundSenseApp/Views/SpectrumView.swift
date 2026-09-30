@@ -53,31 +53,15 @@ struct SpectrumView: View {
         }
     }
 
-    /// 把全频谱按对数频率轴聚合成 bandCount 个频段
+    /// 把全频谱按对数频率轴聚合成 bandCount 个频段。
+    /// 低频段可能窄于 FFT bin 间距(48 kHz/4096 点 ≈ 11.7 Hz),
+    /// 空段由 SpectrumBands 用相邻 bin 插值填充,否则会显示成恒贴底死柱。
     private func aggregatedBands() -> [[Float]] {
-        guard !spectrum.isEmpty, !frequencies.isEmpty else { return [] }
-        let minF: Float = frequencies.last! > 0 ? 20 : 0
-        let maxF: Float = min(maxFrequency, frequencies.last!)
-        guard maxF > minF else { return [] }
-
-        let logMin = log10(minF > 0 ? minF : 1)
-        let logMax = log10(maxF)
-        var bands: [[Float]] = []
-        let step = (logMax - logMin) / Float(bandCount)
-
-        for i in 0..<bandCount {
-            let lo = pow(10, logMin + Float(i) * step)
-            let hi = pow(10, logMin + Float(i + 1) * step)
-            // 收集落在 [lo, hi) 内的频谱值
-            var bucket: [Float] = []
-            for (idx, f) in frequencies.enumerated() where f >= lo && f < hi {
-                if idx < spectrum.count {
-                    bucket.append(spectrum[idx])
-                }
-            }
-            bands.append(bucket)
-        }
-        return bands
+        SpectrumBands.aggregate(spectrum: spectrum,
+                                frequencies: frequencies,
+                                bandCount: bandCount,
+                                minFrequency: 20,
+                                maxFrequency: maxFrequency)
     }
 
     private func bandColor(normalized: Double) -> Color {

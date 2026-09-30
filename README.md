@@ -144,21 +144,32 @@ soundsense/
 iOS/macOS 返回的是 dBFS（数字分贝），不是物理声压级 SPL。转换关系：
 
 ```
-SPL = dBFS(A) + Offset
+SPL = dBFS(RMS) + 计权修正 + Offset
 ```
 
-Offset 取决于设备麦克风灵敏度，需用标准声级计对比实测。详见代码中的校准向导设计。
+Offset 取决于设备麦克风灵敏度。依据数字 MEMS 麦克风行业惯例
+（94 dB SPL @ 1 kHz ≈ −29 dBFS RMS），内建麦克风的 Offset 典型值
+约 **+120 dB**（真机实测分布 117~126，离散 ±6 dB）：
+
+- iOS 内建麦克风默认 +120，Apple Watch +115，Mac +100，外接/耳机 +90
+- 旧版本的默认 +93 偏低约 30 dB（会导致环境噪音显示个位数），
+  已在 v2.1 自动迁移
+- 预设只是开箱估计：精确值请用设置页 **实时校准** 对照标准声级计
+  （或 94 dB / 1 kHz 声校准器）实测，结果按设备持久化
+
+原理细节（声级计链路、F/S 检波器、Leq、C−A 差异解读、误差来源）
+见 `docs/calibration-notes.md`。
 
 ## 🗺 开发路线图
 
-- [x] 核心算法（A 计权 + FFT + dBFS）
+- [x] 核心算法（A/C 计权 + FFT + 能量域 F/S 检波 + Leq）
 - [x] 命令行验证工具（test / sweep / live）
 - [x] macOS .app 打包
 - [x] GitHub Actions 自动发布
-- [ ] iOS App（SwiftUI 界面）
-- [ ] 校准向导（标准声级计对比）
-- [ ] 实时频谱图可视化
-- [ ] 历史记录与数据导出
+- [x] iOS App（SwiftUI 界面）
+- [x] 校准向导（标准声级计对比）
+- [x] 实时频谱图可视化
+- [x] 历史记录与数据导出
 - [ ] 代码签名与公证
 
 ## 📄 License

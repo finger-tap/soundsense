@@ -197,7 +197,7 @@ struct SettingsOverlay: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("校准").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
 
-            Text("麦克风采集的是数字分贝(dBFS),加上偏移量换算成真实声压级(SPL)。默认 +93 dB 适用多数 Mac 麦克风,可用标准声级计微调。校准值按输入设备分别保存。")
+            Text("麦克风采集的是数字分贝(dBFS),加上偏移量换算成真实声压级(SPL)。默认 +100 dB 是 Mac 内建麦克风的保守估计(±6 dB 离散),可用标准声级计对照校准。校准值按输入设备分别保存。")
                 .font(.system(size: 11.5)).foregroundColor(.white.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -213,29 +213,31 @@ struct SettingsOverlay: View {
                 Slider(value: Binding(
                     get: { Double(viewModel.calibrationOffset) },
                     set: { viewModel.calibrationOffset = Float($0) }
-                ), in: 60...110, step: 0.5)
+                ), in: 80...140, step: 0.5)
                 .tint(Color(red: 0.24, green: 0.83, blue: 0.69))
                 HStack {
-                    Text("60").font(.system(size: 9)); Spacer()
-                    Text("85").font(.system(size: 9)); Spacer()
-                    Text("110").font(.system(size: 9))
+                    Text("80").font(.system(size: 9)); Spacer()
+                    Text("110").font(.system(size: 9)); Spacer()
+                    Text("140").font(.system(size: 9))
                 }.foregroundColor(.white.opacity(0.3))
             }
 
             HStack(spacing: 8) {
-                presetButton(label: "Mac 内建麦克风", offset: 93)
-                presetButton(label: "外接麦克风", offset: 85)
+                presetButton(label: "Mac 内建麦克风", offset: CalibrationDefaults.macBuiltIn)
+                presetButton(label: "外接麦克风", offset: CalibrationDefaults.external)
             }
 
             Button {
-                viewModel.calibrationOffset = 93
+                viewModel.calibrationOffset = CalibrationDefaults.macBuiltIn
             } label: {
-                Text("恢复默认 (+93)")
+                Text("恢复默认 (+100)")
                     .font(.system(size: 12, weight: .medium)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 9).fill(.white.opacity(0.06)))
             }
             .buttonStyle(.plain)
+
+            liveCalibration
         }
         .padding(16)
         .background(
@@ -244,6 +246,51 @@ struct SettingsOverlay: View {
                 .overlay(RoundedRectangle(cornerRadius: 13)
                     .stroke(.white.opacity(0.07), lineWidth: 1))
         )
+    }
+
+    /// 实时校准:测量运行中显示当前读数,对照参考计微调
+    @ViewBuilder
+    private var liveCalibration: some View {
+        if viewModel.engine.state == .running {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("实时校准").font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
+                    Spacer()
+                    Text("当前读数").font(.system(size: 10)).foregroundColor(.white.opacity(0.4))
+                    Text(String(format: "%.1f dB", viewModel.currentSPL))
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+                }
+                HStack(spacing: 6) {
+                    adjustButton("-1", -1)
+                    adjustButton("-0.5", -0.5)
+                    adjustButton("+0.5", 0.5)
+                    adjustButton("+1", 1)
+                }
+                Text("把标准声级计放在 Mac 同一位置(计权一致),微调直到读数一致;有 94 dB/1 kHz 声校准器则调到显示 94。")
+                    .font(.system(size: 10)).foregroundColor(.white.opacity(0.4))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
+        } else {
+            Text("提示:开始测量后回到这里,可对照标准声级计实时微调偏移量。")
+                .font(.system(size: 10.5)).foregroundColor(.white.opacity(0.4))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func adjustButton(_ label: String, _ delta: Float) -> some View {
+        Button {
+            viewModel.calibrationOffset += delta
+        } label: {
+            Text(label)
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 7)
+                .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
     }
 
     private func presetButton(label: String, offset: Float) -> some View {
@@ -342,8 +389,8 @@ struct SettingsOverlay: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("关于").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
             row(title: "版本", value: appVersionString())
-            row(title: "算法", value: "IEC 61672 A 计权 · 4096 点 FFT")
-            row(title: "精度", value: "1 kHz 参考点 < 0.1 dB")
+            row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
+            row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
             Divider().background(.white.opacity(0.1))
             Text("核心算法基于 Accelerate/vDSP,符合 IEC 61672-1 国际标准。")
                 .font(.system(size: 10.5)).foregroundColor(.white.opacity(0.4))

@@ -76,11 +76,18 @@ final class MeterViewModel: ObservableObject {
         UserDefaults.standard.set(offsets, forKey: "calibrationOffsetsByDevice")
     }
 
-    /// 各设备类型的校准预设初值(方案文档参考值,需实测微调)
+    /// 各设备类型的校准预设初值(与 CalibrationDefaults 对齐;均为开箱估计,需实测微调)
     static func defaultOffset(forKind kind: AudioInputDevice.Kind) -> Double {
         switch kind {
-        case .usb: return 85
-        default: return 93   // 内建 / 连续互通 / 其他均为 93
+        case .continuity:
+            // 连续互通用的是 iPhone 本机麦克风,按 iOS 内建典型值
+            return Double(CalibrationDefaults.iosBuiltIn)
+        case .usb, .bluetooth:
+            // 外接/耳机麦克风灵敏度离散极大,仅为开箱占位,务必校准
+            return Double(CalibrationDefaults.external)
+        default:
+            // 内建 / 虚拟 / 聚合 / 未知:按 Mac 内建保守估计
+            return Double(CalibrationDefaults.macBuiltIn)
         }
     }
 
@@ -127,16 +134,18 @@ final class MeterViewModel: ObservableObject {
     }
 
     init() {
-        // 兼容迁移:旧版全局 calibrationOffset 并入按设备字典的 systemDefault 键
+        // 兼容迁移:旧版全局 calibrationOffset 经 CalibrationDefaults 迁移
+        // (仍是旧默认 +93 且未手动改过 → 平台新默认;手动改过的原样保留),
+        // 并入按设备字典的 systemDefault 键。
         var offsets = Self.loadOffsets()
-        if offsets[Self.systemDefaultKey] == nil,
-           let legacy = UserDefaults.standard.object(forKey: "calibrationOffset") as? Double {
-            offsets[Self.systemDefaultKey] = legacy
+        if offsets[Self.systemDefaultKey] == nil {
+            offsets[Self.systemDefaultKey] = Double(CalibrationDefaults.resolved(platformDefault: CalibrationDefaults.macBuiltIn))
             Self.saveOffsets(offsets)
         }
 
         // 初始校准值:当前选中设备(持久化的 inputDeviceUID)的记录,无记录按类型预设。
-        // 默认 +93 dB(典型 Mac 麦克风),开箱即显示 SPL 而非裸 dBFS。
+        // 预设与 CalibrationDefaults 对齐(Mac 内建 +100 / 外接 +90 / iPhone 麦克风 +120),
+        // 开箱即显示 SPL 而非裸 dBFS;精确值需设置页对照标准声级计实测。
         let selectedUID = UserDefaults.standard.string(forKey: "inputDeviceUID")
         var selectedKind: AudioInputDevice.Kind = .builtIn
         if let uid = selectedUID,

@@ -43,24 +43,12 @@ struct WatchSpectrumView: View {
         }
     }
 
+    /// 对数频率轴聚合;空段(段宽 < bin 间距时)由 SpectrumBands 插值填充
     private func aggregatedBands() -> [[Float]] {
-        guard !spectrum.isEmpty, !frequencies.isEmpty else { return [] }
-        let minF: Float = 20
-        let maxF: Float = min(maxFrequency, frequencies.last!)
-        guard maxF > minF else { return [] }
-        let logMin = log10(minF)
-        let logMax = log10(maxF)
-        var bands: [[Float]] = []
-        let step = (logMax - logMin) / Float(bandCount)
-        for i in 0..<bandCount {
-            let lo = pow(10, logMin + Float(i) * step)
-            let hi = pow(10, logMin + Float(i + 1) * step)
-            var bucket: [Float] = []
-            for (idx, f) in frequencies.enumerated() where f >= lo && f < hi {
-                if idx < spectrum.count { bucket.append(spectrum[idx]) }
-            }
-            bands.append(bucket)
-        }
-        return bands
+        SpectrumBands.aggregate(spectrum: spectrum,
+                                frequencies: frequencies,
+                                bandCount: bandCount,
+                                minFrequency: 20,
+                                maxFrequency: maxFrequency)
     }
 }

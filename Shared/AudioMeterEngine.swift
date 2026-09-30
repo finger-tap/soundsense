@@ -76,6 +76,13 @@ public final class AudioMeterEngine: ObservableObject {
         }
     }
 
+    /// 时间计权方式(F/S, IEC 61672)。改动会立即在 worker 里重建 DBMeter。
+    public var timeWeighting: TimeWeighting {
+        didSet {
+            worker?.updateTimeWeighting(timeWeighting)
+        }
+    }
+
     /// 回调节流间隔(秒)。两次回调间隔小于此值时丢弃中间帧。
     public let throttleInterval: TimeInterval
 
@@ -106,14 +113,17 @@ public final class AudioMeterEngine: ObservableObject {
     public init(calibrationOffset: Float = 0,
                 throttleInterval: TimeInterval = 0.06,
                 fftSize: Int = 4096,
-                weighting: Weighting = .a) {
+                weighting: Weighting = .a,
+                timeWeighting: TimeWeighting = .fast) {
         self.calibrationOffset = calibrationOffset
         self.throttleInterval = throttleInterval
         self.weighting = weighting
+        self.timeWeighting = timeWeighting
         self.worker = MeterWorker(fftSize: fftSize,
                                   throttleInterval: throttleInterval,
                                   calibrationOffset: calibrationOffset,
-                                  weighting: weighting) { [weak self] result in
+                                  weighting: weighting,
+                                  timeWeighting: timeWeighting) { [weak self] result in
             // worker 回调发生在 meterQueue 上;切回主线程更新状态
             Task { @MainActor in
                 self?.latestResult = result
@@ -407,11 +417,13 @@ private final class MeterWorker: @unchecked Sendable {
     private var currentSampleRate: Float
     private var currentOffset: Float
     private var currentWeighting: Weighting
+    private var currentTimeWeighting: TimeWeighting
 
     init(fftSize: Int,
          throttleInterval: TimeInterval,
          calibrationOffset: Float,
          weighting: Weighting,
+         timeWeighting: TimeWeighting = .fast,
          callback: @escaping (MeterResult) -> Void) {
         self.fftSize = fftSize
         self.throttleInterval = throttleInterval
@@ -419,10 +431,12 @@ private final class MeterWorker: @unchecked Sendable {
         self.currentSampleRate = 48000
         self.currentOffset = calibrationOffset
         self.currentWeighting = weighting
+        self.currentTimeWeighting = timeWeighting
         self.meter = DBMeter(config: MeterConfig(sampleRate: 48000,
                                                   fftSize: fftSize,
                                                   calibrationOffset: calibrationOffset,
-                                                  weighting: weighting))
+                                                  weighting: weighting,
+                                                  timeWeighting: timeWeighting))
     }
 
     /// 投递一批样本(可从任意线程调用)
@@ -437,7 +451,8 @@ private final class MeterWorker: @unchecked Sendable {
         meter = DBMeter(config: MeterConfig(sampleRate: currentSampleRate,
                                             fftSize: fftSize,
                                             calibrationOffset: currentOffset,
-                                            weighting: currentWeighting))
+                                            weighting: currentWeighting,
+                                            timeWeighting: currentTimeWeighting))
     }
 
     /// 更新采样率(下次处理前生效)
@@ -467,11 +482,23 @@ private final class MeterWorker: @unchecked Sendable {
         }
     }
 
+    /// 更新时间计权(F/S)
+    func updateTimeWeighting(_ timeWeighting: TimeWeighting) {
+        meterQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.currentTimeWeighting = timeWeighting
+            self.rebuildMeter()
+        }
+    }
+
     /// 清空缓冲
     func reset() {
         meterQueue.async { [weak self] in
-            self?.sampleBuffer.removeAll(keepingCapacity: true)
-            self?.lastCallbackTime = 0
+            guard let self = self else { return }
+            self.sampleBuffer.removeAll(keepingCapacity: true)
+            self.lastCallbackTime = 0
+            self.meter.resetDetector()
+            self.meter.resetLeq()
         }
     }
 
@@ -480,17 +507,26 @@ private final class MeterWorker: @unchecked Sendable {
     /// 在 meterQueue 上执行(私有,只通过 meterQueue.async 调用)
     private func process(_ incoming: [Float]) {
         sampleBuffer.append(contentsOf: incoming)
-        // 限制缓冲上限,避免内存增长
-        if sampleBuffer.count > fftSize * 2 {
+
+        // 防御:队列积压(处理不过来)时丢最旧数据,保证缓冲不无界增长。
+        // 正常路径由下方 while 循环按 50% 重叠推进排空。
+        if sampleBuffer.count > fftSize * 4 {
             sampleBuffer.removeFirst(sampleBuffer.count - fftSize)
         }
-        guard sampleBuffer.count >= fftSize else { return }
 
-        // 取前 fftSize 个样本处理
-        let frame = Array(sampleBuffer.prefix(fftSize))
-        sampleBuffer.removeFirst(fftSize / 2)
+        // 50% 重叠推进:每凑满一个窗处理一次,窗口推进 fftSize/2。
+        // (旧实现每 tap 只处理一次且每次只移除半个窗,数据会越积越多,
+        //  积到上限又被整块丢弃 —— 两边都造成读数失真。)
+        let hop = fftSize / 2
+        var lastResult: MeterResult?
+        while sampleBuffer.count >= fftSize {
+            let frame = Array(sampleBuffer.prefix(fftSize))
+            lastResult = meter.process(frame, hopSamples: hop)
+            sampleBuffer.removeFirst(hop)
+            processCount += 1
+        }
 
-        guard let result = meter.process(frame) else { return }
+        guard let result = lastResult else { return }
 
         // 节流
         let now = Date.timeIntervalSinceReferenceDate
@@ -500,6 +536,45 @@ private final class MeterWorker: @unchecked Sendable {
         lastCallbackTime = now
 
         callback(result)
+    }
+}
+
+// MARK: - 校准默认值(dBFS → SPL 偏移)
+
+/// dBFS→SPL 校准默认值与旧默认迁移(三端共用,Foundation only)。
+///
+/// 原理:数字 MEMS 麦克风行业惯例(Analog Devices/Knowles/Infineon 规格书),
+/// 94 dB SPL @ 1 kHz 正弦对应 -26 dBFS(峰值参考)≈ -29 dBFS(RMS 参考;
+/// 本工程 dBFS 用 vDSP_rmsqv,即 RMS 参考)。由此
+///   SPL ≈ dBFS(RMS) + 120~123
+/// 真机实测(Empa 2015 报告 / Faber SoundMeter 出厂灵敏度)落在约 117~126 dB,
+/// 离散约 ±6 dB。旧默认 +93 比真实值低约 30 dB,正是"A 计权环境噪音只有
+/// 个位数"的根因。任何预设都只是开箱估计 —— 精确值必须用设置页的
+/// 校准向导对照标准声级计(或 94 dB 声校准器)实测。
+public enum CalibrationDefaults {
+
+    /// iOS 内建麦克风典型值
+    public static let iosBuiltIn: Float = 120
+    /// 外接/耳机麦克风:灵敏度离散极大,此值仅为开箱占位,务必校准
+    public static let external: Float = 90
+    /// Mac 内建麦克风(无公开实测数据,按同类 MEMS 保守估计)
+    public static let macBuiltIn: Float = 100
+    /// Apple Watch 内建麦克风(同上)
+    public static let watchBuiltIn: Float = 115
+
+    private static let offsetKey = "calibrationOffset"
+    private static let migratedKey = "calibrationMigratedV2"
+
+    /// 读取生效偏移量。
+    /// 兼容迁移:旧版本默认 +93(无依据估计)。从未手动改过且仍等于 93 的
+    /// 安装,自动升级到平台新默认;手动改过的值原样保留。
+    public static func resolved(platformDefault: Float,
+                                defaults: UserDefaults = .standard) -> Float {
+        guard defaults.object(forKey: offsetKey) != nil else { return platformDefault }
+        defer { defaults.set(true, forKey: migratedKey) }
+        let value = Float(defaults.double(forKey: offsetKey))
+        guard !defaults.bool(forKey: migratedKey), value == 93 else { return value }
+        return platformDefault
     }
 }
 

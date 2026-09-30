@@ -27,8 +27,8 @@ final class WatchMeterViewModel: ObservableObject {
     /// 测量记录器(与 iOS/macOS 同一套实时统计逻辑)
     private let recorder = MeasurementRecorder()
 
-    /// 校准偏移量,持久化(默认 +93 dB,典型手表麦克风)
-    @AppStorage("calibrationOffset") private var storedOffset: Double = 93
+    /// 校准偏移量,持久化(默认 +115 dB,手表内建麦克风保守估计)
+    @AppStorage("calibrationOffset") private var storedOffset: Double = Double(CalibrationDefaults.watchBuiltIn)
 
     var calibrationOffset: Float {
         get { Float(storedOffset) }
@@ -39,7 +39,9 @@ final class WatchMeterViewModel: ObservableObject {
     }
 
     init() {
-        let offset = Float(UserDefaults.standard.object(forKey: "calibrationOffset") as? Double ?? 93)
+        // 迁移旧默认 +93 → +115(未手动校准过的安装),详见 CalibrationDefaults
+        let offset = CalibrationDefaults.resolved(platformDefault: CalibrationDefaults.watchBuiltIn)
+        storedOffset = Double(offset)
         let e = AudioMeterEngine(calibrationOffset: offset,
                                   throttleInterval: 0.2,   // 5fps,省电
                                   fftSize: 4096)

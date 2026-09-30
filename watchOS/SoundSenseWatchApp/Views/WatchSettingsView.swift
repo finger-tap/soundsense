@@ -19,7 +19,7 @@ struct WatchSettingsView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
 
-                Text("麦克风采集 dBFS,加偏移量换算成 SPL。默认 +93 适用多数手表。")
+                Text("麦克风采集 dBFS,加偏移量换算成 SPL。默认 +115 是手表内建麦克风的保守估计,建议与 iPhone 端对照校准。")
                     .font(.system(size: 11))
                     .foregroundColor(MeterTheme.secondaryText)
 
@@ -31,22 +31,22 @@ struct WatchSettingsView: View {
                 Slider(value: Binding(
                     get: { Double(viewModel.calibrationOffset) },
                     set: { viewModel.calibrationOffset = Float($0) }
-                ), in: 60...110, step: 0.5)
+                ), in: 80...140, step: 0.5)
                 .tint(MeterTheme.waveColor)
 
                 HStack {
-                    Text("60").font(.system(size: 9))
-                    Spacer()
-                    Text("85").font(.system(size: 9))
+                    Text("80").font(.system(size: 9))
                     Spacer()
                     Text("110").font(.system(size: 9))
+                    Spacer()
+                    Text("140").font(.system(size: 9))
                 }
                 .foregroundColor(MeterTheme.secondaryText)
 
                 Button {
-                    viewModel.calibrationOffset = 93
+                    viewModel.calibrationOffset = CalibrationDefaults.watchBuiltIn
                 } label: {
-                    Text("恢复默认 (+93)")
+                    Text("恢复默认 (+115)")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)

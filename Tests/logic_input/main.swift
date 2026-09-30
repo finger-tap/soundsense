@@ -51,11 +51,13 @@ func runAllTests() async {
         expect(AudioInputDeviceManager.kind(forTransport: 0x12345678) == .other, "未知值 → other")
     }
 
-    // ---- 2. 校准预设 ----
+    // ---- 2. 校准预设(与 CalibrationDefaults 对齐:Mac 内建 100 / 外接 90 / iPhone 麦克风 120) ----
     do {
-        expect(MeterViewModel.defaultOffset(forKind: .usb) == 85, "usb 预设 85")
-        for kind: AudioInputDevice.Kind in [.builtIn, .bluetooth, .continuity, .virtualDevice, .aggregate, .other] {
-            expect(MeterViewModel.defaultOffset(forKind: kind) == 93, "\(kind.rawValue) 预设 93")
+        expect(MeterViewModel.defaultOffset(forKind: .usb) == 90, "usb 预设 90(外接占位)")
+        expect(MeterViewModel.defaultOffset(forKind: .bluetooth) == 90, "bluetooth 预设 90(外接占位)")
+        expect(MeterViewModel.defaultOffset(forKind: .continuity) == 120, "continuity(iPhone 麦克风)预设 120")
+        for kind: AudioInputDevice.Kind in [.builtIn, .virtualDevice, .aggregate, .other] {
+            expect(MeterViewModel.defaultOffset(forKind: kind) == 100, "\(kind.rawValue) 预设 100")
         }
     }
 
@@ -78,11 +80,12 @@ func runAllTests() async {
         defaults.removeObject(forKey: offsetsKey)
     }
 
-    // ---- 4. 旧全局 calibrationOffset 迁移(不丢用户已调好的值) ----
+    // ---- 4. 旧全局 calibrationOffset 迁移(经 CalibrationDefaults,不丢用户已调好的值) ----
     do {
-        // 场景 A:只有旧值 → 迁移进 systemDefault,ViewModel 读到旧值
+        // 场景 A:只有旧自定义值 → 迁移进 systemDefault,ViewModel 读到旧值
         defaults.removeObject(forKey: offsetsKey)
         defaults.removeObject(forKey: uidKey)
+        defaults.removeObject(forKey: "calibrationMigratedV2")
         defaults.set(88.0, forKey: legacyKey)
         let vm = MeterViewModel()
         expect(abs(vm.calibrationOffset - 88) < 0.001,
@@ -96,6 +99,15 @@ func runAllTests() async {
         let vm2 = MeterViewModel()
         expect(abs(vm2.calibrationOffset - 90) < 0.001,
                "字典已有值时旧全局值不覆盖 (得 \(vm2.calibrationOffset))")
+
+        // 场景 C:旧默认 93 未手动改过 → 按 CalibrationDefaults 升级为 Mac 新默认 100
+        defaults.removeObject(forKey: offsetsKey)
+        defaults.removeObject(forKey: uidKey)
+        defaults.removeObject(forKey: "calibrationMigratedV2")
+        defaults.set(93.0, forKey: legacyKey)
+        let vm3 = MeterViewModel()
+        expect(abs(vm3.calibrationOffset - 100) < 0.001,
+               "旧默认 93 自动升级为新默认 100 (得 \(vm3.calibrationOffset))")
     }
 
     // ---- 5. 按设备 key 的校准读写隔离 ----
@@ -108,8 +120,9 @@ func runAllTests() async {
         if let dev = realDevices.first {
             await vm.selectDevice(uid: dev.uid)
             expect(vm.selectedDeviceUID == dev.uid, "选中设备后 selectedDeviceUID 更新")
-            expect(abs(vm.calibrationOffset - 93) < 0.001
-                   || abs(vm.calibrationOffset - 85) < 0.001,
+            expect(abs(vm.calibrationOffset - 100) < 0.001
+                   || abs(vm.calibrationOffset - 90) < 0.001
+                   || abs(vm.calibrationOffset - 120) < 0.001,
                    "新设备无记录 → 按类型预设 (得 \(vm.calibrationOffset))")
             vm.calibrationOffset = 80
             await vm.selectDevice(uid: nil)
@@ -129,6 +142,7 @@ func runAllTests() async {
     defaults.removeObject(forKey: offsetsKey)
     defaults.removeObject(forKey: legacyKey)
     defaults.removeObject(forKey: uidKey)
+    defaults.removeObject(forKey: "calibrationMigratedV2")
 }
 
 Task { @MainActor in

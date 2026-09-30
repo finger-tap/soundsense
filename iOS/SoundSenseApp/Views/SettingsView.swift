@@ -168,7 +168,7 @@ private struct CalibrationCard: View {
                 .font(.title3.bold())
                 .foregroundColor(.white)
 
-            Text("iOS 麦克风采集的是数字分贝(dBFS),需要加上偏移量才能换算成真实声压级(SPL)。默认 +93 dB 适用多数 iPhone 麦克风。")
+            Text("iOS 麦克风采集的是数字分贝(dBFS),需要加上偏移量才能换算成真实声压级(SPL)。默认 +120 dB 是数字 MEMS 麦克风的典型值(±6 dB),精确值请用下方向导对照标准声级计实测。")
                 .font(.system(size: 13))
                 .foregroundColor(MeterTheme.secondaryText)
 
@@ -176,14 +176,14 @@ private struct CalibrationCard: View {
             sliderRow
 
             HStack(spacing: 8) {
-                presetButton(label: "内建麦克风", offset: 93)
-                presetButton(label: "外接麦克风", offset: 85)
+                presetButton(label: "内建麦克风", offset: CalibrationDefaults.iosBuiltIn)
+                presetButton(label: "外接麦克风", offset: CalibrationDefaults.external)
             }
 
             Button {
-                viewModel.calibrationOffset = 93
+                viewModel.calibrationOffset = CalibrationDefaults.iosBuiltIn
             } label: {
-                Text("恢复默认 (+93 dB)")
+                Text("恢复默认 (+120 dB)")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -191,11 +191,64 @@ private struct CalibrationCard: View {
                     .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
             }
 
-            Text("校准方法:用一台标准声级计与手机同位置测量,调节偏移量直到 App 显示值与标准计一致。")
+            liveCalibration
+
+            Text("校准方法:用一台标准声级计与手机同位置测量(计权方式一致),点按钮调偏移量直到 App 显示值与标准计一致。有 94 dB/1 kHz 声校准器时,把手机麦对准校准器,调到显示 94。")
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)
         }
         .modifier(CardStyle())
+    }
+
+    /// 实时校准向导:测量运行中显示当前读数,对照参考计微调
+    @ViewBuilder
+    private var liveCalibration: some View {
+        if viewModel.engine.state == .running {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("实时校准")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text(String(format: "%+.1f dB", viewModel.calibrationOffset))
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+                Text(String(format: "%.1f", viewModel.currentSPL))
+                    .font(.system(size: 40, weight: .bold, design: .monospaced))
+                    .foregroundColor(MeterTheme.waveColor)
+                    .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    adjustButton("-1", -1)
+                    adjustButton("-0.5", -0.5)
+                    adjustButton("+0.5", 0.5)
+                    adjustButton("+1", 1)
+                }
+                Text("把参考声级计放在手机同一位置,微调直到两边读数一致。校准即时生效,建议在正式测量前完成。")
+                    .font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
+        } else {
+            Text("提示:在测量页启动检测后回到这里,可对照标准声级计实时微调偏移量。")
+                .font(.system(size: 12))
+                .foregroundColor(MeterTheme.secondaryText)
+        }
+    }
+
+    private func adjustButton(_ label: String, _ delta: Float) -> some View {
+        Button {
+            viewModel.calibrationOffset += delta
+        } label: {
+            Text(label)
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
     }
 
     private func presetButton(label: String, offset: Float) -> some View {
@@ -231,7 +284,7 @@ private struct CalibrationCard: View {
             Slider(value: Binding(
                 get: { Double(viewModel.calibrationOffset) },
                 set: { viewModel.calibrationOffset = Float($0) }
-            ), in: 60...110, step: 0.5)
+            ), in: 80...140, step: 0.5)
             .tint(MeterTheme.waveColor)
             scaleLabels
         }
@@ -239,7 +292,7 @@ private struct CalibrationCard: View {
 
     private var scaleLabels: some View {
         HStack {
-            Text("60"); Spacer(); Text("85"); Spacer(); Text("110")
+            Text("80"); Spacer(); Text("110"); Spacer(); Text("140")
         }
         .font(.caption2)
         .foregroundColor(MeterTheme.secondaryText)
@@ -253,8 +306,8 @@ private struct AboutCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("关于闻声").font(.title3.bold()).foregroundColor(.white)
             row(title: "版本", value: appVersionString())
-            row(title: "算法", value: "IEC 61672 A 计权 + 4096 点 FFT")
-            row(title: "精度", value: "1 kHz 参考点 < 0.1 dB")
+            row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
+            row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
             Text("核心算法基于 Accelerate/vDSP,符合 IEC 61672-1 国际标准。")
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)

@@ -231,6 +231,8 @@ struct MonitorSessionDetailView: View {
             }
         }
         .navigationViewStyle(.stack)
+        // 详情页关闭即停:AVAudioPlayer 独立于视图存活,不停会一直响
+        .onDisappear { player.stop() }
         .sheet(isPresented: $sharingHTML) {
             MonitorHTMLShareSheet(session: session, store: store)
         }
