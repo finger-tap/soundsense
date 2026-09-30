@@ -190,6 +190,193 @@ func runTests() {
     }
     print()
 
+    // 5. 绝对声压级链路:SPL = dBFS(RMS) + offset
+    //    数字 MEMS 麦克风惯例:94 dB SPL@1kHz ≈ -29 dBFS(RMS)。
+    //    用 bin 对齐正弦(996.09 Hz,1 kHz 附近 A/C 修正量均 ≈0 dB,泄漏为零),
+    //    校准偏移取 +123,则 1 kHz 附近 -29 dBFS 的音应显示 94 dB。
+    print("── 测试组 5：绝对声压级链路(SPL = dBFS + offset) ────────")
+    do {
+        let amp = Float(2.0.squareRoot()) * pow(10, -29.0 / 20)   // RMS = -29 dBFS
+        let f1k = Float(85) * binWidth                              // 996.09 Hz,bin 对齐
+        for (w, name) in [(Weighting.a, "A 计权"), (Weighting.c, "C 计权")] {
+            let m = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: fftSize,
+                                                calibrationOffset: 123, weighting: w))
+            let sig = SignalGenerator.sineWave(frequency: f1k, amplitude: amp,
+                                               sampleRate: sampleRate, count: fftSize * 24)
+            // 50% 重叠推进喂 16 帧,让时间计权检波器收敛(残余 < 0.1 dB)
+            var last: MeterResult?
+            var start = 0
+            for _ in 0..<16 {
+                last = m.process(Array(sig[start..<(start + fftSize)]), hopSamples: fftSize / 2)
+                start += fftSize / 2
+            }
+            if let r = last {
+                let err = r.splA - 94
+                let ok = abs(err) < 0.5
+                print("\(ok ? "✅" : "❌") \(name): -29 dBFS @ \(Int(f1k)) Hz + offset 123 → " +
+                      "SPL = \(String(format: "%.2f", r.splA)) dB (期望 94.00, 偏差 \(String(format: "%+.2f", err)))" +
+                      "  瞬时 \(String(format: "%.2f", r.splInstant))")
+                ok ? (passed += 1) : (failed += 1)
+            } else {
+                print("❌ \(name): 处理失败"); failed += 1
+            }
+        }
+    }
+    print()
+
+    // 6. 时间计权 F/S:能量域一阶指数平均,阶跃响应 1-(1-α)^k,α=1-exp(-Δt/τ)
+    print("── 测试组 6：时间计权 F/S 阶跃响应 ─────────────────────")
+    do {
+        let f1k = Float(85) * binWidth
+        let amp: Float = 0.5
+        let sig = SignalGenerator.sineWave(frequency: f1k, amplitude: amp,
+                                           sampleRate: sampleRate, count: fftSize * 32)
+        let quiet = [Float](repeating: 0, count: fftSize * 8)
+        let steady = 20 * log10(amp / Float(2.0.squareRoot()))   // 稳态 dBFS ≈ -9.03
+        let dt = Float(fftSize / 2) / sampleRate                  // 42.7 ms
+
+        for (tw, name) in [(TimeWeighting.fast, "Fast τ=125ms"), (TimeWeighting.slow, "Slow τ=1s")] {
+            let m = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: fftSize,
+                                                calibrationOffset: 0, timeWeighting: tw))
+            // 先喂静音(置零检波器),再阶跃到稳态正弦
+            var start = 0
+            for _ in 0..<4 {
+                _ = m.process(Array(quiet[start..<(start + fftSize)]), hopSamples: fftSize / 2)
+                start += fftSize / 2
+            }
+            var results: [MeterResult] = []
+            start = 0
+            for k in 0..<12 {
+                if let r = m.process(Array(sig[start..<(start + fftSize)]), hopSamples: fftSize / 2) {
+                    results.append(r)
+                }
+                start += fftSize / 2
+            }
+            let alpha = Float(-expm1(-Double(dt) / tw.tau))
+            var allOK = true
+            for k in [1, 3, 6, 9] {
+                let expected = steady + 10 * log10(1 - pow(1 - alpha, Float(k)))
+                let got = results[k - 1].splA
+                let dev = got - expected
+                let ok = abs(dev) < 0.4
+                allOK = allOK && ok
+                print("  \(name) 第\(k)帧: \(String(format: "%7.2f", got)) dB " +
+                      "(期望 \(String(format: "%7.2f", expected)), 偏差 \(String(format: "%+.2f", dev))) \(ok ? "✅" : "❌")")
+            }
+            allOK ? (passed += 1) : (failed += 1)
+        }
+    }
+    print()
+
+    // 7. Leq 能量平均:20 帧 -40 dBFS + 20 帧 -20 dBFS → -22.97 dBFS
+    print("── 测试组 7：Leq 能量域平均 ────────────────────────────")
+    do {
+        let m = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: fftSize))
+        let f1k = Float(85) * binWidth
+        func feed(_ levelDBFS: Float, frames: Int) {
+            let ms = pow(10, levelDBFS / 10)
+            let amp = (2 * ms).squareRoot()          // 正弦 RMS² = amp²/2
+            let sig = SignalGenerator.sineWave(frequency: f1k, amplitude: amp,
+                                               sampleRate: sampleRate, count: fftSize * (frames + 2))
+            var start = 0
+            for _ in 0..<frames {
+                _ = m.process(Array(sig[start..<(start + fftSize)]), hopSamples: fftSize / 2)
+                start += fftSize / 2
+            }
+        }
+        feed(-40, frames: 20)
+        feed(-20, frames: 20)
+        let leq = m.currentLeq()
+        let expected = Float(10 * log10((20 * pow(10, -40.0 / 10) + 20 * pow(10, -20.0 / 10)) / 40))
+        let ok = abs(leq - expected) < 0.3
+        print("\(ok ? "✅" : "❌") Leq(-40×20帧 + -20×20帧) = \(String(format: "%.2f", leq)) dBFS " +
+              "(期望 \(String(format: "%.2f", expected)))")
+        print("     Leq 覆盖时长 = \(String(format: "%.2f", m.leqDuration)) s (期望 ≈ 1.71)")
+        ok && abs(m.leqDuration - 40 * Double(fftSize / 2) / 48000.0) < 0.01
+            ? (passed += 1) : (failed += 1)
+    }
+    print()
+
+    // 8. 宽带噪声计权修正量 vs 解析值(按 bin 中心积分)
+    print("── 测试组 8：宽带噪声计权修正量 ────────────────────────")
+    do {
+        func meanCorrection(_ samples: [Float], frames: Int, weighting: Weighting) -> Float {
+            let m = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: fftSize,
+                                                weighting: weighting))
+            var acc: Float = 0
+            var cnt = 0
+            var start = 0
+            for _ in 0..<frames {
+                if let r = m.process(Array(samples[start..<(start + fftSize)]), hopSamples: fftSize / 2) {
+                    acc += r.dbfsAWeighted - r.dbfsFlat
+                    cnt += 1
+                }
+                start += fftSize / 2
+            }
+            return cnt > 0 ? acc / Float(cnt) : 0
+        }
+        // 白噪声:平坦 PSD → 修正量 = 10log10(mean(W²(bin 中心)))
+        let white = SignalGenerator.whiteNoise(amplitude: 0.5, count: fftSize * 32)
+        let whiteCorr = meanCorrection(white, frames: 24, weighting: .a)
+        let binFreqs = (0..<fftSize / 2).map { Float($0) * binWidth }
+        let analyticWhite = 10 * log10(binFreqs.map { pow(10, AWeighting.gain(at: $0) / 10) }
+            .reduce(0, +) / Float(fftSize / 2))
+        let okW = abs(whiteCorr - analyticWhite) < 0.4
+        print("\(okW ? "✅" : "❌") 白噪声 A 修正量 = \(String(format: "%+.2f", whiteCorr)) dB " +
+              "(解析 \(String(format: "%+.2f", analyticWhite)))")
+        okW ? (passed += 1) : (failed += 1)
+
+        // 粉红噪声(1/f):解析按 Σ W²(f)/f 归一,允许 ±1 dB
+        let pink = SignalGenerator.pinkNoise(amplitude: 0.5, count: fftSize * 32)
+        let pinkCorr = meanCorrection(pink, frames: 24, weighting: .a)
+        let analyticPink = 10 * log10(
+            binFreqs.dropFirst().map { pow(10, AWeighting.gain(at: $0) / 10) / $0 }.reduce(0, +)
+            / binFreqs.dropFirst().map { 1 / $0 }.reduce(0, +))
+        let okP = abs(pinkCorr - analyticPink) < 1.0
+        print("\(okP ? "✅" : "❌") 粉红噪声 A 修正量 = \(String(format: "%+.2f", pinkCorr)) dB " +
+              "(解析 \(String(format: "%+.2f", analyticPink)))")
+        okP ? (passed += 1) : (failed += 1)
+    }
+    print()
+
+    // 9. 频谱显示聚合:低频空段(段宽 < bin 间距)插值填充,不再出现恒贴底死柱
+    //    复现真机 bug:48k/4096 下 32 段对数轴,第 2 段(24.6~30.4 Hz)与
+    //    第 4 段(37.4~46.1 Hz)没有任何 bin 落入,旧实现恒为 -140 dB 贴底。
+    print("── 测试组 9：频谱显示聚合(空段插值) ────────────────────")
+    do {
+        let fs: Float = 48000
+        let freqs = (0..<fftSize / 2).map { Float($0) * fs / Float(fftSize) }
+
+        // 场景 1:平坦谱 → 32 段全部有值且 ≈0.5(插值保持平坦)
+        let flat = [Float](repeating: 0.5, count: freqs.count)
+        let flatBands = SpectrumBands.aggregate(spectrum: flat, frequencies: freqs,
+                                                bandCount: 32, minFrequency: 20, maxFrequency: 16000)
+        let flatOK = flatBands.count == 32 && flatBands.allSatisfy { band in
+            let avg = band.reduce(0, +) / Float(max(1, band.count))
+            return !band.isEmpty && abs(avg - 0.5) < 0.01
+        }
+        print("\(flatOK ? "✅" : "❌") 平坦谱 → 32 段全部有值且 ≈0.5")
+        flatOK ? (passed += 1) : (failed += 1)
+
+        // 场景 2:第 2、4 段应取相邻 bin 的插值,落在两侧 bin 幅度之间
+        var spec = [Float](repeating: 1e-7, count: freqs.count)
+        spec[2] = 0.5     // 23.4 Hz
+        spec[3] = 1.0     // 35.2 Hz
+        spec[4] = 0.25    // 46.9 Hz
+        let bands = SpectrumBands.aggregate(spectrum: spec, frequencies: freqs,
+                                            bandCount: 32, minFrequency: 20, maxFrequency: 16000)
+        func bandAvg(_ i: Int) -> Float { bands[i].reduce(0, +) / Float(max(1, bands[i].count)) }
+        let noneEmpty = bands.allSatisfy { !$0.isEmpty }
+        let band1OK = bandAvg(1) > 0.5 && bandAvg(1) < 1.0     // 中心≈27.3 Hz,介于 bin2/bin3
+        let band3OK = bandAvg(3) > 0.25 && bandAvg(3) < 1.0    // 中心≈41.5 Hz,介于 bin3/bin4
+        let ok = noneEmpty && band1OK && band3OK
+        print("\(ok ? "✅" : "❌") 全部段非空=\(noneEmpty), " +
+              "段2=\(String(format: "%.3f", bandAvg(1))) (期望 0.5~1.0), " +
+              "段4=\(String(format: "%.3f", bandAvg(3))) (期望 0.25~1.0)")
+        ok ? (passed += 1) : (failed += 1)
+    }
+    print()
+
     // 总结
     print("═══════════════════════════════════════════════════════════")
     print("  结果: \(passed) 通过, \(failed) 失败")

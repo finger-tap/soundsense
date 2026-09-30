@@ -41,8 +41,8 @@ final class MeterViewModel: ObservableObject {
     /// 每场测量只发一次暴露通知
     private var exposureNotified = false
 
-    /// 校准偏移量,持久化到 UserDefaults(默认 +93 dB,典型 iOS 麦克风)
-    @AppStorage("calibrationOffset") private var storedOffset: Double = 93
+    /// 校准偏移量,持久化到 UserDefaults(默认 +120 dB,数字 MEMS 麦克风典型值)
+    @AppStorage("calibrationOffset") private var storedOffset: Double = Double(CalibrationDefaults.iosBuiltIn)
     /// 频率计权(A/C),持久化
     @AppStorage("weighting") private var storedWeighting: String = "A"
     /// 暴露警告阈值(dB),持久化
@@ -77,7 +77,9 @@ final class MeterViewModel: ObservableObject {
     }
 
     init() {
-        let offset = Float(UserDefaults.standard.object(forKey: "calibrationOffset") as? Double ?? 93)
+        // 迁移旧默认 +93 → +120(未手动校准过的安装),详见 CalibrationDefaults
+        let offset = CalibrationDefaults.resolved(platformDefault: CalibrationDefaults.iosBuiltIn)
+        storedOffset = Double(offset)
         let weightingRaw = UserDefaults.standard.string(forKey: "weighting") ?? "A"
         let weighting: Weighting = weightingRaw == "C" ? .c : .a
         let threshold = Float(UserDefaults.standard.object(forKey: "warningThreshold") as? Double

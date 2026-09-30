@@ -38,7 +38,7 @@ final class MeterViewModel: ObservableObject {
     /// 每场测量只发一次暴露通知
     private var exposureNotified = false
 
-    @AppStorage("calibrationOffset") private var storedOffset: Double = 93
+    @AppStorage("calibrationOffset") private var storedOffset: Double = Double(CalibrationDefaults.macBuiltIn)
     /// 频率计权(A/C),持久化
     @AppStorage("weighting") private var storedWeighting: String = "A"
     /// 暴露警告阈值(dB),持久化
@@ -72,8 +72,9 @@ final class MeterViewModel: ObservableObject {
     }
 
     init() {
-        // 默认偏移量 +93 dB(典型 Mac 麦克风),开箱即显示 SPL 而非裸 dBFS。
-        let offset = Float(UserDefaults.standard.object(forKey: "calibrationOffset") as? Double ?? 93)
+        // 默认偏移量 +100 dB(Mac 内建 MEMS 保守估计;迁移旧 +93,见 CalibrationDefaults)。
+        let offset = CalibrationDefaults.resolved(platformDefault: CalibrationDefaults.macBuiltIn)
+        storedOffset = Double(offset)
         let weightingRaw = UserDefaults.standard.string(forKey: "weighting") ?? "A"
         let weighting: Weighting = weightingRaw == "C" ? .c : .a
         let threshold = Float(UserDefaults.standard.object(forKey: "warningThreshold") as? Double

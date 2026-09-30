@@ -51,9 +51,9 @@ final class MonitorViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    /// 与主测量一致的校准偏移
+    /// 与主测量一致的校准偏移(含旧默认迁移)
     private static func currentCalibrationOffset() -> Float {
-        Float(UserDefaults.standard.object(forKey: "calibrationOffset") as? Double ?? 93)
+        CalibrationDefaults.resolved(platformDefault: CalibrationDefaults.iosBuiltIn)
     }
 
     var deviceName: String { UIDevice.current.name }
