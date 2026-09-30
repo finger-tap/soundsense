@@ -12,6 +12,12 @@ struct SettingsOverlay: View {
     @ObservedObject var viewModel: MeterViewModel
     @Binding var isPresented: Bool
 
+    /// 青绿色 accent(与全局一致)
+    private let accent = Color(red: 0.24, green: 0.83, blue: 0.69)
+
+    /// 连续互通引导条:用户手动关闭后不再显示
+    @AppStorage("continuityGuideDismissed") private var continuityGuideDismissed = false
+
     var body: some View {
         ZStack {
             // 半透明遮罩(点击关闭)
@@ -44,6 +50,7 @@ struct SettingsOverlay: View {
                 // 内容(隐藏系统滚动条)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 16) {
+                        inputSourceCard
                         calibrationCard
                         measurementCard
                         aboutCard
@@ -51,7 +58,7 @@ struct SettingsOverlay: View {
                     .padding(.horizontal, 20).padding(.bottom, 20)
                 }
             }
-            .frame(width: 420, height: 480)
+            .frame(width: 420, height: 560)
             .background(
                 RoundedRectangle(cornerRadius: 18)
                     .fill(MeterTheme.panel)
@@ -62,13 +69,135 @@ struct SettingsOverlay: View {
         }
     }
 
+    // MARK: - 输入源卡片
+
+    /// 当前实际生效的设备 UID(选定优先,否则系统默认)
+    private var effectiveUID: String? {
+        viewModel.selectedDeviceUID ?? viewModel.defaultInputUID
+    }
+
+    private var inputSourceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("输入源").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+
+            // 首项:跟随系统默认
+            inputRow(icon: "arrow.triangle.2.circlepath",
+                     title: "跟随系统默认",
+                     subtitle: defaultInputSubtitle,
+                     isActive: viewModel.selectedDeviceUID == nil) {
+                Task { await viewModel.selectDevice(uid: nil) }
+            }
+
+            ForEach(viewModel.devices) { device in
+                inputRow(icon: device.sfSymbolName,
+                         title: device.name,
+                         subtitle: subtitle(for: device),
+                         isActive: effectiveUID == device.uid) {
+                    Task { await viewModel.selectDevice(uid: device.uid) }
+                }
+            }
+
+            // 连续互通引导:列表里没有 iPhone 时提示如何开启(能力探测,不做版本判断)。
+            // 可关闭,@AppStorage 记住选择,不重复打扰。
+            if !viewModel.devices.contains(where: { $0.kind == .continuity }),
+               !continuityGuideDismissed {
+                continuityGuide
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(.white.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: 13)
+                    .stroke(.white.opacity(0.07), lineWidth: 1))
+        )
+    }
+
+    private var defaultInputSubtitle: String {
+        if let uid = viewModel.defaultInputUID,
+           let device = viewModel.devices.first(where: { $0.uid == uid }) {
+            return "当前:\(device.name)"
+        }
+        return "使用系统「声音」设置中选择的输入设备"
+    }
+
+    private func subtitle(for device: AudioInputDevice) -> String {
+        // 蓝牙输入:HFP 链路采样率低且带自动增益,分贝读数不可信,明确标注
+        if device.isNotRecommended {
+            return "\(device.kindDisplayName) · 不推荐:采样率低且带自动增益"
+        }
+        return device.kindDisplayName
+    }
+
+    private func inputRow(icon: String, title: String, subtitle: String,
+                          isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13))
+                    .foregroundColor(isActive ? accent : .white.opacity(0.55))
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                    Text(subtitle)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.45))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                if isActive {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(accent)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(.white.opacity(isActive ? 0.08 : 0.03))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var continuityGuide: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "iphone")
+                .font(.system(size: 12))
+                .foregroundColor(accent)
+            Text("想把 iPhone 当麦克风?需 macOS 13+ 且 iOS 16+。iPhone:设置 → 通用 → AirPlay 与连续互通 → 打开「连续互通相机」,之后 iPhone 会自动出现在列表中。")
+                .font(.system(size: 10.5))
+                .foregroundColor(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button {
+                continuityGuideDismissed = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.4))
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(.white.opacity(0.08)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("关闭提示")
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 9)
+                .fill(accent.opacity(0.08))
+        )
+    }
+
     // MARK: - 校准卡片
 
     private var calibrationCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("校准").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
 
-            Text("麦克风采集的是数字分贝(dBFS),加上偏移量换算成真实声压级(SPL)。默认 +93 dB 适用多数 Mac 麦克风,可用标准声级计微调。")
+            Text("麦克风采集的是数字分贝(dBFS),加上偏移量换算成真实声压级(SPL)。默认 +93 dB 适用多数 Mac 麦克风,可用标准声级计微调。校准值按输入设备分别保存。")
                 .font(.system(size: 11.5)).foregroundColor(.white.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
 

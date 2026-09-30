@@ -101,6 +101,7 @@
 				AABB00000000000000000011 /* EventClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000012 /* EventClipRecorder.swift */; };
 				AABB00000000000000000012 /* MonitorSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000013 /* MonitorSessionStore.swift */; };
 				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
+		AACC00000000000000000013 /* AudioInputDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CC00000000000000000001 /* AudioInputDeviceManager.swift */; };
 /* End PBXBuildFile section - macOS sources */
 
 /* Begin PBXFileReference section */
@@ -112,6 +113,7 @@
 		A20000000000000000000007 /* LevelBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelBadge.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000A /* AudioMeterEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMeterEngine.swift; sourceTree = "<group>"; };
+		A2CC00000000000000000001 /* AudioInputDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputDeviceManager.swift; sourceTree = "<group>"; };
 		A2000000000000000000000B /* MeterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterTheme.swift; sourceTree = "<group>"; };
 		A2000000000000000000000C /* NoiseLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseLevel.swift; sourceTree = "<group>"; };
 		A2000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000000000000000000000A /* AudioMeterEngine.swift */,
+				A2CC00000000000000000001 /* AudioInputDeviceManager.swift */,
 				A2000000000000000000000B /* MeterTheme.swift */,
 				A2000000000000000000000C /* NoiseLevel.swift */,
 				A2BB00000000000000000001 /* MeasurementRecorder.swift */,
@@ -572,6 +575,7 @@
 				AA000000000000000000001E /* SpectrumView.swift in Sources */,
 				AA000000000000000000001F /* LevelBadge.swift in Sources */,
 				AA0000000000000000000020 /* AudioMeterEngine.swift in Sources */,
+				AACC00000000000000000013 /* AudioInputDeviceManager.swift in Sources */,
 				AA0000000000000000000021 /* MeterTheme.swift in Sources */,
 				AA0000000000000000000022 /* NoiseLevel.swift in Sources */,
 				AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */,
