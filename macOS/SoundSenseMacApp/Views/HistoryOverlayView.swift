@@ -14,6 +14,7 @@ struct HistoryOverlay: View {
     let calibrationOffset: Float
     @Binding var isPresented: Bool
     @State private var sharingStats: MeasurementStats?
+    @State private var showClearAllConfirm = false
 
     var body: some View {
         ZStack {
@@ -33,6 +34,13 @@ struct HistoryOverlay: View {
                         .stroke(.white.opacity(0.1), lineWidth: 1))
             )
             .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
+        }
+        // 清空不可逆(含关联录音),必须二次确认
+        .confirmationDialog("确定清空全部测量记录?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
+            Button("清空全部记录", role: .destructive) { store.removeAll() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("将删除全部 \(store.records.count) 条记录及关联录音,此操作不可撤销")
         }
         .sheet(item: $sharingStats) { stats in
             MacReportPreviewSheet(stats: stats,
@@ -56,7 +64,7 @@ struct HistoryOverlay: View {
                 }
                 .buttonStyle(.plain)
                 Button {
-                    store.removeAll()
+                    showClearAllConfirm = true
                 } label: {
                     Text("清空").font(.system(size: 12))
                         .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.4))

@@ -47,7 +47,10 @@ typecheck_platform() {
     args+=("$(resolve "$name" "${search_dirs[@]}")")
   done
 
+  # -disable-sandbox:本机沙箱会让 Swift 宏插件服务器(@State 等属性包装器宏)返回
+  # malformed response,导致大量误报 error;类型检查不产出产物,关沙箱无副作用
   xcrun -sdk "$sdk" swiftc -typecheck "${args[@]}" \
+    -disable-sandbox \
     -I "$WORK/$label" \
     -sdk "$(xcrun -sdk "$sdk" --show-sdk-path)" \
     -target "$triple" 2>&1 | grep -E "error:" && {

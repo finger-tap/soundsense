@@ -76,7 +76,9 @@ public struct LiveStatsBar: View {
 public struct ExposureWarningBanner: View {
     public let threshold: Float
 
-    public init(threshold: Float = MeasurementRecorder.defaultExposureLimit) {
+    /// 阈值必须显式传入(用户设置值),不提供默认值——
+    /// 避免调用方漏传导致横幅文案与用户设置的阈值脱节(三端漂移的真实教训)。
+    public init(threshold: Float) {
         self.threshold = threshold
     }
 

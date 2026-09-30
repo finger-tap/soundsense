@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 import Photos
 import SoundSenseCore
 
@@ -297,9 +298,18 @@ struct MainMeterView: View {
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.waveColor)
             case .denied:
-                Text("麦克风权限被拒绝,请到系统设置开启")
-                    .font(.system(size: 12))
-                    .foregroundColor(.red.opacity(0.9))
+                // 权限被拒是新手最高频卡点:直接给跳系统设置的出口,别让用户自己找路径
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Text("麦克风权限被拒绝 → 去系统设置开启")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.red.opacity(0.9))
+                        .underline()
+                }
+                .buttonStyle(.plain)
             case .failed(let msg):
                 Text("启动失败:\(msg)")
                     .font(.system(size: 12))

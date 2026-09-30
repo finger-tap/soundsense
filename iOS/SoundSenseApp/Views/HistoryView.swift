@@ -45,6 +45,7 @@ struct HistoryView: View {
     @State private var selectedSource: SourceTestResult?
     @State private var sharingSourceHTML: SourceTestResult?
     @State private var selectedSession: MonitorSession?
+    @State private var showClearAllConfirm = false
 
     var body: some View {
         NavigationView {
@@ -87,7 +88,7 @@ struct HistoryView: View {
                                     .foregroundColor(MeterTheme.waveColor)
                             }
                             Button(role: .destructive) {
-                                store.removeAll()
+                                showClearAllConfirm = true
                             } label: {
                                 Text("清空").font(.system(size: 14))
                                     .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.4))
@@ -96,6 +97,13 @@ struct HistoryView: View {
                     }
                 }
             }
+        }
+        // 清空不可逆(含关联录音),必须二次确认
+        .confirmationDialog("确定清空全部测量记录?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
+            Button("清空全部记录", role: .destructive) { store.removeAll() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("将删除全部 \(store.records.count) 条记录及关联录音,此操作不可撤销")
         }
         .navigationViewStyle(.stack)
         .sheet(item: $sharingStats) { stats in

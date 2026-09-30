@@ -130,7 +130,11 @@ struct WatchMeterView: View {
             WatchSettingsView(viewModel: viewModel)
         }
         // 声源定位测试(结果同步到 iPhone)
-        .sheet(isPresented: $showingSourceTest) {
+        // onDismiss 恢复主测量:进入 sheet 前 stop() 过,而 sheet 关闭时 scenePhase
+        // 一直是 .active、onChange 不会再触发,不在这里重启就会永远停在"抬腕即测"。
+        .sheet(isPresented: $showingSourceTest, onDismiss: {
+            Task { await viewModel.start() }
+        }) {
             WatchSourceTestView()
         }
     }
@@ -221,7 +225,7 @@ struct WatchMeterView: View {
         case .stopped: return "抬腕即测"
         case .starting: return "启动中…"
         case .running: return "测量中"
-        case .denied: return "需麦克风权限"
+        case .denied: return "请在手表 设置→隐私→麦克风 开启"
         case .failed: return "启动失败"
         }
     }

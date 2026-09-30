@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import AppKit
 import SoundSenseCore
 
 struct MacMainMeterView: View {
@@ -48,7 +49,7 @@ struct MacMainMeterView: View {
 
                         // 噪声暴露警告
                         if viewModel.exposureWarning {
-                            ExposureWarningBanner()
+                            ExposureWarningBanner(threshold: viewModel.warningThreshold)
                                 .padding(.horizontal, 28)
                                 .transition(.opacity)
                         }
@@ -179,7 +180,20 @@ struct MacMainMeterView: View {
     private var statusLine: some View {
         HStack(spacing: 6) {
             statusDot
-            Text(statusMessage).font(.system(size: 11.5)).foregroundColor(.white.opacity(0.5))
+            if viewModel.engine.state == .denied {
+                // 权限被拒是新手最高频卡点:给出去系统设置的直接出口
+                Button {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
+                } label: {
+                    Text("麦克风被拒 → 打开系统设置")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.5))
+                        .underline()
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(statusMessage).font(.system(size: 11.5)).foregroundColor(.white.opacity(0.5))
+            }
             Spacer()
         }
     }
