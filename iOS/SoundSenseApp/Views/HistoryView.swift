@@ -474,6 +474,8 @@ struct HistoryDetailSheet: View {
                     player.load(url: store.audioFileURL(forID: id))
                 }
             }
+            // 详情页关闭即停:AVAudioPlayer 独立于视图存活,不停会一直响
+            .onDisappear { player.stop() }
         }
         .navigationViewStyle(.stack)
         .sheet(isPresented: $sharingPNG) {

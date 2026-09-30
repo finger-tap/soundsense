@@ -178,6 +178,8 @@ struct SourceTestDetailView: View {
             }
         }
         .navigationViewStyle(.stack)
+        // 详情页关闭即停:AVAudioPlayer 独立于视图存活,不停会一直响
+        .onDisappear { player.stop() }
         .sheet(isPresented: $sharingHTML) {
             SourceTestHTMLShareSheet(result: result, deviceName: deviceName,
                                      audioURL: result.audioID.map { store.audioFileURL(forID: $0) })
