@@ -36,6 +36,8 @@ final class MeterViewModel: ObservableObject {
     private let recorder: MeasurementRecorder
     /// 检测同步录音器(与测量同源样本写 AAC m4a)
     private let sessionRecorder = SessionAudioRecorder()
+    /// 启动时是否检测到麦克风
+    @Published var hasAudioInput = true
     /// 每秒刷新实时统计的定时器
     private var liveTimer: Timer?
     /// 每场测量只发一次暴露通知
@@ -102,6 +104,11 @@ final class MeterViewModel: ObservableObject {
     // MARK: - 控制
 
     func start() async {
+        hasAudioInput = engine.hasAudioInput
+        guard hasAudioInput else {
+            engine.stop()
+            return
+        }
         await engine.start()
         guard engine.state == .running else { return }
         recorder.start()

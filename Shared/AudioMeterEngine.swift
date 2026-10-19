@@ -24,6 +24,9 @@ import Foundation
 import AVFoundation
 import SoundSenseCore
 import SwiftUI
+#if os(macOS)
+import CoreAudio
+#endif
 
 /// 采集状态
 public enum AudioMeterState: Equatable {
@@ -116,12 +119,21 @@ public final class AudioMeterEngine: ObservableObject {
                 self?.latestResult = result
             }
         }
-        #if os(macOS)
+    #if os(macOS)
         // macOS:授权由 engine.start() 触发系统弹窗处理,这里默认 false。
         // start() 会调用 requestPermission()(macOS 直接返回 true),不卡。
         self.permissionGranted = false
         #else
         self.permissionGranted = AVAudioSession.sharedInstance().recordPermission == .granted
+        #endif
+    }
+
+    /// 主界面预检用:当前是否存在可用输入设备。
+    public var hasAudioInput: Bool {
+        #if os(macOS)
+        return Self.hasMacAudioInputDevice()
+        #else
+        Self.hasAvailableAudioInput(engine.inputNode)
         #endif
     }
 
@@ -156,6 +168,7 @@ public final class AudioMeterEngine: ObservableObject {
         if state == .running || state == .starting { return }
 
         state = .starting
+        latestResult = nil
 
         // 1. 权限
         let granted = await requestPermission()
@@ -164,7 +177,23 @@ public final class AudioMeterEngine: ObservableObject {
             return
         }
 
-        // 2. 配置 + 启动
+        // 2. 输入设备预检。无麦克风时 inputNode.installTap 会抛 Objective-C
+        // NSException,Swift 的 do/catch 接不住,进程会直接崩溃。
+        // macOS 必须在访问 engine.inputNode 之前查询 CoreAudio 硬件设备:
+        // 无设备时 inputNode 仍可能返回非零的占位格式。
+        #if os(macOS)
+        guard Self.hasMacAudioInputDevice() else {
+            state = .failed(Self.noInputDeviceMessage)
+            return
+        }
+        #else
+        guard Self.hasAvailableAudioInput(engine.inputNode) else {
+            state = .failed(Self.noInputDeviceMessage)
+            return
+        }
+        #endif
+
+        // 3. 配置 + 启动
         // 注意:不在主线程同步调 engine.prepare()(@MainActor 上会死锁,
         // prepare 内部会 dispatch 到主线程同步执行)。直接 start() 即可,
         // macOS 上 AVAudioEngine 不需要显式 prepare。
@@ -174,16 +203,20 @@ public final class AudioMeterEngine: ObservableObject {
             try engine.start()
             state = .running
         } catch {
-            engine.inputNode.removeTap(onBus: 0)
-            tapInstalled = false
+            if tapInstalled {
+                engine.inputNode.removeTap(onBus: 0)
+                tapInstalled = false
+            }
             state = .failed(error.localizedDescription)
         }
     }
 
     /// 停止采集。
     public func stop() {
-        engine.inputNode.removeTap(onBus: 0)
-        tapInstalled = false
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         engine.stop()
         #if !os(macOS)
         // macOS 无 AVAudioSession
@@ -235,8 +268,19 @@ public final class AudioMeterEngine: ObservableObject {
     #endif
 
     private func installTapIfNeeded() throws {
+        #if os(macOS)
+        // 硬件可能在预检与安装 tap 之间被拔掉,安装前再确认一次。
+        guard Self.hasMacAudioInputDevice() else {
+            throw AudioInputError.unavailable
+        }
+        #endif
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        #if !os(macOS)
+        guard Self.hasAvailableAudioInput(inputNode) else {
+            throw AudioInputError.unavailable
+        }
+        #endif
 
         // 若 format 采样率不合法(占位值),用 48000 兜底。
         let sampleRate = (format.sampleRate > 0 && format.sampleRate.isFinite)
@@ -260,11 +304,97 @@ public final class AudioMeterEngine: ObservableObject {
         tapInstalled = true
     }
 
+    // MARK: - 输入设备
+
+    public nonisolated static let noInputDeviceMessage = "未检测到可用的麦克风。请连接麦克风，或在系统设置中检查输入设备。"
+
+    /// 检查当前是否有可用的音频输入。
+    /// 除格式外还校验硬件通道数;蓝牙/虚拟设备可能出现采样率非零
+    /// 但实际没有输入通道的情况。
+    public static func hasAvailableAudioInput(_ inputNode: AVAudioInputNode) -> Bool {
+        let format = inputNode.outputFormat(forBus: 0)
+        return format.sampleRate.isFinite
+            && format.sampleRate > 0
+            && format.channelCount > 0
+    }
+
+    #if os(macOS)
+    /// 通过 CoreAudio 查询真实默认输入设备。不能先用 AVAudioEngine.inputNode
+    /// 探测:没有硬件时它可能返回占位格式,随后 installTap 会触发 ObjC 异常。
+    public static func hasMacAudioInputDevice() -> Bool {
+        var deviceID = AudioDeviceID(kAudioObjectUnknown)
+        var deviceAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let deviceStatus = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &deviceAddress,
+            0,
+            nil,
+            &deviceSize,
+            &deviceID
+        )
+        guard deviceStatus == noErr, deviceID != kAudioObjectUnknown else {
+            return false
+        }
+
+        var streamAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        let sizeStatus = AudioObjectGetPropertyDataSize(
+            deviceID,
+            &streamAddress,
+            0,
+            nil,
+            &streamSize
+        )
+        guard sizeStatus == noErr, streamSize >= UInt32(MemoryLayout<AudioBufferList>.size) else {
+            return false
+        }
+
+        let bufferListMemory = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(streamSize),
+            alignment: MemoryLayout<AudioBufferList>.alignment
+        )
+        defer { bufferListMemory.deallocate() }
+
+        let dataStatus = AudioObjectGetPropertyData(
+            deviceID,
+            &streamAddress,
+            0,
+            nil,
+            &streamSize,
+            bufferListMemory
+        )
+        guard dataStatus == noErr else { return false }
+
+        let bufferList = bufferListMemory.bindMemory(to: AudioBufferList.self, capacity: 1)
+        return UnsafeMutableAudioBufferListPointer(bufferList)
+            .contains { $0.mNumberChannels > 0 }
+    }
+    #endif
+
     deinit {
         // deinit 不能在 @MainActor 上安全操作 engine;调用方应在视图销毁前 stop()。
         // 这里只做尽力清理。
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+        }
         engine.stop()
+    }
+}
+
+private enum AudioInputError: LocalizedError {
+    case unavailable
+
+    var errorDescription: String? {
+        AudioMeterEngine.noInputDeviceMessage
     }
 }
 

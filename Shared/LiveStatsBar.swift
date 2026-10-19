@@ -53,16 +53,18 @@ public struct LiveStatsBar: View {
                     .monospacedDigit()
                 if recordingDot {
                     Circle()
-                        .fill(Color(red: 1.0, green: 0.27, blue: 0.24))
+                        .fill(MeterTheme.riskColor)
                         .frame(width: 6, height: 6)
                         .padding(.top, 3)
                 }
             }
             Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.45))
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.62))
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label) \(value)")
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -82,22 +84,24 @@ public struct ExposureWarningBanner: View {
 
     public var body: some View {
         HStack(spacing: 8) {
-            Text("⚠️")
-                .font(.system(size: 15))
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 15, weight: .semibold))
             VStack(alignment: .leading, spacing: 1) {
                 Text("噪音过高,注意听力防护")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                 Text(String(format: "环境已连续 30 秒以上超过 %.0f dB,长时间暴露可能损伤听力", threshold))
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.75))
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.white.opacity(0.86))
             }
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(red: 1.0, green: 0.25, blue: 0.25).opacity(0.85))
+                .fill(MeterTheme.riskColor.opacity(0.84))
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1))
         )
         .transition(.move(edge: .top).combined(with: .opacity))
     }

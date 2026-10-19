@@ -69,19 +69,32 @@ struct SourceTestFlowView: View {
                 step("4", "全程同步录音,作为证据保存在测试记录里")
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 14).fill(MeterTheme.cardBackground))
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(MeterTheme.panelGradient)
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .stroke(MeterTheme.cardBorder, lineWidth: 1))
+            )
 
             Button {
                 Task { await vm.begin() }
             } label: {
-                Text("开始测试")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(RoundedRectangle(cornerRadius: 12)
-                        .fill(MeterTheme.waveColor.opacity(0.9)))
+                HStack(spacing: 8) {
+                    if vm.engine.state == .starting {
+                        ProgressView().tint(.white).scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                    }
+                    Text(vm.engine.state == .starting ? "正在启动..." : "开始测试")
+                }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(RoundedRectangle(cornerRadius: 12)
+                    .fill(MeterTheme.primaryActionGradient))
             }
             .buttonStyle(.plain)
+            .disabled(vm.engine.state == .starting)
             Spacer()
         }
         .padding(20)
@@ -148,7 +161,9 @@ struct SourceTestFlowView: View {
             } label: {
                 Label("重测本点位", systemImage: "arrow.counterclockwise")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(MeterTheme.secondaryText)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 40)
             }
             .buttonStyle(.plain)
             Spacer()
@@ -180,7 +195,7 @@ struct SourceTestFlowView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity, minHeight: 46)
                             .background(RoundedRectangle(cornerRadius: 12)
-                                .fill(MeterTheme.waveColor.opacity(0.9)))
+                                .fill(MeterTheme.primaryActionGradient))
                     }
                     .buttonStyle(.plain)
                 }
@@ -244,12 +259,17 @@ struct SourceTestResultCard: View {
                 }
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(MeterTheme.panelGradient)
+                    .overlay(RoundedRectangle(cornerRadius: 12)
+                        .stroke(MeterTheme.cardBorder, lineWidth: 1))
+            )
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(MeterTheme.cardBackground)
+                .fill(MeterTheme.panelGradient)
                 .overlay(RoundedRectangle(cornerRadius: 16)
                     .stroke(MeterTheme.cardBorder, lineWidth: 1))
         )

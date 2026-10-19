@@ -84,17 +84,24 @@ struct WatchMeterView: View {
                         viewModel.stop()
                         showingSourceTest = true
                     } label: {
-                        Image(systemName: "dot.radiowaves.left.and.right")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.55))
+                        Label("定位", systemImage: "dot.radiowaves.left.and.right")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(MeterTheme.secondaryText)
+                            .padding(.horizontal, 10)
+                            .frame(height: 28)
+                            .background(Capsule().fill(.white.opacity(0.06)))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("声源定位")
                     Button {
                         showingSettings = true
                     } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.55))
+                        Label("校准", systemImage: "gearshape")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(MeterTheme.secondaryText)
+                            .padding(.horizontal, 10)
+                            .frame(height: 28)
+                            .background(Capsule().fill(.white.opacity(0.06)))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("设置")
@@ -142,7 +149,7 @@ struct WatchMeterView: View {
                 .foregroundColor(.white)
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 8))
+                .font(.system(size: 9))
                 .foregroundColor(MeterTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
@@ -165,7 +172,7 @@ struct WatchMeterView: View {
                          endAngle: .degrees(360),
                          clockwise: false)
             context.stroke(track,
-                           with: .color(.white.opacity(0.1)),
+                           with: .color(.white.opacity(0.09)),
                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
 
             // 进度环

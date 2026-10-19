@@ -191,7 +191,7 @@ struct WatchSourceTestView: View {
                  ? String(format: "LAeq %.1f dB", vm.currentLaeq)
                  : "LAeq --")
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+                .foregroundColor(MeterTheme.waveColor)
         }
     }
 
@@ -201,7 +201,7 @@ struct WatchSourceTestView: View {
                 if let result = vm.result {
                     Text(SourceTendencyAnalyzer.verdictText(result.verdict))
                         .font(.system(size: 20, weight: .heavy))
-                        .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+                        .foregroundColor(MeterTheme.waveColor)
                     Text("置信度 \(SourceTendencyAnalyzer.confidenceText(result.confidence)) · 推测仅供参考")
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.5))

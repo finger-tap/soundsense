@@ -8,10 +8,12 @@
 
 import SwiftUI
 import Photos
+import UIKit
 import SoundSenseCore
 
 struct MainMeterView: View {
     @StateObject private var viewModel = MeterViewModel()
+    @Environment(\.openURL) private var openURL
     // UI 自动化用:启动参数直接打开浮层(DEBUG 限定,Release 无影响)
     #if DEBUG
     @State private var showingSettings = ProcessInfo.processInfo.arguments.contains("UITEST_OPEN_SETTINGS")
@@ -45,65 +47,73 @@ struct MainMeterView: View {
 
             ZStack {
                 MeterTheme.backgroundGradient.ignoresSafeArea()
+                RadialGradient(
+                    colors: [(viewModel.noiseLevel?.color ?? MeterTheme.waveColor).opacity(0.12), .clear],
+                    center: .top,
+                    startRadius: 12,
+                    endRadius: max(W, H) * 0.72
+                )
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.5),
+                           value: viewModel.noiseLevel?.tier)
 
                 VStack(spacing: 0) {
-                    // —— 顶部栏:标题 + 历史 + 设置 ——
-                    HStack {
-                        Text("闻声")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
+                    // —— 顶部栏:品牌 + 工具菜单 + 历史 + 设置 ——
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("闻声")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(MeterTheme.primaryText)
+                            Text(headerSubtitle)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(MeterTheme.tertiaryText)
+                        }
                         Spacer()
-                        Button {
-                            // 声源定位与测量互斥:进入前先停掉主测量
-                            if viewModel.engine.state == .running {
-                                viewModel.stop()
+                        Menu {
+                            Button {
+                                stopMeasurementIfNeeded()
+                                showingMonitor = true
+                            } label: {
+                                Label("长时间监听", systemImage: "moon.zzz")
                             }
-                            showingMonitor = true
-                        } label: {
-                            Image(systemName: "moon.zzz")
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(width: 38, height: 38)
-                        }
-                        .accessibilityLabel("长时间监听")
-                        Button {
-                            // 声源定位与测量互斥:进入前先停掉主测量
-                            if viewModel.engine.state == .running {
-                                viewModel.stop()
+                            Button {
+                                stopMeasurementIfNeeded()
+                                showingSourceTest = true
+                            } label: {
+                                Label("声源定位", systemImage: "dot.radiowaves.left.and.right")
                             }
-                            showingSourceTest = true
                         } label: {
-                            Image(systemName: "dot.radiowaves.left.and.right")
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(width: 38, height: 38)
+                            HStack(spacing: 5) {
+                                Image(systemName: "wrench.and.screwdriver")
+                                    .font(.system(size: 13, weight: .medium))
+                                Text("工具")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(MeterTheme.secondaryText)
+                            .padding(.horizontal, 10)
+                            .frame(height: 38)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.055))
+                                    .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
+                            )
                         }
-                        .accessibilityLabel("声源定位")
-                        Button {
+                        .accessibilityLabel("测量工具")
+                        .accessibilityHint("包含长时间监听和声源定位")
+
+                        headerIconButton("clock.arrow.circlepath", label: "测量历史") {
                             showingHistory = true
-                        } label: {
-                            Image(systemName: "clock.arrow.circlepath")
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(width: 38, height: 38)
                         }
-                        .accessibilityLabel("测量历史")
-                        Button {
+                        headerIconButton("gearshape.fill", label: "设置") {
                             showingSettings = true
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(width: 38, height: 38)
                         }
-                        .accessibilityLabel("设置")
                     }
                     .padding(.horizontal, marginX)
                     .padding(.top, 4)
 
                     // —— 状态提示(固定在顶部,任何机型都可见) ——
                     Group {
-                        statusText
+                        statusLine
                             .padding(.top, 2)
 
                         Spacer(minLength: 8)
@@ -113,11 +123,15 @@ struct MainMeterView: View {
                     VStack(spacing: 2) {
                         Text(splText(viewModel.currentSPL))
                             .font(.system(size: heroSize, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(MeterTheme.primaryText)
                             .monospacedDigit()
                             .minimumScaleFactor(0.7)
                             .lineLimit(1)
-                        Text("dB(A)")
+                            .accessibilityLabel("当前声压级")
+                            .accessibilityValue(viewModel.currentSPL.isFinite && viewModel.currentSPL > -80
+                                                ? String(format: "%.1f %@", viewModel.currentSPL, weightingUnit)
+                                                : "无信号")
+                        Text(weightingUnit)
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundColor(MeterTheme.secondaryText)
                     }
@@ -152,7 +166,7 @@ struct MainMeterView: View {
                     // —— 声波 / 频谱(各占一行,紧凑高度,小屏也一屏放下) ——
                     VStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
-                            sectionLabel("声波")
+                            sectionHeader("waveform.path.ecg", title: "声波趋势")
                             WaveformView(values: viewModel.history,
                                          color: viewModel.noiseLevel?.color ?? MeterTheme.waveColor)
                                 .frame(height: cardH)
@@ -161,11 +175,13 @@ struct MainMeterView: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(MeterTheme.cardBackground)
+                                .fill(MeterTheme.panelGradient)
+                                .overlay(RoundedRectangle(cornerRadius: 12)
+                                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
                         )
 
                         VStack(alignment: .leading, spacing: 4) {
-                            sectionLabel("频谱")
+                            sectionHeader("chart.bar.xaxis", title: "频谱分布")
                             if let result = viewModel.engine.latestResult {
                                 SpectrumView(spectrum: result.spectrum,
                                              frequencies: result.frequencies)
@@ -182,7 +198,9 @@ struct MainMeterView: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(MeterTheme.cardBackground)
+                                .fill(MeterTheme.panelGradient)
+                                .overlay(RoundedRectangle(cornerRadius: 12)
+                                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
                         )
                     }
                     .padding(.horizontal, marginX)
@@ -281,37 +299,101 @@ struct MainMeterView: View {
             .textCase(.uppercase)
     }
 
-    private var statusText: some View {
-        Group {
-            switch viewModel.engine.state {
-            case .stopped:
-                Text("点击下方按钮开始测量")
-                    .font(.system(size: 12))
-                    .foregroundColor(MeterTheme.secondaryText)
-            case .starting:
-                Text("正在启动麦克风...")
-                    .font(.system(size: 12))
-                    .foregroundColor(MeterTheme.secondaryText)
-            case .running:
-                Text("正在测量 · 对着麦克风发声")
-                    .font(.system(size: 12))
-                    .foregroundColor(MeterTheme.waveColor)
-            case .denied:
-                Text("麦克风权限被拒绝,请到系统设置开启")
-                    .font(.system(size: 12))
-                    .foregroundColor(.red.opacity(0.9))
-            case .failed(let msg):
-                Text("启动失败:\(msg)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.red.opacity(0.9))
+    private func sectionHeader(_ icon: String, title: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+            sectionLabel(title)
+        }
+        .foregroundColor(MeterTheme.secondaryText)
+    }
+
+    private func headerIconButton(_ systemName: String, label: String,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(MeterTheme.secondaryText)
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    private var headerSubtitle: String {
+        let weighting = viewModel.weighting == .c ? "C" : "A"
+        return "环境噪音 · \(weighting) 计权"
+    }
+
+    private var weightingUnit: String {
+        viewModel.weighting == .c ? "dB(C)" : "dB(A)"
+    }
+
+    private var statusLine: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 6, height: 6)
+            Text(statusMessage)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(statusColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            if viewModel.engine.state == .denied {
+                Button("去设置") {
+                    openMicrophoneSettings()
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(MeterTheme.waveColor)
+                .buttonStyle(.plain)
             }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .background(Capsule().fill(Color.white.opacity(0.045)))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statusMessage: String {
+        guard viewModel.hasAudioInput else {
+            return "未检测到麦克风，请连接设备后重试"
+        }
+        switch viewModel.engine.state {
+        case .stopped: return "点击下方按钮开始测量"
+        case .starting: return "正在启动麦克风..."
+        case .running: return "正在测量 · 保持手机稳定"
+        case .denied: return "麦克风权限被拒绝"
+        case .failed(let message): return "启动失败:\(message)"
         }
     }
 
+    private var statusColor: Color {
+        if !viewModel.hasAudioInput { return MeterTheme.brass }
+        switch viewModel.engine.state {
+        case .running: return MeterTheme.waveColor
+        case .denied, .failed(_): return MeterTheme.riskColor
+        case .stopped, .starting: return MeterTheme.secondaryText
+        }
+    }
+
+    private func stopMeasurementIfNeeded() {
+        if viewModel.engine.state == .running {
+            viewModel.stop()
+        }
+    }
+
+    private func openMicrophoneSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
+    }
+
     private var controlButton: some View {
-        Button {
+        let isRunning = viewModel.engine.state == .running
+        let isStarting = viewModel.engine.state == .starting
+        return Button {
             Task {
-                if viewModel.engine.state == .running {
+                if isRunning {
                     viewModel.stop()
                 } else {
                     await viewModel.start()
@@ -319,26 +401,33 @@ struct MainMeterView: View {
             }
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: viewModel.engine.state == .running ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 15, weight: .bold))
-                Text(viewModel.engine.state == .running ? "停止" : "开始测量")
+                if isStarting {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: isRunning ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 15, weight: .bold))
+                }
+                Text(isStarting ? "正在启动..." : (isRunning ? "停止测量" : "开始测量"))
                     .font(.system(size: 15, weight: .semibold))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 13)
             .background(
-                Capsule().fill(
-                    viewModel.engine.state == .running
-                    ? Color.red.opacity(0.8)
-                    : MeterTheme.waveColor.opacity(0.9)
-                )
+                Capsule().fill(isRunning
+                               ? MeterTheme.dangerActionGradient
+                               : MeterTheme.primaryActionGradient)
             )
-            .shadow(color: (viewModel.engine.state == .running
-                           ? Color.red : MeterTheme.waveColor).opacity(0.4),
+            .shadow(color: (isRunning ? MeterTheme.riskColor : MeterTheme.waveColor).opacity(0.28),
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
+        .disabled(isStarting)
+        .opacity(isStarting ? 0.78 : 1)
+        .accessibilityHint(isRunning ? "停止本次测量并保存记录" : "开始采集环境噪音")
     }
 
     /// 浮层提示,2 秒后自动消失

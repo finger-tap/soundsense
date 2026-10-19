@@ -69,9 +69,9 @@ struct SpectrumView: View {
         if normalized < 0.5 {
             return MeterTheme.waveColor
         } else if normalized < 0.8 {
-            return Color(red: 1.0, green: 0.85, blue: 0.30)
+            return MeterTheme.brass
         } else {
-            return Color(red: 1.0, green: 0.45, blue: 0.30)
+            return MeterTheme.riskColor
         }
     }
 }

@@ -25,6 +25,8 @@ final class MonitorViewModel: ObservableObject {
     @Published private(set) var eventCount = 0
     /// 最近一条事件提示(时间线页外的小横幅用)
     @Published private(set) var lastEventNote: String?
+    /// 启动失败时给界面的可操作提示
+    @Published private(set) var startError: String?
 
     let store = MonitorSessionStore.shared
     let engine: AudioMeterEngine
@@ -61,8 +63,19 @@ final class MonitorViewModel: ObservableObject {
     // MARK: - 开始 / 停止
 
     func start() async {
+        startError = nil
         await engine.start()
-        guard engine.state == .running else { return }
+        guard engine.state == .running else {
+            switch engine.state {
+            case .denied:
+                startError = "麦克风权限被拒绝，请到系统设置中允许闻声访问麦克风。"
+            case .failed(let message):
+                startError = "无法启动监听：\(message)"
+            default:
+                startError = "监听未能启动，请稍后重试。"
+            }
+            return
+        }
 
         eventEngine = NoiseEventEngine()
         eventEngine.thresholdOverBackground = Float(thresholdOver)

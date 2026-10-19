@@ -32,11 +32,11 @@ public struct DBRulerGauge: View {
 
     /// 分区色带:范围 → 语义色(与 NoiseLevel 档位一致)
     private let zones: [(from: Float, to: Float, color: Color)] = [
-        (30, 50, Color(red: 0.35, green: 0.55, blue: 1.0)),
-        (50, 65, Color(red: 0.30, green: 0.82, blue: 0.62)),
-        (65, 75, Color(red: 0.96, green: 0.72, blue: 0.29)),
-        (75, 90, Color(red: 1.0, green: 0.48, blue: 0.35)),
-        (90, 120, Color(red: 1.0, green: 0.27, blue: 0.24)),
+        (30, 50, Color(red: 0.48, green: 0.62, blue: 0.76)),
+        (50, 65, Color(red: 0.43, green: 0.72, blue: 0.75)),
+        (65, 75, Color(red: 0.53, green: 0.73, blue: 0.55)),
+        (75, 90, Color(red: 0.80, green: 0.67, blue: 0.39)),
+        (90, 120, Color(red: 0.90, green: 0.36, blue: 0.35)),
     ]
 
     public var body: some View {
@@ -72,7 +72,7 @@ public struct DBRulerGauge: View {
                         let isRisk = abs(db - riskDB) < 0.01
                         let tickH: CGFloat = isRisk ? 16 : (isMajor ? 10 : 5)
                         let tickColor: Color = isRisk
-                            ? Color(red: 1.0, green: 0.27, blue: 0.24)
+                            ? MeterTheme.riskColor
                             : Color.white.opacity(isMajor ? 0.45 : 0.22)
                         var tick = Path()
                         tick.move(to: CGPoint(x: x, y: baseY - tickH))
@@ -102,7 +102,7 @@ public struct DBRulerGauge: View {
                     let riskX = max(14, min(size.width - 14, toX(riskDB)))
                     ctx.draw(Text("85")
                                 .font(MeterTheme.mono(9, weight: .semibold))
-                                .foregroundColor(Color(red: 1.0, green: 0.35, blue: 0.30)),
+                                .foregroundColor(MeterTheme.riskColor),
                              at: CGPoint(x: riskX, y: bandBottom + 8))
                 }
 

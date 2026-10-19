@@ -10,16 +10,18 @@
 //
 
 import SwiftUI
+import AppKit
 import SoundSenseCore
 
 struct MacMainMeterView: View {
     @ObservedObject var viewModel: MeterViewModel
+    @Environment(\.openURL) private var openURL
     @State private var showingSettings = false
     @State private var showingHistory = false
 
     /// 当前等级色(贯穿数字、仪表、按钮)
     private var levelColor: Color {
-        viewModel.noiseLevel?.color ?? Color(red: 0.24, green: 0.83, blue: 0.69)
+        viewModel.noiseLevel?.color ?? MeterTheme.waveColor
     }
 
     var body: some View {
@@ -28,6 +30,8 @@ struct MacMainMeterView: View {
             VStack(spacing: 0) {
                 // 顶部标题栏(固定,不滚动)+ 可拖动区域
                 headerBar
+                    .frame(maxWidth: 840)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 28).padding(.top, 18).padding(.bottom, 8)
 
                 // 中间内容(窗口太小时可滚动)
@@ -81,6 +85,8 @@ struct MacMainMeterView: View {
                     }
                     .padding(.top, 6)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: 820)
+                    .frame(maxWidth: .infinity)
                 }
 
                 // 底部按钮(固定,永远可见,不随滚动消失)
@@ -91,7 +97,9 @@ struct MacMainMeterView: View {
                         exportReportButton(stats: stats)
                     }
                 }
-                .padding(.horizontal, 80).padding(.bottom, 22).padding(.top, 6)
+                .frame(maxWidth: 620)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 28).padding(.bottom, 22).padding(.top, 6)
             }
 
             // 设置 / 历史浮层(ZStack 覆盖,瞬间弹出,不用慢吞吞的 sheet)
@@ -113,6 +121,14 @@ struct MacMainMeterView: View {
         .onChange(of: viewModel.engine.latestResult) { r in
             if let r = r { viewModel.consume(r) }
         }
+        .onAppear {
+            viewModel.refreshAudioInputAvailability()
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification
+        )) { _ in
+            viewModel.refreshAudioInputAvailability()
+        }
     }
 
     // MARK: - 子组件
@@ -121,28 +137,33 @@ struct MacMainMeterView: View {
         HStack {
             HStack(spacing: 10) {
                 Text("闻声").font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
-                Text("SoundSense").font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.35)).textCase(.uppercase)
+                Text("SOUNDSENSE").font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundColor(MeterTheme.tertiaryText)
             }
             Spacer()
             Button {
                 showingHistory = true
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 15)).foregroundColor(MeterTheme.secondaryText)
+                    .frame(width: 34, height: 34)
                     .background(Circle().fill(.white.opacity(showingHistory ? 0.12 : 0)))
                     .accessibilityLabel("测量历史")
             }
             .buttonStyle(.plain)
+            .keyboardShortcut("h", modifiers: .command)
+            .help("测量历史 (⌘H)")
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 15)).foregroundColor(.white.opacity(0.55))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 15)).foregroundColor(MeterTheme.secondaryText)
+                    .frame(width: 34, height: 34)
                     .background(Circle().fill(.white.opacity(showingSettings ? 0.12 : 0)))
                     .accessibilityLabel("设置")
             }
             .buttonStyle(.plain)
+            .keyboardShortcut(",", modifiers: .command)
+            .help("设置 (⌘,)")
         }
     }
 
@@ -151,12 +172,16 @@ struct MacMainMeterView: View {
         VStack(spacing: 10) {
             Text(splText(viewModel.currentSPL))
                 .font(.system(size: 84, weight: .heavy, design: .rounded))
-                .foregroundColor(.white).monospacedDigit()
-            Text("dB(A)")
+                .foregroundColor(MeterTheme.primaryText).monospacedDigit()
+                .accessibilityLabel("当前声压级")
+                .accessibilityValue(viewModel.currentSPL.isFinite && viewModel.currentSPL > -80
+                                    ? String(format: "%.1f %@", viewModel.currentSPL, weightingUnit)
+                                    : "无信号")
+            Text(weightingUnit)
                 .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(MeterTheme.secondaryText)
             DBRulerGauge(spl: viewModel.currentSPL, levelColor: levelColor)
-                .frame(width: 380)
+                .frame(maxWidth: 480)
                 .padding(.top, 6)
         }
     }
@@ -168,10 +193,10 @@ struct MacMainMeterView: View {
                     Text(lv.emoji).font(.system(size: 15))
                     Text(lv.label).font(.system(size: 15, weight: .semibold)).foregroundColor(lv.color)
                     Text("·").foregroundColor(.white.opacity(0.3))
-                    Text(lv.detail).font(.system(size: 12)).foregroundColor(.white.opacity(0.45))
+                    Text(lv.detail).font(.system(size: 12)).foregroundColor(MeterTheme.secondaryText)
                 }
             } else {
-                Text("待机中").font(.system(size: 13)).foregroundColor(.white.opacity(0.4))
+                Text("待机中").font(.system(size: 13)).foregroundColor(MeterTheme.secondaryText)
             }
         }
     }
@@ -179,7 +204,22 @@ struct MacMainMeterView: View {
     private var statusLine: some View {
         HStack(spacing: 6) {
             statusDot
-            Text(statusMessage).font(.system(size: 11.5)).foregroundColor(.white.opacity(0.5))
+            Text(statusMessage).font(.system(size: 11.5)).foregroundColor(MeterTheme.secondaryText)
+            if viewModel.engine.state == .denied {
+                Button("打开麦克风设置") {
+                    openMicrophoneSettings()
+                }
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundColor(MeterTheme.waveColor)
+                .buttonStyle(.plain)
+            } else if !viewModel.hasAudioInput {
+                Button("检查系统输入设备") {
+                    openSoundSettings()
+                }
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundColor(MeterTheme.waveColor)
+                .buttonStyle(.plain)
+            }
             Spacer()
         }
     }
@@ -187,10 +227,11 @@ struct MacMainMeterView: View {
     private var statusDot: some View {
         let pulse = viewModel.engine.state == .running
         let dotColor: Color = {
+            if !viewModel.hasAudioInput { return MeterTheme.brass }
             switch viewModel.engine.state {
             case .running: return levelColor
-            case .failed, .denied: return .red
-            default: return Color.white.opacity(0.3)
+            case .failed(_), .denied: return MeterTheme.riskColor
+            default: return Color.white.opacity(0.35)
             }
         }()
         return Circle()
@@ -202,6 +243,9 @@ struct MacMainMeterView: View {
     }
 
     private var statusMessage: String {
+        guard viewModel.hasAudioInput else {
+            return AudioMeterEngine.noInputDeviceMessage
+        }
         switch viewModel.engine.state {
         case .stopped: return "点击下方按钮开始测量环境噪音"
         case .starting: return "正在启动麦克风..."
@@ -213,23 +257,40 @@ struct MacMainMeterView: View {
 
     private var controlButton: some View {
         let running = viewModel.engine.state == .running
+        let starting = viewModel.engine.state == .starting
         return Button {
-            Task { running ? viewModel.stop() : await viewModel.start() }
+            Task {
+                if running {
+                    viewModel.stop()
+                } else {
+                    await viewModel.start()
+                }
+            }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: running ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 13, weight: .bold))
-                Text(running ? "停止检测" : "开始检测")
+                if starting {
+                    ProgressView().controlSize(.small).tint(.white)
+                } else {
+                    Image(systemName: running ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 13, weight: .bold))
+                }
+                Text(starting ? "正在启动..." : (running ? "停止检测" : "开始检测"))
                     .font(.system(size: 14, weight: .semibold))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity).padding(.vertical, 12)
             .background(
-                Capsule().fill(running ? Color.red.opacity(0.85) : levelColor)
+                Capsule().fill(running ? MeterTheme.dangerActionGradient
+                                       : MeterTheme.primaryActionGradient)
             )
-            .shadow(color: (running ? Color.red : levelColor).opacity(0.35), radius: 10, y: 4)
+            .shadow(color: (running ? MeterTheme.riskColor : MeterTheme.waveColor).opacity(0.28),
+                    radius: 10, y: 4)
         }
         .buttonStyle(.plain)
+        .disabled(starting || showingSettings || showingHistory || !viewModel.hasAudioInput)
+        .opacity((starting || showingSettings || showingHistory || !viewModel.hasAudioInput) ? 0.62 : 1)
+        .keyboardShortcut(.space, modifiers: [])
+        .help(running ? "停止检测 (空格)" : "开始检测 (空格)")
     }
 
     /// 导出报告按钮(停止检测后出现)
@@ -247,7 +308,11 @@ struct MacMainMeterView: View {
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity).padding(.vertical, 12)
-            .background(Capsule().fill(Color.white.opacity(0.12)))
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.075))
+                    .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
+            )
         }
         .buttonStyle(.plain)
         .transition(.opacity)
@@ -257,6 +322,26 @@ struct MacMainMeterView: View {
         guard spl.isFinite, spl > -80 else { return "--" }
         return String(format: "%.1f", spl)
     }
+
+    private var weightingUnit: String {
+        viewModel.weighting == .c ? "dB(C)" : "dB(A)"
+    }
+
+    private func openMicrophoneSettings() {
+        guard let url = URL(string:
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") else {
+            return
+        }
+        openURL(url)
+    }
+
+    private func openSoundSettings() {
+        guard let url = URL(string:
+                "x-apple.systempreferences:com.apple.Sound-Settings.extension") else {
+            return
+        }
+        openURL(url)
+    }
 }
 
 // MARK: - 背景(石墨底 + 随等级色的极淡光晕)
@@ -265,11 +350,11 @@ private struct BackgroundView: View {
     let accent: Color
     var body: some View {
         ZStack {
-            Color(red: 0.043, green: 0.063, blue: 0.078)
+            MeterTheme.backgroundGradient
             // 极淡的等级色氛围光(克制,不抢读数)
             RadialGradient(
-                colors: [accent.opacity(0.10), .clear],
-                center: UnitPoint(x: 0.5, y: 0.15), startRadius: 20, endRadius: 620
+                colors: [accent.opacity(0.11), .clear],
+                center: UnitPoint(x: 0.5, y: 0.12), startRadius: 20, endRadius: 680
             )
         }
         .ignoresSafeArea()
@@ -293,7 +378,7 @@ private struct Card<Content: View>: View {
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(MeterTheme.panel)
+                .fill(MeterTheme.panelGradient)
                 .overlay(RoundedRectangle(cornerRadius: 14)
                     .stroke(MeterTheme.hairline, lineWidth: 1))
         )
@@ -302,7 +387,7 @@ private struct Card<Content: View>: View {
 
 private struct EmptyHint: View {
     var body: some View {
-        Text("等待数据").font(.system(size: 11)).foregroundColor(.white.opacity(0.3))
+        Text("等待数据").font(.system(size: 11)).foregroundColor(MeterTheme.tertiaryText)
             .frame(maxWidth: .infinity).frame(height: 56)
     }
 }
@@ -325,7 +410,7 @@ struct TrendChart: View {
                 ctx.stroke(l, with: .color(.white.opacity(0.05)), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
             }
             guard values.count >= 2 else {
-                ctx.draw(Text("等待数据").font(.system(size: 10)).foregroundColor(.white.opacity(0.3)),
+                ctx.draw(Text("等待数据").font(.system(size: 10)).foregroundColor(MeterTheme.tertiaryText),
                          at: CGPoint(x: size.width/2, y: size.height/2))
                 return
             }

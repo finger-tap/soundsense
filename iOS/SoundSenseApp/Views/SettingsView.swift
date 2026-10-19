@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 import SoundSenseCore
 
 struct SettingsView: View {
@@ -161,6 +162,7 @@ private struct HealthCard: View {
 
 private struct CalibrationCard: View {
     @ObservedObject var viewModel: MeterViewModel
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -231,10 +233,58 @@ private struct CalibrationCard: View {
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
         } else {
-            Text("提示:在测量页启动检测后回到这里,可对照标准声级计实时微调偏移量。")
-                .font(.system(size: 12))
-                .foregroundColor(MeterTheme.secondaryText)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("提示:启动麦克风后,可对照标准声级计在当前页面实时微调偏移量。")
+                    .font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if viewModel.engine.state == .starting {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(MeterTheme.waveColor)
+                        Text("正在启动麦克风...")
+                            .font(.system(size: 12))
+                            .foregroundColor(MeterTheme.secondaryText)
+                    }
+                } else if viewModel.engine.state == .denied {
+                    Button {
+                        openMicrophoneSettings()
+                    } label: {
+                        Label("前往系统设置开启麦克风", systemImage: "gearshape")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(RoundedRectangle(cornerRadius: 10)
+                                .fill(MeterTheme.riskColor.opacity(0.82)))
+                    }
+                    .buttonStyle(.plain)
+                } else if !viewModel.hasAudioInput {
+                    Label("未检测到麦克风，请连接后重试", systemImage: "mic.slash")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(MeterTheme.brass)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Button {
+                        Task { await viewModel.start() }
+                    } label: {
+                        Label("启动麦克风开始校准", systemImage: "mic.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(RoundedRectangle(cornerRadius: 10)
+                                .fill(MeterTheme.primaryActionGradient))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
+    }
+
+    private func openMicrophoneSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 
     private func adjustButton(_ label: String, _ delta: Float) -> some View {
@@ -252,21 +302,36 @@ private struct CalibrationCard: View {
     }
 
     private func presetButton(label: String, offset: Float) -> some View {
-        Button {
+        let selected = abs(viewModel.calibrationOffset - offset) < 0.05
+        return Button {
             viewModel.calibrationOffset = offset
         } label: {
             VStack(spacing: 2) {
-                Text(label).font(.system(size: 13, weight: .medium))
+                HStack(spacing: 4) {
+                    if selected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    Text(label).font(.system(size: 13, weight: .medium))
+                }
                 Text(String(format: "+%.0f dB", offset))
                     .font(.system(size: 11, design: .monospaced))
                     .opacity(0.7)
             }
-            .foregroundColor(.white)
+            .foregroundColor(selected ? MeterTheme.waveColor : .white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 10).fill(MeterTheme.cardBackground))
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(MeterTheme.cardBackground)
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .stroke(selected ? MeterTheme.waveColor.opacity(0.55) : MeterTheme.cardBorder,
+                                lineWidth: 1))
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(label) \(String(format: "%+.0f dB", offset))")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var offsetRow: some View {
@@ -308,6 +373,18 @@ private struct AboutCard: View {
             row(title: "版本", value: appVersionString())
             row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
             row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
+            row(title: "隐私", value: "测量与录音仅保存在本机")
+            Link(destination: URL(string: "https://github.com/finger-tap/soundsense")!) {
+                HStack {
+                    Label("开源项目 · MIT License", systemImage: "chevron.left.forwardslash.chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(MeterTheme.waveColor)
+                .padding(.top, 2)
+            }
             Text("核心算法基于 Accelerate/vDSP,符合 IEC 61672-1 国际标准。")
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)
@@ -340,7 +417,7 @@ private struct CardStyle: ViewModifier {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(MeterTheme.cardBackground)
+                    .fill(MeterTheme.panelGradient)
                     .overlay(RoundedRectangle(cornerRadius: 20).stroke(MeterTheme.cardBorder, lineWidth: 1))
             )
     }

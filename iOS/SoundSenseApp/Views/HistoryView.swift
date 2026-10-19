@@ -45,6 +45,7 @@ struct HistoryView: View {
     @State private var selectedSource: SourceTestResult?
     @State private var sharingSourceHTML: SourceTestResult?
     @State private var selectedSession: MonitorSession?
+    @State private var showingClearConfirmation = false
 
     var body: some View {
         NavigationView {
@@ -76,21 +77,23 @@ struct HistoryView: View {
                         .foregroundColor(MeterTheme.waveColor)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if tab == 0, !store.records.isEmpty {
+                    if hasRecordsInCurrentTab {
                         HStack(spacing: 14) {
-                            Button {
-                                sharingCSV = CSVItem(
-                                    text: MeasurementCSV.csv(forAll: store.records),
-                                    filename: "闻声数据_全部记录.csv")
-                            } label: {
-                                Text("CSV").font(.system(size: 14))
-                                    .foregroundColor(MeterTheme.waveColor)
+                            if tab == 0 {
+                                Button {
+                                    sharingCSV = CSVItem(
+                                        text: MeasurementCSV.csv(forAll: store.records),
+                                        filename: "闻声数据_全部记录.csv")
+                                } label: {
+                                    Text("CSV").font(.system(size: 14))
+                                        .foregroundColor(MeterTheme.waveColor)
+                                }
                             }
                             Button(role: .destructive) {
-                                store.removeAll()
+                                showingClearConfirmation = true
                             } label: {
                                 Text("清空").font(.system(size: 14))
-                                    .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.4))
+                                    .foregroundColor(MeterTheme.riskColor)
                             }
                         }
                     }
@@ -121,6 +124,48 @@ struct HistoryView: View {
         }
         .sheet(item: $selectedSession) { session in
             MonitorSessionDetailView(session: session, store: monitorStore)
+        }
+        .confirmationDialog(clearConfirmationTitle,
+                            isPresented: $showingClearConfirmation,
+                            titleVisibility: .visible) {
+            Button(clearActionTitle, role: .destructive) {
+                clearCurrentTab()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("相关录音也会一并删除，此操作无法撤销。")
+        }
+    }
+
+    private var hasRecordsInCurrentTab: Bool {
+        switch tab {
+        case 0: return !store.records.isEmpty
+        case 1: return !sourceStore.results.isEmpty
+        default: return !monitorStore.sessions.isEmpty
+        }
+    }
+
+    private var clearConfirmationTitle: String {
+        switch tab {
+        case 0: return "清空全部测量记录？"
+        case 1: return "清空全部声源测试？"
+        default: return "清空全部监听记录？"
+        }
+    }
+
+    private var clearActionTitle: String {
+        switch tab {
+        case 0: return "清空测量记录"
+        case 1: return "清空声源测试"
+        default: return "清空监听记录"
+        }
+    }
+
+    private func clearCurrentTab() {
+        switch tab {
+        case 0: store.removeAll()
+        case 1: sourceStore.removeAll()
+        default: monitorStore.removeAll()
         }
     }
 
@@ -161,7 +206,7 @@ struct HistoryView: View {
             HStack {
                 Text(Self.rowDate.string(from: result.startTime))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Text(SourceTestHTMLBuilder.verdictText(result.verdict))
                     .font(.system(size: 13, weight: .bold))
@@ -170,7 +215,7 @@ struct HistoryView: View {
             HStack {
                 Text("置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType))")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
                 if result.audioID != nil {
                     Image(systemName: "waveform")
@@ -182,7 +227,7 @@ struct HistoryView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(MeterTheme.cardBackground)
+                .fill(MeterTheme.panelGradient)
                 .overlay(RoundedRectangle(cornerRadius: 14)
                     .stroke(MeterTheme.cardBorder, lineWidth: 1))
         )
@@ -226,7 +271,7 @@ struct HistoryView: View {
             HStack {
                 Text(Self.rowDate.string(from: session.startTime))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 if session.endTime == nil {
                     Text("进行中").font(.system(size: 12))
@@ -239,14 +284,14 @@ struct HistoryView: View {
             HStack {
                 Text("LAeq \(String(format: "%.1f", session.overallLaeq)) dB · \(session.events.count) 次事件")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
             }
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(MeterTheme.cardBackground)
+                .fill(MeterTheme.panelGradient)
                 .overlay(RoundedRectangle(cornerRadius: 14)
                     .stroke(MeterTheme.cardBorder, lineWidth: 1))
         )
@@ -259,16 +304,28 @@ struct HistoryView: View {
     }
 
     private func recordEmpty(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 40))
-                .foregroundColor(.white.opacity(0.3))
+                .foregroundColor(MeterTheme.tertiaryText)
             Text(title)
                 .font(.system(size: 15))
                 .foregroundColor(MeterTheme.secondaryText)
             Text(subtitle)
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)
+            Button {
+                dismiss()
+            } label: {
+                Text("返回首页")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(MeterTheme.primaryActionGradient))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -283,9 +340,12 @@ struct HistoryView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(Array(store.records.enumerated()), id: \.offset) { index, record in
-                    HistoryRow(record: record) {
-                        selectedRecord = record
-                    } .contextMenu {
+                    HistoryRow(
+                        record: record,
+                        onOpen: { selectedRecord = record },
+                        onExport: { sharingStats = record }
+                    )
+                    .contextMenu {
                         Button {
                             selectedRecord = record
                         } label: {
@@ -317,16 +377,28 @@ struct HistoryView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 40))
-                .foregroundColor(.white.opacity(0.3))
+                .foregroundColor(MeterTheme.tertiaryText)
             Text("还没有测量记录")
                 .font(.system(size: 15))
                 .foregroundColor(MeterTheme.secondaryText)
             Text("完成一次测量后,报告会自动保存在这里")
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)
+            Button {
+                dismiss()
+            } label: {
+                Text("开始第一次测量")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(MeterTheme.primaryActionGradient))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(MeterTheme.backgroundGradient.ignoresSafeArea())
@@ -343,6 +415,7 @@ struct CSVItem: Identifiable {
 /// 单条历史记录卡片
 struct HistoryRow: View {
     let record: MeasurementStats
+    let onOpen: () -> Void
     let onExport: () -> Void
 
     private static let dateFormatter: DateFormatter = {
@@ -356,20 +429,26 @@ struct HistoryRow: View {
             HStack {
                 Text(Self.dateFormatter.string(from: record.startTime))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Button(action: onExport) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(MeterTheme.waveColor)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("导出本次测量报告")
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(MeterTheme.tertiaryText)
             }
 
             HStack(spacing: 0) {
                 stat(value: record.laeqSPL, label: "LAeq", color: MeterTheme.waveColor)
                 stat(value: record.avgSPL, label: "平均", color: .white.opacity(0.85))
-                stat(value: record.peakSPL, label: "峰值", color: Color(red: 1.0, green: 0.6, blue: 0.2))
+                stat(value: record.peakSPL, label: "峰值", color: MeterTheme.brass)
                 stat(value: Float(Int(record.duration)), label: "秒", color: .white.opacity(0.6),
                      format: "%.0f")
             }
@@ -378,21 +457,27 @@ struct HistoryRow: View {
                 Label {
                     Text(String(format: "有 %.0f 秒超过 85 dB", record.overLimitTotal))
                         .font(.system(size: 11))
-                        .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.4))
+                        .foregroundColor(MeterTheme.riskColor)
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 10))
-                        .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.4))
+                        .foregroundColor(MeterTheme.riskColor)
                 }
             }
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(MeterTheme.cardBackground)
+                .fill(MeterTheme.panelGradient)
                 .overlay(RoundedRectangle(cornerRadius: 14)
                     .stroke(MeterTheme.cardBorder, lineWidth: 1))
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture(perform: onOpen)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "查看详情") {
+            onOpen()
+        }
     }
 
     private func stat(value: Float, label: String, color: Color,
@@ -453,7 +538,7 @@ struct HistoryDetailSheet: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity, minHeight: 38)
                                 .background(RoundedRectangle(cornerRadius: 10)
-                                    .fill(MeterTheme.waveColor.opacity(0.85)))
+                                    .fill(MeterTheme.primaryActionGradient))
                         }
                         .buttonStyle(.plain)
                     }
@@ -525,7 +610,12 @@ struct RecordingPlayerBar: View {
                 .frame(width: 90)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(MeterTheme.panelGradient)
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
+        )
     }
 }
 

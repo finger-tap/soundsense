@@ -49,43 +49,43 @@ public struct NoiseLevel: Equatable {
                               label: "极安静",
                               detail: "图书馆、深夜卧室",
                               emoji: "🤫",
-                              color: Color(red: 0.35, green: 0.55, blue: 1.0))
+                              color: Color(red: 0.48, green: 0.62, blue: 0.76))
         case 35..<50:
             return NoiseLevel(tier: .normal,
                               label: "安静",
                               detail: "安静办公室、起居室",
                               emoji: "😌",
-                              color: Color(red: 0.30, green: 0.85, blue: 0.95))
+                              color: Color(red: 0.43, green: 0.72, blue: 0.75))
         case 50..<65:
             return NoiseLevel(tier: .moderate,
                               label: "正常",
                               detail: "普通交谈、办公室",
                               emoji: "🙂",
-                              color: Color(red: 0.50, green: 0.90, blue: 0.50))
+                              color: Color(red: 0.53, green: 0.73, blue: 0.55))
         case 65..<75:
             return NoiseLevel(tier: .loud,
                               label: "偏吵",
                               detail: "嘈杂街道、餐馆",
                               emoji: "😐",
-                              color: Color(red: 1.0, green: 0.85, blue: 0.30))
+                              color: Color(red: 0.80, green: 0.67, blue: 0.39))
         case 75..<90:
             return NoiseLevel(tier: .veryLoud,
                               label: "较吵",
                               detail: "主干道、地铁",
                               emoji: "😷",
-                              color: Color(red: 1.0, green: 0.60, blue: 0.20))
+                              color: Color(red: 0.82, green: 0.55, blue: 0.36))
         case 90..<105:
             return NoiseLevel(tier: .veryLoud,
                               label: "很吵",
                               detail: "演唱会、电钻",
                               emoji: "⚠️",
-                              color: Color(red: 1.0, green: 0.40, blue: 0.25))
+                              color: Color(red: 0.86, green: 0.44, blue: 0.34))
         default:
             return NoiseLevel(tier: .harmful,
                               label: "有害",
                               detail: "长时间暴露会损伤听力",
                               emoji: "🚨",
-                              color: Color(red: 1.0, green: 0.20, blue: 0.25))
+                              color: Color(red: 0.90, green: 0.36, blue: 0.35))
         }
     }
 }

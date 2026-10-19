@@ -18,7 +18,7 @@ struct LevelBadge: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(level.label)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.primaryText)
                     Text(level.detail)
                         .font(.system(size: 11))
                         .foregroundColor(MeterTheme.secondaryText)
@@ -27,10 +27,16 @@ struct LevelBadge: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
             .background(
-                Capsule().fill(level.color.opacity(0.18))
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [level.color.opacity(0.24), level.color.opacity(0.10)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
             )
             .overlay(
-                Capsule().stroke(level.color.opacity(0.5), lineWidth: 1)
+                Capsule().stroke(level.color.opacity(0.58), lineWidth: 1)
             )
         } else {
             HStack(spacing: 7) {

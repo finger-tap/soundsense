@@ -56,24 +56,52 @@ struct MonitorView: View {
                 Text("做过「声源定位」测试后,位置推测会更准。")
             }
             .font(.system(size: 12))
-            .foregroundColor(.white.opacity(0.6))
+            .foregroundColor(MeterTheme.secondaryText)
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(MeterTheme.cardBackground))
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(MeterTheme.panelGradient)
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .stroke(MeterTheme.cardBorder, lineWidth: 1))
+            )
 
             thresholdSettings
+
+            if let error = vm.startError {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(MeterTheme.riskColor)
+                    Text(error)
+                        .font(.system(size: 12))
+                        .foregroundColor(MeterTheme.riskColor)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12)
+                    .fill(MeterTheme.riskColor.opacity(0.10)))
+            }
 
             Button {
                 Task { await vm.start() }
             } label: {
-                Text("开始监听")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(RoundedRectangle(cornerRadius: 12)
-                        .fill(MeterTheme.waveColor.opacity(0.9)))
+                HStack(spacing: 8) {
+                    if vm.engine.state == .starting {
+                        ProgressView().tint(.white).scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "moon.zzz.fill")
+                    }
+                    Text(vm.engine.state == .starting ? "正在启动..." : "开始监听")
+                }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(RoundedRectangle(cornerRadius: 12)
+                    .fill(MeterTheme.primaryActionGradient))
             }
             .buttonStyle(.plain)
+            .disabled(vm.engine.state == .starting)
             Spacer()
         }
         .padding(20)
@@ -106,7 +134,12 @@ struct MonitorView: View {
             }
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14).fill(MeterTheme.cardBackground))
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(MeterTheme.panelGradient)
+                .overlay(RoundedRectangle(cornerRadius: 14)
+                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
+        )
         .tint(MeterTheme.waveColor)
     }
 
@@ -116,7 +149,7 @@ struct MonitorView: View {
         VStack(spacing: 22) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color(red: 1.0, green: 0.27, blue: 0.24))
+                    .fill(MeterTheme.riskColor)
                     .frame(width: 9, height: 9)
                 Text("监听中")
                     .font(.system(size: 15, weight: .semibold))
@@ -132,7 +165,7 @@ struct MonitorView: View {
                      ? String(format: "背景基线 %.1f dB", vm.baseline)
                      : "背景基线学习中...")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(MeterTheme.secondaryText)
             }
 
             VStack(spacing: 4) {
@@ -142,15 +175,20 @@ struct MonitorView: View {
                     .monospacedDigit()
                 Text("已抓拍异常事件")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(MeterTheme.secondaryText)
             }
 
             if let note = vm.lastEventNote {
                 Text("最近:\(note)")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(MeterTheme.secondaryText)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(MeterTheme.cardBackground))
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(MeterTheme.panelGradient)
+                            .overlay(RoundedRectangle(cornerRadius: 10)
+                                .stroke(MeterTheme.cardBorder, lineWidth: 1))
+                    )
             }
 
             Spacer()
@@ -162,7 +200,7 @@ struct MonitorView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 1.0, green: 0.35, blue: 0.3).opacity(0.85)))
+                        .fill(MeterTheme.dangerActionGradient))
             }
             .buttonStyle(.plain)
         }
@@ -257,7 +295,7 @@ struct MonitorSessionDetailView: View {
                         .foregroundColor(.white)
                     Text("\(SourceTendencyAnalyzer.typeText(event.type)) · \(event.guess)")
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(MeterTheme.secondaryText)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
@@ -272,12 +310,16 @@ struct MonitorSessionDetailView: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(MeterTheme.cardBackground)
+                    .fill(MeterTheme.panelGradient)
                     .overlay(RoundedRectangle(cornerRadius: 12)
                         .stroke(MeterTheme.cardBorder, lineWidth: 1))
             )
         }
         .buttonStyle(.plain)
+        .disabled(event.clipFile == nil)
+        .accessibilityLabel(event.clipFile == nil
+                            ? "\(Self.tf.string(from: event.time))，无录音"
+                            : "播放 \(Self.tf.string(from: event.time)) 的录音")
     }
 
     private func iconName(_ type: NoiseType) -> String {
@@ -301,7 +343,12 @@ struct MonitorSessionDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 12).fill(MeterTheme.cardBackground))
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(MeterTheme.panelGradient)
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .stroke(MeterTheme.cardBorder, lineWidth: 1))
+        )
     }
 
     private static let tf: DateFormatter = {

@@ -20,7 +20,7 @@ struct WatchSettingsView: View {
                     .foregroundColor(.white)
 
                 Text("麦克风采集 dBFS,加偏移量换算成 SPL。默认 +115 是手表内建麦克风的保守估计,建议与 iPhone 端对照校准。")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11.5))
                     .foregroundColor(MeterTheme.secondaryText)
 
                 Text(String(format: "%+.1f dB", viewModel.calibrationOffset))
@@ -46,13 +46,22 @@ struct WatchSettingsView: View {
                 Button {
                     viewModel.calibrationOffset = CalibrationDefaults.watchBuiltIn
                 } label: {
-                    Text("恢复默认 (+115)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 10)
-                            .fill(.white.opacity(0.08)))
+                    HStack(spacing: 4) {
+                        if abs(viewModel.calibrationOffset - CalibrationDefaults.watchBuiltIn) < 0.05 {
+                            Image(systemName: "checkmark.circle.fill")
+                        }
+                        Text("使用默认 (+115)")
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(MeterTheme.waveColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(MeterTheme.panelGradient)
+                            .overlay(RoundedRectangle(cornerRadius: 10)
+                                .stroke(MeterTheme.waveColor.opacity(0.35), lineWidth: 1))
+                    )
                 }
                 .buttonStyle(.plain)
 
@@ -60,6 +69,7 @@ struct WatchSettingsView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(MeterTheme.waveColor)
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
             }
             .padding(.horizontal, 4)
         }

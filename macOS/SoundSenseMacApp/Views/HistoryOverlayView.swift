@@ -14,6 +14,7 @@ struct HistoryOverlay: View {
     let calibrationOffset: Float
     @Binding var isPresented: Bool
     @State private var sharingStats: MeasurementStats?
+    @State private var showingClearConfirmation = false
 
     var body: some View {
         ZStack {
@@ -25,10 +26,10 @@ struct HistoryOverlay: View {
                 header
                 content
             }
-            .frame(width: 480, height: 560)
+            .frame(width: 500, height: 580)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(MeterTheme.panel)
+                    .fill(MeterTheme.panelGradient)
                     .overlay(RoundedRectangle(cornerRadius: 18)
                         .stroke(.white.opacity(0.1), lineWidth: 1))
             )
@@ -39,6 +40,16 @@ struct HistoryOverlay: View {
                                   store: store,
                                   deviceName: deviceName,
                                   calibrationOffset: calibrationOffset)
+        }
+        .confirmationDialog("清空全部测量记录？",
+                            isPresented: $showingClearConfirmation,
+                            titleVisibility: .visible) {
+            Button("清空测量记录", role: .destructive) {
+                store.removeAll()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("相关录音也会一并删除，此操作无法撤销。")
         }
     }
 
@@ -52,14 +63,14 @@ struct HistoryOverlay: View {
                               filename: "闻声数据_全部记录.csv")
                 } label: {
                     Text("CSV").font(.system(size: 12))
-                        .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+                        .foregroundColor(MeterTheme.waveColor)
                 }
                 .buttonStyle(.plain)
                 Button {
-                    store.removeAll()
+                    showingClearConfirmation = true
                 } label: {
                     Text("清空").font(.system(size: 12))
-                        .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.4))
+                        .foregroundColor(MeterTheme.riskColor)
                 }
                 .buttonStyle(.plain)
             }
@@ -68,7 +79,7 @@ struct HistoryOverlay: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(MeterTheme.tertiaryText)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(.white.opacity(0.1)))
             }
@@ -84,9 +95,9 @@ struct HistoryOverlay: View {
             VStack(spacing: 10) {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 34))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(MeterTheme.tertiaryText)
                 Text("还没有测量记录")
-                    .font(.system(size: 14)).foregroundColor(.white.opacity(0.5))
+                    .font(.system(size: 14)).foregroundColor(MeterTheme.secondaryText)
                 Text("完成一次测量后,报告会自动保存在这里")
                     .font(.system(size: 11)).foregroundColor(.white.opacity(0.35))
             }
@@ -143,13 +154,13 @@ private struct MacHistoryRow: View {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(MeterTheme.tertiaryText)
                 }
                 .buttonStyle(.plain)
                 Button(action: onExportCSV) {
                     Image(systemName: "tablecells")
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(MeterTheme.secondaryText)
                 }
                 .buttonStyle(.plain)
                 .help("导出 CSV")
@@ -158,15 +169,15 @@ private struct MacHistoryRow: View {
                         Image(systemName: "square.and.arrow.up").font(.system(size: 11, weight: .semibold))
                         Text("导出").font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(Color(red: 0.24, green: 0.83, blue: 0.69))
+                    .foregroundColor(MeterTheme.waveColor)
                 }
                 .buttonStyle(.plain)
             }
 
             HStack(spacing: 0) {
-                stat(record.laeqSPL, label: "LAeq dB", color: Color(red: 0.24, green: 0.83, blue: 0.69))
+                stat(record.laeqSPL, label: "LAeq dB", color: MeterTheme.waveColor)
                 stat(record.avgSPL, label: "平均 dB", color: .white.opacity(0.85))
-                stat(record.peakSPL, label: "峰值 dB", color: Color(red: 1.0, green: 0.6, blue: 0.2))
+                stat(record.peakSPL, label: "峰值 dB", color: MeterTheme.brass)
                 stat(Float(record.duration), label: "时长(秒)", color: .white.opacity(0.6), format: "%.0f")
             }
 
@@ -174,11 +185,11 @@ private struct MacHistoryRow: View {
                 Label {
                     Text(String(format: "有 %.0f 秒超过 85 dB", record.overLimitTotal))
                         .font(.system(size: 10.5))
-                        .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.4))
+                        .foregroundColor(MeterTheme.riskColor)
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 9.5))
-                        .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.4))
+                        .foregroundColor(MeterTheme.riskColor)
                 }
             }
         }
@@ -200,7 +211,7 @@ private struct MacHistoryRow: View {
                 .monospacedDigit()
             Text(label)
                 .font(.system(size: 9.5))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(MeterTheme.tertiaryText)
         }
         .frame(maxWidth: .infinity)
     }
@@ -226,7 +237,7 @@ struct MacReportPreviewSheet: View {
             Text("测量简报")
                 .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
             Text("\(Self.df.string(from: stats.startTime)) · 时长 \(RecordingPlayer.formatTime(stats.duration))")
-                .font(.system(size: 11)).foregroundColor(.white.opacity(0.5))
+                .font(.system(size: 11)).foregroundColor(MeterTheme.secondaryText)
 
             ScrollView(showsIndicators: false) {
                 Image(nsImage: ReportRenderer.render(stats: stats, deviceName: deviceName,
@@ -271,14 +282,14 @@ struct MacReportPreviewSheet: View {
                         .font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
                         .frame(width: 110, height: 30)
                         .background(RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(red: 0.24, green: 0.83, blue: 0.69).opacity(0.85)))
+                            .fill(MeterTheme.primaryActionGradient))
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(20)
         .frame(width: 400)
-        .background(RoundedRectangle(cornerRadius: 16).fill(MeterTheme.panel))
+        .background(RoundedRectangle(cornerRadius: 16).fill(MeterTheme.panelGradient))
         .onAppear {
             if let id = stats.audioID {
                 player.load(url: store.audioFileURL(forID: id))
@@ -300,9 +311,9 @@ struct MacRecordingPlayerBar: View {
             } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(player.isAvailable ? Color(red: 0.24, green: 0.83, blue: 0.69) : .white.opacity(0.3))
+                    .foregroundColor(player.isAvailable ? MeterTheme.waveColor : MeterTheme.tertiaryText)
                     .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color(red: 0.24, green: 0.83, blue: 0.69).opacity(0.14)))
+                    .background(Circle().fill(MeterTheme.waveColor.opacity(0.14)))
             }
             .buttonStyle(.plain)
             .disabled(!player.isAvailable)
@@ -311,9 +322,9 @@ struct MacRecordingPlayerBar: View {
                 if player.isAvailable {
                     Text("\(RecordingPlayer.formatTime(player.progress * player.duration)) / \(RecordingPlayer.formatTime(player.duration))")
                         .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(MeterTheme.tertiaryText)
                 } else {
-                    Text("录音不可用").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                    Text("录音不可用").font(.system(size: 9)).foregroundColor(MeterTheme.tertiaryText)
                 }
             }
             Spacer()
