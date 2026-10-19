@@ -14,6 +14,7 @@ struct SourceTestListView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selected: SourceTestResult?
     @State private var sharingHTML: SourceTestResult?
+    @State private var showClearAllConfirm = false
 
     var body: some View {
         NavigationView {
@@ -31,13 +32,20 @@ struct SourceTestListView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !store.results.isEmpty {
                         Button(role: .destructive) {
-                            store.removeAll()
+                            showClearAllConfirm = true
                         } label: {
                             Text("清空").font(.system(size: 14))
                         }
                     }
                 }
             }
+        }
+        // 清空不可逆(含关联录音),必须二次确认
+        .confirmationDialog("确定清空全部测试记录?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
+            Button("清空全部记录", role: .destructive) { store.removeAll() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("将删除全部 \(store.results.count) 条测试记录及关联录音,此操作不可撤销")
         }
         .navigationViewStyle(.stack)
         .sheet(item: $selected) { result in

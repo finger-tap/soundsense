@@ -25,6 +25,7 @@ import AVFoundation
 import SoundSenseCore
 import SwiftUI
 #if os(macOS)
+// CoreAudio:macOS 输入设备切换与无设备预检
 import CoreAudio
 #endif
 
@@ -54,6 +55,10 @@ public final class AudioMeterEngine: ObservableObject {
     @Published public private(set) var latestResult: MeterResult?
     /// 麦克风权限状态
     @Published public private(set) var permissionGranted: Bool = false
+    #if os(macOS)
+    /// 当前生效输入设备的 UID(nil = 跟随系统默认)。仅 macOS 支持选源。
+    @Published public private(set) var activeInputDeviceUID: String?
+    #endif
 
     // MARK: - 配置
 
@@ -92,6 +97,11 @@ public final class AudioMeterEngine: ObservableObject {
     public private(set) var activeSampleRate: Float = 48000
     /// 样本挂点:录音器等外部消费者由此收到与测量同源的 PCM 分块
     private let sinkBox = SampleSinkBox()
+    #if os(macOS)
+    /// 当前绑定到 inputNode 的设备 ID(nil = 从未显式绑定,跟随系统默认)。
+    /// 自己记账而不反问 AUAudioUnit:避免依赖可读性不确定的 API,且切换失败回滚要用。
+    private var activeInputDeviceID: AudioDeviceID?
+    #endif
 
     // MARK: - 初始化
 
@@ -229,6 +239,96 @@ public final class AudioMeterEngine: ObservableObject {
         state = .stopped
     }
 
+    // MARK: - 输入设备切换(仅 macOS)
+
+    #if os(macOS)
+    /// 切换输入设备。
+    ///
+    /// - Parameters:
+    ///   - deviceID: 目标设备的 AudioDeviceID;nil 表示跟随系统默认。
+    ///   - uid: 目标设备的 UID,用于对外展示与校准值记账。
+    ///
+    /// 严格顺序(方案文档坑 2,一步都不能少):
+    /// 运行中先摘 tap → 停引擎 → setDeviceID → 用新 format 重装 tap → 重启。
+    /// 切设备后 inputNode 的 format 不会自动更新,直接重装 tap 会因采样率/通道数
+    /// 与硬件不匹配而崩溃;installTapIfNeeded 已改为优先读 inputFormat(forBus: 0) 规避,
+    /// 且其中 worker.updateSampleRate 会随重装自动执行(A 计权频率映射依赖正确采样率)。
+    public func setInputDevice(_ deviceID: AudioDeviceID?, uid: String?) async {
+        let wasRunning = (state == .running)
+        let previousDeviceID = activeInputDeviceID
+        let previousUID = activeInputDeviceUID
+
+        // AUAudioUnit 没有「解除绑定、回到系统默认」的 API。
+        // 目标是系统默认时,显式解析为当前默认设备再绑定;语义上仍是跟随系统
+        // (系统默认再变化时,由上层监听设备列表兜底回退)。
+        var targetDeviceID = deviceID
+        if targetDeviceID == nil, activeInputDeviceID != nil {
+            targetDeviceID = Self.systemDefaultInputDeviceID()
+        }
+
+        // 从未绑定过设备且目标仍是系统默认:无需任何重配,只更新记账
+        guard targetDeviceID != nil || activeInputDeviceID != nil else {
+            activeInputDeviceUID = uid
+            return
+        }
+
+        if wasRunning {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+            engine.stop()
+        }
+
+        do {
+            if let target = targetDeviceID, target != previousDeviceID {
+                try engine.inputNode.auAudioUnit.setDeviceID(target)
+            }
+            activeInputDeviceID = targetDeviceID ?? previousDeviceID
+            activeInputDeviceUID = uid
+
+            if wasRunning {
+                try installTapIfNeeded()
+                try engine.start()
+                state = .running
+            }
+        } catch {
+            // 切换失败:尽力回滚到切换前的绑定,让测量链路尽可能继续可用
+            if let previousDeviceID = previousDeviceID {
+                try? engine.inputNode.auAudioUnit.setDeviceID(previousDeviceID)
+            }
+            activeInputDeviceID = previousDeviceID
+            activeInputDeviceUID = previousUID
+            if wasRunning {
+                do {
+                    try installTapIfNeeded()
+                    try engine.start()
+                    state = .running
+                } catch {
+                    // 回滚也失败:摘掉 tap,明确报失败,避免留下半配置的引擎
+                    engine.inputNode.removeTap(onBus: 0)
+                    tapInstalled = false
+                    state = .failed(error.localizedDescription)
+                }
+            } else {
+                state = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// 查询系统默认输入设备 ID(CoreAudio)
+    private static func systemDefaultInputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject),
+                                         &address, 0, nil, &size, &deviceID) == noErr,
+              deviceID > 0 else { return nil }
+        return deviceID
+    }
+    #endif
+
     // MARK: - 样本挂点
 
     /// 设置/清除样本挂点(线程安全;tap 在音频线程每帧调用)
@@ -275,8 +375,18 @@ public final class AudioMeterEngine: ObservableObject {
         }
         #endif
         let inputNode = engine.inputNode
+
+        #if os(macOS)
+        // macOS:切设备后 outputFormat 与 inputFormat 可能不同步,且 outputFormat
+        // 可能拿到 0 通道(方案文档坑 2)。优先 inputFormat(forBus: 0) —— 它反映
+        // 输入硬件的实际格式;非法(0 采样率/0 通道)时回退 outputFormat。
+        // 未切设备时两者一致,行为与原来相同。
+        let hwFormat = inputNode.inputFormat(forBus: 0)
+        let format = (hwFormat.sampleRate > 0 && hwFormat.channelCount > 0)
+                     ? hwFormat : inputNode.outputFormat(forBus: 0)
+        #else
+        // iOS / watchOS:沿用 outputFormat,行为完全不变
         let format = inputNode.outputFormat(forBus: 0)
-        #if !os(macOS)
         guard Self.hasAvailableAudioInput(inputNode) else {
             throw AudioInputError.unavailable
         }

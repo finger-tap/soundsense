@@ -74,7 +74,13 @@ final class MenuBarController: NSObject, ObservableObject {
         if spl.isFinite, spl > -80, let lv = level {
             reading = String(format: "%.1f dB · %@", spl, lv.label)
         } else {
-            reading = running ? "正在测量..." : "未在测量"
+            // 失败/被拒也要在菜单栏可见,否则用户只能开主窗才知道原因
+            switch viewModel?.engine.state {
+            case .running: reading = "正在测量..."
+            case .denied: reading = "麦克风权限被拒绝"
+            case .failed(let m): reading = "启动失败:\(m)"
+            default: reading = "未在测量"
+            }
         }
         menu.addItem(disabledItem(reading))
 
@@ -91,6 +97,15 @@ final class MenuBarController: NSObject, ObservableObject {
                                 keyEquivalent: "")
         toggle.target = self
         menu.addItem(toggle)
+
+        // 权限被拒时给出系统设置的直达入口
+        if viewModel?.engine.state == .denied {
+            let settings = NSMenuItem(title: "打开系统设置(麦克风)…",
+                                      action: #selector(openMicSettings),
+                                      keyEquivalent: "")
+            settings.target = self
+            menu.addItem(settings)
+        }
 
         let open = NSMenuItem(title: "打开闻声窗口", action: #selector(openMainWindow),
                               keyEquivalent: "")
@@ -139,5 +154,9 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+
+    @objc private func openMicSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
     }
 }

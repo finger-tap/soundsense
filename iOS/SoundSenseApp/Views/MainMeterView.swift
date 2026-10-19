@@ -7,8 +7,8 @@
 //
 
 import SwiftUI
-import Photos
 import UIKit
+import Photos
 import SoundSenseCore
 
 struct MainMeterView: View {

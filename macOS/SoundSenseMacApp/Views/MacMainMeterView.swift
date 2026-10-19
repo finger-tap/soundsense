@@ -52,7 +52,7 @@ struct MacMainMeterView: View {
 
                         // 噪声暴露警告
                         if viewModel.exposureWarning {
-                            ExposureWarningBanner()
+                            ExposureWarningBanner(threshold: viewModel.warningThreshold)
                                 .padding(.horizontal, 28)
                                 .transition(.opacity)
                         }
