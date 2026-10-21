@@ -22,7 +22,8 @@ func makeStore() -> (MeasurementHistoryStore, URL, URL) {
 
 func makeStats(audioID: String? = nil, startAgo: TimeInterval = 60) -> MeasurementStats {
     MeasurementStats(startTime: Date().addingTimeInterval(-startAgo), endTime: Date(),
-                     duration: startAgo, avgSPL: 55, laeqSPL: 56, peakSPL: 70, minSPL: 40,
+                     duration: startAgo, avgSPL: 55, laeqSPL: 56, peakSPL: 70,
+                     lpeakSPL: 76, minSPL: 40,
                      overLimitTotal: 12, exposureLimit: 80,
                      samples: [ReportSample(relativeTime: 1, spl: 55),
                                ReportSample(relativeTime: 2, spl: 56)],
@@ -40,20 +41,28 @@ do {
     let rec = MeasurementRecorder()
     rec.start()
     // 趋势每秒只保留第一个点。模拟连续低价帧中插入一个只出现在非采样秒的尖峰。
-    rec.record(spl: 40, sessionPeak: 40, sessionLeq: 40, sessionLeqDuration: 1)
-    rec.record(spl: 40, sessionPeak: 40, sessionLeq: 40, sessionLeqDuration: 2)
-    rec.record(spl: 95, sessionPeak: 95, sessionLeq: 46, sessionLeqDuration: 3)
-    rec.record(spl: 40, sessionPeak: 95, sessionLeq: 46, sessionLeqDuration: 4)
+    rec.record(spl: 40, sessionPeak: 40, sessionLpeak: 72,
+               sessionLeq: 40, sessionLeqDuration: 1)
+    rec.record(spl: 40, sessionPeak: 40, sessionLpeak: 72,
+               sessionLeq: 40, sessionLeqDuration: 2)
+    rec.record(spl: 95, sessionPeak: 95, sessionLpeak: 101,
+               sessionLeq: 46, sessionLeqDuration: 3)
+    rec.record(spl: 40, sessionPeak: 95, sessionLpeak: 101,
+               sessionLeq: 46, sessionLeqDuration: 4)
     let live = rec.liveStats()
     expect(live?.peak == 95, "实时峰值使用引擎全帧峰值 (得 \(live?.peak ?? -999))")
+    expect(live?.lpeak == 101, "实时 Lpeak 使用独立全帧采样峰值 (得 \(live?.lpeak ?? -999))")
     expect(abs((live?.laeq ?? 0) - 46) < 0.001,
            "实时 Leq 优先使用引擎全帧积分 (得 \(live?.laeq ?? -999))")
 
     // 再喂一个趋势点以跨过 stop() 的至少 2 点门槛
     Thread.sleep(forTimeInterval: 1.05)
-    rec.record(spl: 40, sessionPeak: 95, sessionLeq: 46, sessionLeqDuration: 5)
-    let stats = rec.stop()
+    rec.record(spl: 40, sessionPeak: 95, sessionLpeak: 101,
+               sessionLeq: 46, sessionLeqDuration: 5)
+    let stats = rec.stop(sessionLpeak: 101)
     expect(stats?.peakSPL == 95, "最终报告峰值不丢失短尖峰 (得 \(stats?.peakSPL ?? -999))")
+    expect(stats?.lpeakSPL == 101,
+           "最终报告 Lpeak 不丢失采样峰值 (得 \(stats?.lpeakSPL ?? -999))")
     expect(abs((stats?.laeqSPL ?? 0) - 46) < 0.001,
            "最终报告 LAeq 使用全帧积分 (得 \(stats?.laeqSPL ?? -999))")
     expect(stats.map { $0.duration >= 1.0 && $0.duration < 2.0 } == true,
@@ -127,9 +136,11 @@ do {
 do {
     let rec = MeasurementRecorder()
     rec.start()
-    rec.record(spl: 40, sessionPeak: 40, sessionLeq: nil, sessionLeqDuration: 0)
+    rec.record(spl: 40, sessionPeak: 40, sessionLpeak: nil,
+               sessionLeq: nil, sessionLeqDuration: 0)
     Thread.sleep(forTimeInterval: 2.2)
-    rec.record(spl: 40, sessionPeak: 40, sessionLeq: nil, sessionLeqDuration: 0)
+    rec.record(spl: 40, sessionPeak: 40, sessionLpeak: nil,
+               sessionLeq: nil, sessionLeqDuration: 0)
     let live = rec.liveStats()
     expect(live.map { $0.duration >= 2.1 } == true,
            "长间隔仍计入测量时长 (得 \(live?.duration ?? -1))")
@@ -251,6 +262,47 @@ do {
            "96k 的 20–43.2kHz A/C 计权误差 <0.5dB (A \(maxA), C \(maxC))")
 }
 
+// ---- 0g. Lpeak：采样峰值与 RMS 分开，尾段不丢失 ----
+do {
+    let sampleRate: Float = 48_000
+    let tone = SignalGenerator.sineWave(frequency: 1000, amplitude: 0.5,
+                                        sampleRate: sampleRate, count: 8192)
+    let meter = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: 4096,
+                                            spectrumEnabled: false))
+    let result = meter.process(tone, hopSamples: 2048)
+    expect(result != nil && abs((result?.lpeakSPL ?? 0) - (-6.02)) < 0.1,
+           "Lpeak 使用 20log10 峰值 (得 \(result?.lpeakSPL ?? -999))")
+    expect(result != nil && (result!.lpeakSPL - result!.dbfsAWeighted) > 2.8,
+           "Lpeak 高于同帧 RMS (Lpeak \(result?.lpeakSPL ?? -999), RMS \(result?.dbfsAWeighted ?? -999))")
+
+    let calibrationMeter = DBMeter(config: MeterConfig(
+        sampleRate: sampleRate, fftSize: 4096, calibrationOffset: 120,
+        spectrumEnabled: false))
+    let calibrated = calibrationMeter.process(tone, hopSamples: 2048)
+    expect(calibrated.map { abs($0.lpeakSPL - ((result?.lpeakSPL ?? 0) + 120)) < 0.1 } == true,
+           "Lpeak 校准偏移只加一次")
+
+    let tailMeter = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: 4096,
+                                                spectrumEnabled: false))
+    _ = tailMeter.process([Float](repeating: 0, count: 4096), hopSamples: 2048)
+    let beforeTail = tailMeter.lpeakSPL()
+    let tailTone = SignalGenerator.sineWave(frequency: 1000, amplitude: 0.25,
+                                            sampleRate: sampleRate, count: 1024)
+    let tail = tailMeter.processTail(tailTone, skipSamples: 0)
+    expect(tail != nil && tail!.lpeakSPL > beforeTail,
+           "Lpeak 尾段捕获新脉冲")
+    expect(tail.map { abs($0.lpeakSPL - (-12.04)) < 1.0 } == true,
+           "Lpeak 尾段使用新样本峰值 (得 \(tail?.lpeakSPL ?? -999))")
+    expect(tail?.lpeakSPL == tailMeter.lpeakSPL(),
+           "Lpeak 尾段结果与 meter 会话峰值一致")
+
+    let silentMeter = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: 4096,
+                                                  spectrumEnabled: false))
+    _ = silentMeter.process([Float](repeating: 0, count: 4096), hopSamples: 2048)
+    expect(silentMeter.lpeakSPL() == -Float.infinity,
+           "数字静音 Lpeak 为 -inf")
+}
+
 // ---- 1. 旧 JSON(无 audioID)可解码,audioID 为 nil ----
 do {
     let dir = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -268,6 +320,8 @@ do {
     expect(store.records.first?.audioID == nil, "旧记录 audioID == nil")
     expect(store.records.first?.resolvedExposureLimit == 85,
            "旧记录缺少 exposureLimit 时按 85 dB 兼容")
+    expect(store.records.first?.lpeakSPL == nil,
+           "旧记录缺少 Lpeak 时保持未记录，不伪造数值")
 }
 
 // ---- 2. audioID 随 JSON 往返 ----
@@ -278,6 +332,8 @@ do {
     expect(reloaded.records.first?.audioID == "abc", "audioID 持久化往返")
     expect(reloaded.records.first?.exposureLimit == 80,
            "exposureLimit 持久化往返")
+    expect(reloaded.records.first?.lpeakSPL == 76,
+           "Lpeak 持久化往返")
     expect(reloaded.records.first?.resolvedWeighting == "A"
         && reloaded.records.first?.resolvedTimeWeighting == "F",
            "旧记录计权口径按 A/F 兼容")
@@ -290,6 +346,7 @@ do {
         startTime: Date(), endTime: Date(), duration: 1,
         avgSPL: -Float.infinity, laeqSPL: -Float.infinity,
         peakSPL: -Float.infinity,
+        lpeakSPL: -Float.infinity,
         l10: -Float.infinity, l50: -Float.infinity, l90: -Float.infinity,
         minSPL: -Float.infinity, overLimitTotal: 0,
         exposureLimit: 85, weighting: "C", timeWeighting: "S",
@@ -305,6 +362,7 @@ do {
     let record = reloaded.records.first
     expect(record?.laeqSPL == -Float.infinity
         && record?.peakSPL == -Float.infinity
+        && record?.lpeakSPL == -Float.infinity
         && record?.samples.first?.spl == -Float.infinity,
            "静音值读取后恢复 -inf 语义")
     expect(record?.leqMetricLabel == "LCeq"
@@ -502,6 +560,8 @@ do {
     expect(csv.contains("# 暴露阈值(dB),80")
         && csv.contains("# 超过该阈值时长(秒),12"),
            "CSV 导出实际暴露阈值与超限时长")
+    expect(csv.contains("# 采样峰值 LApeak(dB),76.0"),
+           "CSV 单独导出 Lpeak")
 
     let cStats = MeasurementStats(startTime: Date(), endTime: Date(), duration: 10,
                                   avgSPL: 50, laeqSPL: 52, peakSPL: 61,
@@ -517,13 +577,15 @@ do {
                                         audioBase64: nil)
     expect(cHTML.contains("LCeq 等效声级")
         && cHTML.contains("峰值 LCSmax")
+        && cHTML.contains("采样峰值 LCpeak")
         && !cHTML.contains("LAeq"),
-           "C 计权报告不误标成 LAeq")
+           "C 计权报告正确标注 LCpeak 且不误标成 LAeq")
 
     let silent = MeasurementStats(startTime: Date(), endTime: Date(), duration: 1,
                                   avgSPL: -Float.infinity,
                                   laeqSPL: -Float.infinity,
                                   peakSPL: -Float.infinity,
+                                  lpeakSPL: -Float.infinity,
                                   l10: -Float.infinity, l50: -Float.infinity,
                                   l90: -Float.infinity,
                                   minSPL: -Float.infinity,

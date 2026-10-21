@@ -35,7 +35,7 @@ public enum ReportRenderer {
     public static func render(stats: MeasurementStats,
                                deviceName: String,
                                calibrationOffset: Float) -> PlatformImage {
-        let size = CGSize(width: 1080, height: 1620)
+        let size = CGSize(width: 1080, height: 1700)
         let r = ImageCanvas(size: size)
 
         drawBackground(r)
@@ -54,7 +54,7 @@ public enum ReportRenderer {
     // MARK: - 背景
 
     private static func drawBackground(_ r: ImageCanvas) {
-        r.fill(CGRect(x: 0, y: 0, width: 1080, height: 1620), color: ink)
+        r.fill(CGRect(x: 0, y: 0, width: 1080, height: 1700), color: ink)
     }
 
     // MARK: - 页眉(标题左,时间右,发丝线分隔)
@@ -176,24 +176,32 @@ public enum ReportRenderer {
                        color: rgb(1, 1, 1, 0.08), width: 1)
             }
         }
+
+        let lpeakText = stats.lpeakSPL.map(formatLevel) ?? "--"
+        drawCentered(r, "采样峰值 \(stats.lpeakMetricLabel)",
+                     atX: 540, y: y + 108,
+                     font: font(15), color: rgb(1, 1, 1, 0.4))
+        drawCentered(r, "\(lpeakText) dB",
+                     atX: 540, y: y + 146,
+                     font: boldFont(28), color: coral)
     }
 
     // MARK: - 暴露提示条
 
     private static func drawExposureBanner(_ r: ImageCanvas, stats: MeasurementStats) {
-        let rect = CGRect(x: 80, y: 745, width: 920, height: 56)
+        let rect = CGRect(x: 80, y: 820, width: 920, height: 56)
         r.fillRound(rect, color: rgb(1.0, 0.27, 0.24, 0.85), radius: 12)
         r.text("⚠️ " + String(format: "测量期间有 %.0f 秒超过 %.0f dB,长时间暴露可能损伤听力",
                               stats.overLimitTotal,
                               stats.resolvedExposureLimit),
-               at: CGPoint(x: 104, y: 780),
+               at: CGPoint(x: 104, y: 855),
                font: font(21), color: rgb(1, 1, 1))
     }
 
     // MARK: - 趋势图
 
     private static func drawTrendChart(_ r: ImageCanvas, stats: MeasurementStats) {
-        let chartTop: CGFloat = 850
+        let chartTop: CGFloat = 915
         let panelRect = CGRect(x: 80, y: chartTop, width: 920, height: 560)
         r.fillRound(panelRect, color: rgb(1, 1, 1, 0.03), radius: 18)
         r.strokeRound(panelRect, color: rgb(1, 1, 1, 0.08), width: 1, radius: 18)
@@ -269,7 +277,7 @@ public enum ReportRenderer {
 
     private static func drawFooter(_ r: ImageCanvas, stats: MeasurementStats,
                                     deviceName: String, offset: Float) {
-        let fy: CGFloat = 1470
+        let fy: CGFloat = 1550
         r.line(from: CGPoint(x: 80, y: fy), to: CGPoint(x: 1000, y: fy),
                color: rgb(1, 1, 1, 0.08), width: 1)
 
@@ -279,6 +287,9 @@ public enum ReportRenderer {
         r.text("设备:\(deviceName)  ·  校准偏移:\(String(format: "%+.1f", offset)) dB",
                at: CGPoint(x: 80, y: fy + 66),
                font: font(18), color: rgb(1, 1, 1, 0.4))
+        r.text("Lpeak 为采样峰值，非 inter-sample true peak",
+               at: CGPoint(x: 80, y: fy + 96),
+               font: font(14), color: rgb(1, 1, 1, 0.28))
 
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"

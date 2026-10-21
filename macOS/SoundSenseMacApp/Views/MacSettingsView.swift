@@ -472,7 +472,7 @@ struct SettingsOverlay: View {
             row(title: "版本", value: appVersionString())
             row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
             row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
-            row(title: "峰值口径", value: "时间计权最大值,非 Lpeak")
+            row(title: "峰值口径", value: "时间计权最大值与采样峰值 Lpeak 分列")
             row(title: "隐私", value: "测量与录音仅保存在本机")
             Divider().background(.white.opacity(0.1))
             Link(destination: URL(string: "https://github.com/finger-tap/soundsense")!) {

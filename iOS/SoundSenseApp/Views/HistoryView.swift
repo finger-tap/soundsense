@@ -449,9 +449,19 @@ struct HistoryRow: View {
                 stat(value: record.laeqSPL, label: record.leqMetricLabel,
                      color: MeterTheme.waveColor)
                 stat(value: record.avgSPL, label: "平均", color: .white.opacity(0.85))
-                stat(value: record.peakSPL, label: "峰值", color: MeterTheme.brass)
+                stat(value: record.peakSPL, label: record.peakMetricLabel,
+                     color: MeterTheme.brass)
                 stat(value: Float(Int(record.duration)), label: "秒", color: .white.opacity(0.6),
                      format: "%.0f")
+            }
+
+            if let lpeak = record.lpeakSPL {
+                Text(lpeak.isFinite
+                     ? String(format: "%@ %.1f dB · 采样峰值，无 F/S 时间计权",
+                              record.lpeakMetricLabel, lpeak)
+                     : "\(record.lpeakMetricLabel) --")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(MeterTheme.secondaryText)
             }
 
             if record.overLimitTotal >= 1 {

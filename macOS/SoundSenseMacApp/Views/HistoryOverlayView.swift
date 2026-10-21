@@ -427,8 +427,18 @@ private struct MacHistoryRow: View {
                 stat(record.laeqSPL, label: "\(record.leqMetricLabel) dB",
                      color: MeterTheme.waveColor)
                 stat(record.avgSPL, label: "平均 dB", color: .white.opacity(0.85))
-                stat(record.peakSPL, label: "峰值 dB", color: MeterTheme.brass)
+                stat(record.peakSPL, label: "\(record.peakMetricLabel) dB",
+                     color: MeterTheme.brass)
                 stat(Float(record.duration), label: "时长(秒)", color: .white.opacity(0.6), format: "%.0f")
+            }
+
+            if let lpeak = record.lpeakSPL {
+                Text(lpeak.isFinite
+                     ? String(format: "%@ %.1f dB · 采样峰值，无 F/S 时间计权",
+                              record.lpeakMetricLabel, lpeak)
+                     : "\(record.lpeakMetricLabel) --")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(MeterTheme.secondaryText)
             }
 
             if record.overLimitTotal >= 1 {

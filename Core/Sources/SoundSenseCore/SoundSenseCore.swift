@@ -22,6 +22,10 @@ public struct MeterResult: CustomStringConvertible, Equatable {
     public let splA: Float
     /// 本帧瞬时声压级（未做时间计权），调试对比用
     public let splInstant: Float
+    /// 本帧内计权信号的采样峰值声级（Lpeak）。
+    /// 使用 `20·log10(max(|x|)) + offset`，与 F/S 时间计权无关。
+    /// 仅表示离散 PCM 样本峰值，不包含 inter-sample true peak。
+    public let lpeakSPL: Float
     /// 本次测量以来的等效连续声级 Leq（按计权能量积分，与 F/S 显示检波器无关）
     public let leqSPL: Float
     /// Leq 实际覆盖的时长（秒）。用于报告和诊断，不依赖 UI 回调频率。
@@ -53,8 +57,8 @@ public struct MeterResult: CustomStringConvertible, Equatable {
         let dropped = totalDroppedSampleCount > 0
             ? ", dropped \(totalDroppedSampleCount)"
             : ""
-        return String(format: "dBFS(flat)=%6.1f  dBFS(A)=%6.1f  SPL=%5.1f dB (inst %5.1f, Leq %5.1f / %.2fs%@)",
-                      dbfsFlat, dbfsAWeighted, splA, splInstant,
+        return String(format: "dBFS(flat)=%6.1f  dBFS(A)=%6.1f  SPL=%5.1f dB (inst %5.1f, peak %5.1f, Leq %5.1f / %.2fs%@)",
+                      dbfsFlat, dbfsAWeighted, splA, splInstant, lpeakSPL,
                       leqSPL, leqDuration, dropped)
     }
 }
@@ -210,6 +214,13 @@ public enum CWeighting {
 /// 拟合只在初始化时做一次,目标曲线直接来自 IEC 61672 的解析式。
 public struct WeightingFilter {
 
+    /// 同一遍滤波同时产生均方值与绝对峰值，避免重复推进 IIR 状态。
+    public struct FrameStats {
+        public let meanSquare: Double
+        /// measurementRange 内计权信号的最大绝对值；无样本时为 0。
+        public let peakAbsolute: Double
+    }
+
     /// 一个二阶 IIR section。`a1/a2` 采用
     /// `H(z) = (b0 + b1 z^-1 + b2 z^-2) / (1 + a1 z^-1 + a2 z^-2)` 的符号。
     private struct Section {
@@ -323,15 +334,30 @@ public struct WeightingFilter {
     public mutating func meanSquare(of samples: [Float],
                                     filterRange: Range<Int>,
                                     measurementRange: Range<Int>? = nil) -> Double {
+        frameStats(of: samples,
+                   filterRange: filterRange,
+                   measurementRange: measurementRange).meanSquare
+    }
+
+    /// 对一段 PCM 做计权，并同时返回 measurementRange 内的均方值与绝对峰值。
+    /// 峰值必须来自与 RMS/Leq 相同的这次滤波，不能另跑一遍推进状态。
+    public mutating func frameStats(of samples: [Float],
+                                    filterRange: Range<Int>,
+                                    measurementRange: Range<Int>? = nil) -> FrameStats {
         let lower = max(0, filterRange.lowerBound)
         let upper = min(samples.count, filterRange.upperBound)
-        guard lower < upper else { return 0 }
+        guard lower < upper else {
+            return FrameStats(meanSquare: 0, peakAbsolute: 0)
+        }
         let measure = measurementRange ?? filterRange
         let measureLower = max(lower, measure.lowerBound)
         let measureUpper = min(upper, measure.upperBound)
-        guard measureLower < measureUpper else { return 0 }
+        guard measureLower < measureUpper else {
+            return FrameStats(meanSquare: 0, peakAbsolute: 0)
+        }
 
         var sum = 0.0
+        var peak = 0.0
         var count = 0
         for i in lower..<upper {
             var x = Double(samples[i])
@@ -341,10 +367,12 @@ public struct WeightingFilter {
             x = trim.process(x)
             if i >= measureLower && i < measureUpper {
                 sum += x * x
+                peak = max(peak, abs(x))
                 count += 1
             }
         }
-        return count > 0 ? sum / Double(count) : 0
+        return FrameStats(meanSquare: count > 0 ? sum / Double(count) : 0,
+                          peakAbsolute: peak)
     }
 
     public mutating func reset() {
@@ -742,6 +770,9 @@ public final class DBMeter {
     /// Σ(计权均方值 × 帧时长) 与 Σ帧时长。
     private var leqEnergyTime: Double = 0
     private var leqElapsed: TimeInterval = 0
+    /// 本次测量内计权信号的绝对采样峰值（未校准）。
+    /// 与 F/S 时间计权无关；输出时再加 calibrationOffset。
+    private var sessionPeakAbsolute: Double = 0
     /// 已交给调用方的累计样本位置。用于长会话检测增量是否连续。
     private var integratedSamplePosition: Int64 = 0
     /// 引擎层因积压丢弃的样本数。
@@ -904,9 +935,13 @@ public final class DBMeter {
         // 调用方传入的是 50% 重叠窗口,若每帧都重算整窗会把同一段样本
         // 重复计入 Leq,也会造成时间计权响应偏快。
         let filterRange = hasFilterHistory ? measurementRange : 0..<n
-        let msWeighted = Float(weightingFilter.meanSquare(of: frame,
-                                                          filterRange: filterRange,
-                                                          measurementRange: measurementRange))
+        let frameStats = weightingFilter.frameStats(of: frame,
+                                                    filterRange: filterRange,
+                                                    measurementRange: measurementRange)
+        let msWeighted = Float(frameStats.meanSquare)
+        if frameStats.peakAbsolute > sessionPeakAbsolute {
+            sessionPeakAbsolute = frameStats.peakAbsolute
+        }
         hasFilterHistory = true
 
 
@@ -935,12 +970,14 @@ public final class DBMeter {
         integratedSamplePosition += Int64(hop)
 
         let spl = 10 * log10(max(emaMS, 1e-20)) + config.calibrationOffset
+        let lpeak = lpeakSPL()
         smoothedSPL = spl
 
         return MeterResult(dbfsFlat: dbfsFlat,
                            dbfsAWeighted: dbfsA,
                            splA: spl,
                            splInstant: splInstant,
+                           lpeakSPL: lpeak,
                            leqSPL: currentLeq(),
                            leqDuration: leqDuration,
                            droppedSampleCount: 0,
@@ -970,10 +1007,14 @@ public final class DBMeter {
         vDSP_rmsqv(fresh, 1, &rmsFlat, vDSP_Length(fresh.count))
         let dbfsFlat = 20 * log10(max(rmsFlat, 1e-10))
 
-        let msWeighted = Float(weightingFilter.meanSquare(
+        let frameStats = weightingFilter.frameStats(
             of: fresh,
             filterRange: 0..<fresh.count
-        ))
+        )
+        let msWeighted = Float(frameStats.meanSquare)
+        if frameStats.peakAbsolute > sessionPeakAbsolute {
+            sessionPeakAbsolute = frameStats.peakAbsolute
+        }
         hasFilterHistory = true
 
         let dbfsA = 10 * log10(max(msWeighted, 1e-20))
@@ -995,11 +1036,13 @@ public final class DBMeter {
         integratedSamplePosition += Int64(fresh.count)
 
         let spl = 10 * log10(max(emaMS, 1e-20)) + config.calibrationOffset
+        let lpeak = lpeakSPL()
         smoothedSPL = spl
         return MeterResult(dbfsFlat: dbfsFlat,
                            dbfsAWeighted: dbfsA,
                            splA: spl,
                            splInstant: splInstant,
+                           lpeakSPL: lpeak,
                            leqSPL: currentLeq(),
                            leqDuration: leqDuration,
                            droppedSampleCount: 0,
@@ -1061,6 +1104,18 @@ public final class DBMeter {
         return Float(10 * log10(leqEnergyTime / leqElapsed)) + config.calibrationOffset
     }
 
+    /// 本次测量以来的计权采样峰值 Lpeak。
+    /// 数字静音（峰值为 0）返回 -inf；尚无有效样本返回 -greatestFiniteMagnitude。
+    public func lpeakSPL() -> Float {
+        guard sessionPeakAbsolute.isFinite else {
+            return -.greatestFiniteMagnitude
+        }
+        guard sessionPeakAbsolute > 0 else {
+            return leqElapsed > 0 ? -Float.infinity : -.greatestFiniteMagnitude
+        }
+        return Float(20 * log10(sessionPeakAbsolute)) + config.calibrationOffset
+    }
+
     /// 当前 Leq 统计覆盖的时长（秒）
     public var leqDuration: TimeInterval {
         leqElapsed
@@ -1070,6 +1125,7 @@ public final class DBMeter {
     public func resetLeq() {
         leqEnergyTime = 0
         leqElapsed = 0
+        sessionPeakAbsolute = 0
         integratedSamplePosition = 0
         droppedSamples = 0
         // 低频 FFT 的调度游标也必须回到新会话起点。否则同一 DBMeter
@@ -1097,6 +1153,7 @@ public final class DBMeter {
         hasEMA = previous.hasEMA
         leqEnergyTime = previous.leqEnergyTime
         leqElapsed = previous.leqElapsed
+        sessionPeakAbsolute = previous.sessionPeakAbsolute
         integratedSamplePosition = previous.integratedSamplePosition
         droppedSamples = previous.droppedSamples
         lastLowBandAnalysisPosition = previous.lastLowBandAnalysisPosition

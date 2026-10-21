@@ -114,6 +114,9 @@ public final class AudioMeterEngine: ObservableObject {
     /// 由 worker 在节流之前累计,因此 UI 掉帧或节流不会漏掉短峰值。
     /// start()/stop() 会清零。
     @Published public private(set) var sessionPeakSPL: Float = -.greatestFiniteMagnitude
+    /// 本次会话内计权信号的采样峰值 Lpeak。
+    /// 与 F/S 时间计权无关，不能和 `sessionPeakSPL` 混用。
+    @Published public private(set) var sessionLpeakSPL: Float = -.greatestFiniteMagnitude
     /// 本次会话最近一帧对应的核心 Leq(按核心 hop 能量积分,覆盖全部帧)。
     @Published public private(set) var sessionLeqSPL: Float = -.greatestFiniteMagnitude
     /// 本次会话 Leq 实际覆盖时长(秒),可用于确认统计没有因节流而缩短。
@@ -217,7 +220,7 @@ public final class AudioMeterEngine: ObservableObject {
                                   timeWeighting: timeWeighting,
                                   spectrumEnabled: spectrumEnabled,
                                   lowBandAnalysisInterval: lowBandAnalysisInterval,
-                                  analysisCallback: { _ in }) { [weak self] result, peak in
+                                  analysisCallback: { _ in }) { [weak self] result, peak, lpeak in
             // worker 回调发生在 meterQueue 上;切回主线程更新状态
             let generation = callbackGeneration.current
             Task { @MainActor [weak self] in
@@ -226,6 +229,7 @@ public final class AudioMeterEngine: ObservableObject {
                       self.state == .running || self.isFinalizing else { return }
                 self.latestResult = result
                 self.sessionPeakSPL = peak
+                self.sessionLpeakSPL = lpeak
                 self.sessionLeqSPL = result.leqSPL
                 self.sessionLeqDuration = result.leqDuration
                 self.sessionDroppedSampleCount = result.totalDroppedSampleCount
@@ -351,6 +355,7 @@ public final class AudioMeterEngine: ObservableObject {
         state = .starting
         latestResult = nil
         sessionPeakSPL = -.greatestFiniteMagnitude
+        sessionLpeakSPL = -.greatestFiniteMagnitude
         sessionLeqSPL = -.greatestFiniteMagnitude
         sessionLeqDuration = 0
         sessionDroppedSampleCount = 0
@@ -438,6 +443,7 @@ public final class AudioMeterEngine: ObservableObject {
         analysisClock.reset(generation: callbackGeneration.current)
         latestResult = nil
         sessionPeakSPL = -.greatestFiniteMagnitude
+        sessionLpeakSPL = -.greatestFiniteMagnitude
         sessionLeqSPL = -.greatestFiniteMagnitude
         sessionLeqDuration = 0
         sessionDroppedSampleCount = 0
@@ -493,6 +499,7 @@ public final class AudioMeterEngine: ObservableObject {
             if let snapshot = finalAnalysis {
                 latestResult = snapshot.result
                 sessionPeakSPL = snapshot.peak
+                sessionLpeakSPL = snapshot.lpeak
                 sessionLeqSPL = snapshot.result.leqSPL
                 sessionLeqDuration = snapshot.result.leqDuration
                 sessionDroppedSampleCount = snapshot.result.totalDroppedSampleCount
@@ -527,6 +534,7 @@ public final class AudioMeterEngine: ObservableObject {
             callbackGeneration.bump()
             latestResult = snapshot.result
             sessionPeakSPL = snapshot.peak
+            sessionLpeakSPL = snapshot.lpeak
             sessionLeqSPL = snapshot.result.leqSPL
             sessionLeqDuration = snapshot.result.leqDuration
             sessionDroppedSampleCount = snapshot.result.totalDroppedSampleCount
@@ -549,6 +557,7 @@ public final class AudioMeterEngine: ObservableObject {
         analysisSinkBox.resume()
         latestResult = nil
         sessionPeakSPL = -.greatestFiniteMagnitude
+        sessionLpeakSPL = -.greatestFiniteMagnitude
         sessionLeqSPL = -.greatestFiniteMagnitude
         sessionLeqDuration = 0
         sessionDroppedSampleCount = 0
@@ -1507,7 +1516,7 @@ private final class MeterWorker: @unchecked Sendable {
 
     let fftSize: Int
     let throttleInterval: TimeInterval
-    private let callback: (MeterResult, Float) -> Void
+    private let callback: (MeterResult, Float, Float) -> Void
     private var analysisCallback: ([MeterResult]) -> Void
 
     private let meterQueue = DispatchQueue(label: "com.dinghao.soundsense.meter", qos: .userInitiated)
@@ -1517,6 +1526,8 @@ private final class MeterWorker: @unchecked Sendable {
     /// 节流前的会话峰值(LAFmax/LASmax),保存为未加校准偏移的值。
     /// 这样运行中微调校准时,历史峰值会与新读数一起整体平移。
     private var sessionPeakUncalibrated: Float = -.greatestFiniteMagnitude
+    /// 节流前的 Lpeak，同样保存未校准值；校准变化时整体平移。
+    private var sessionLpeakUncalibrated: Float = -.greatestFiniteMagnitude
     // 当前 meter 的构建参数(rebuild 用)
     private var currentSampleRate: Float
     private var currentOffset: Float
@@ -1541,7 +1552,7 @@ private final class MeterWorker: @unchecked Sendable {
          spectrumEnabled: Bool = true,
          lowBandAnalysisInterval: TimeInterval = 0.5,
          analysisCallback: @escaping ([MeterResult]) -> Void,
-         callback: @escaping (MeterResult, Float) -> Void) {
+         callback: @escaping (MeterResult, Float, Float) -> Void) {
         self.fftSize = fftSize
         self.throttleInterval = throttleInterval
         self.analysisCallback = analysisCallback
@@ -1646,6 +1657,7 @@ private final class MeterWorker: @unchecked Sendable {
             self.sampleBuffer.removeAll(keepingCapacity: true)
             self.lastCallbackTime = 0
             self.sessionPeakUncalibrated = -.greatestFiniteMagnitude
+            self.sessionLpeakUncalibrated = -.greatestFiniteMagnitude
             self.lastProcessedResult = nil
             self.lastTailResult = nil
             self.pendingAnalysisResults.removeAll(keepingCapacity: true)
@@ -1713,6 +1725,10 @@ private final class MeterWorker: @unchecked Sendable {
                         if uncalibrated > self.sessionPeakUncalibrated {
                             self.sessionPeakUncalibrated = uncalibrated
                         }
+                        let lpeakUncalibrated = result.lpeakSPL - self.currentOffset
+                        if lpeakUncalibrated > self.sessionLpeakUncalibrated {
+                            self.sessionLpeakUncalibrated = lpeakUncalibrated
+                        }
                     }
                 }
                 self.flushAnalysisBatch()
@@ -1723,10 +1739,14 @@ private final class MeterWorker: @unchecked Sendable {
                 let peak = self.sessionPeakUncalibrated.isFinite
                     ? self.sessionPeakUncalibrated + self.currentOffset
                     : -.greatestFiniteMagnitude
+                let lpeak = self.sessionLpeakUncalibrated.isFinite
+                    ? self.sessionLpeakUncalibrated + self.currentOffset
+                    : -.greatestFiniteMagnitude
                 continuation.resume(returning: MeterFinalSnapshot(
                     result: result,
                     analysisResult: self.lastTailResult,
-                    peak: peak))
+                    peak: peak,
+                    lpeak: lpeak))
             }
         }
     }
@@ -1746,7 +1766,10 @@ private final class MeterWorker: @unchecked Sendable {
         let peak = sessionPeakUncalibrated.isFinite
             ? sessionPeakUncalibrated + currentOffset
             : -.greatestFiniteMagnitude
-        callback(result, peak)
+        let lpeak = sessionLpeakUncalibrated.isFinite
+            ? sessionLpeakUncalibrated + currentOffset
+            : -.greatestFiniteMagnitude
+        callback(result, peak, lpeak)
     }
 
     /// 在 meterQueue 上聚合完整 hop 结果。
@@ -1793,6 +1816,10 @@ private final class MeterWorker: @unchecked Sendable {
                 if uncalibrated > sessionPeakUncalibrated {
                     sessionPeakUncalibrated = uncalibrated
                 }
+                let lpeakUncalibrated = result.lpeakSPL - currentOffset
+                if lpeakUncalibrated > sessionLpeakUncalibrated {
+                    sessionLpeakUncalibrated = lpeakUncalibrated
+                }
             }
             sampleBuffer.removeFirst(hop)
             processCount += 1
@@ -1807,6 +1834,7 @@ private struct MeterFinalSnapshot {
     let result: MeterResult
     let analysisResult: MeterResult?
     let peak: Float
+    let lpeak: Float
 }
 
 /// 把共享分析结果按样本时间轴映射到“当前测量段”，

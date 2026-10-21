@@ -48,6 +48,8 @@ public struct LiveMeasurementStats: Equatable {
     public let laeq: Float
     /// 本次测量以来的最高时间计权 SPL(dB),即 LAFmax/LASmax(取决于 F/S)
     public let peak: Float
+    /// 本次测量以来的计权采样峰值 Lpeak(dB)，与 F/S 无关。
+    public let lpeak: Float
     /// 本时段内连续超过用户设定阈值的时长(秒)
     public let overLimitContinuous: TimeInterval
     /// 是否存在因处理积压被丢弃的样本。
@@ -66,6 +68,9 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
     public let laeqSPL: Float
     /// 本次测量以来的最高时间计权 SPL(dB),即 LAFmax/LASmax/LCFmax/LCSmax。
     public let peakSPL: Float
+    /// 计权采样峰值 Lpeak(dB)。与 F/S 时间计权无关。
+    /// 旧记录缺少该字段时为 nil，表示未记录，不能从 `peakSPL` 反推。
+    public let lpeakSPL: Float?
     /// 统计分位数(基于 1 Hz 趋势点;噪声评价用 L10/L50/L90)
     public let l10: Float
     public let l50: Float
@@ -103,6 +108,7 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case startTime, endTime, duration, avgSPL, laeqSPL, peakSPL
+        case lpeakSPL
         case l10, l50, l90, minSPL, overLimitTotal, exposureLimit
         case weighting, timeWeighting, completeCapture, samples, audioID
     }
@@ -115,6 +121,17 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
         avgSPL = try c.decodeIfPresent(Float.self, forKey: .avgSPL) ?? -Float.infinity
         laeqSPL = try c.decodeIfPresent(Float.self, forKey: .laeqSPL) ?? -Float.infinity
         peakSPL = try c.decodeIfPresent(Float.self, forKey: .peakSPL) ?? -Float.infinity
+        // `decodeIfPresent` 会把“字段缺失”和“显式 null”都解成 nil。
+        // 新记录的静音 Lpeak 用 null 表示 -inf，必须和旧记录缺失字段区分开。
+        if c.contains(.lpeakSPL) {
+            if try c.decodeNil(forKey: .lpeakSPL) {
+                lpeakSPL = -Float.infinity
+            } else {
+                lpeakSPL = try c.decode(Float.self, forKey: .lpeakSPL)
+            }
+        } else {
+            lpeakSPL = nil
+        }
         minSPL = try c.decodeIfPresent(Float.self, forKey: .minSPL) ?? -Float.infinity
         overLimitTotal = try c.decode(TimeInterval.self, forKey: .overLimitTotal)
         exposureLimit = try c.decodeIfPresent(Float.self, forKey: .exposureLimit)
@@ -137,6 +154,9 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
         try c.encode(NullableLevel(value: avgSPL), forKey: .avgSPL)
         try c.encode(NullableLevel(value: laeqSPL), forKey: .laeqSPL)
         try c.encode(NullableLevel(value: peakSPL), forKey: .peakSPL)
+        if let lpeakSPL {
+            try c.encode(NullableLevel(value: lpeakSPL), forKey: .lpeakSPL)
+        }
         try c.encode(NullableLevel(value: l10), forKey: .l10)
         try c.encode(NullableLevel(value: l50), forKey: .l50)
         try c.encode(NullableLevel(value: l90), forKey: .l90)
@@ -152,6 +172,7 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
 
     public init(startTime: Date, endTime: Date, duration: TimeInterval,
                 avgSPL: Float, laeqSPL: Float, peakSPL: Float,
+                lpeakSPL: Float? = nil,
                 l10: Float? = nil, l50: Float? = nil, l90: Float? = nil,
                 minSPL: Float,
                 overLimitTotal: TimeInterval,
@@ -167,6 +188,7 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
         self.avgSPL = avgSPL
         self.laeqSPL = laeqSPL
         self.peakSPL = peakSPL
+        self.lpeakSPL = lpeakSPL
         let stats = AcousticStatistics.from(samples: samples)
         self.l10 = l10 ?? stats?.l10 ?? 0
         self.l50 = l50 ?? stats?.l50 ?? 0
@@ -207,6 +229,11 @@ public struct MeasurementStats: Codable, Equatable, Identifiable {
     /// 时间计权峰值名称,如 LAFmax / LASmax / LCFmax / LCSmax。
     public var peakMetricLabel: String {
         "L\(resolvedWeighting)\(resolvedTimeWeighting)max"
+    }
+
+    /// 计权采样峰值名称,如 LApeak / LCpeak。旧记录没有 Lpeak 时仍可用于标题。
+    public var lpeakMetricLabel: String {
+        "L\(resolvedWeighting)peak"
     }
 
     /// 报告是否覆盖全部采集样本。旧记录没有该字段，默认视为完整。
@@ -254,6 +281,8 @@ public final class MeasurementRecorder {
     /// 下一次回调也会把这个峰值带进来,stop() 不应回退到 1 Hz 趋势点。
     private var enginePeak: Float?
     private var livePeak: Float = -.greatestFiniteMagnitude
+    /// 引擎节流前累计的计权采样峰值；不能从 livePeak 回退。
+    private var liveLpeak: Float = -.greatestFiniteMagnitude
     private var continuousOverSince: Date?  // 当前连续 ≥85dB 时段的起点
     private var totalOverSeconds: TimeInterval = 0
     private var lastFrameDate: Date?
@@ -273,6 +302,7 @@ public final class MeasurementRecorder {
         meterLeq = nil
         enginePeak = nil
         livePeak = -.greatestFiniteMagnitude
+        liveLpeak = -.greatestFiniteMagnitude
         continuousOverSince = nil
         totalOverSeconds = 0
         lastFrameDate = nil
@@ -288,7 +318,8 @@ public final class MeasurementRecorder {
     /// 注意:这里接收的是 F/S 时间计权后的值,因此用于趋势、峰值和暴露时长;
     /// 真正声学意义的 Leq 应使用同源的瞬时计权能量值(见 MeterResult.leqSPL)。
     public func record(spl: Float) {
-        record(spl: spl, sessionPeak: nil, sessionLeq: nil, sessionLeqDuration: 0)
+        record(spl: spl, sessionPeak: nil, sessionLpeak: nil,
+               sessionLeq: nil, sessionLeqDuration: 0)
     }
 
     /// 记录一帧,同时接收引擎在节流前累计的全帧统计。
@@ -299,6 +330,7 @@ public final class MeasurementRecorder {
     ///   - sessionLeqDuration: 引擎 Leq 覆盖时长(秒)
     public func record(spl: Float,
                        sessionPeak: Float?,
+                       sessionLpeak: Float?,
                        sessionLeq: Float?,
                        sessionLeqDuration: TimeInterval) {
         guard !sessionLeqDuration.isNaN else { return }
@@ -350,6 +382,9 @@ public final class MeasurementRecorder {
         } else if spl > livePeak {
             livePeak = spl
         }
+        if let lpeak = sessionLpeak, lpeak.isFinite {
+            liveLpeak = max(liveLpeak, lpeak)
+        }
         if let leq = sessionLeq, leq.isFinite, sessionLeqDuration > 0 {
             meterLeq = leq
         }
@@ -376,6 +411,7 @@ public final class MeasurementRecorder {
             duration: max(initialFrameDuration, frameTime),
             laeq: meterLeq ?? Self.laeq(energyTime: energyTime, duration: frameTime),
             peak: livePeak,
+            lpeak: liveLpeak,
             overLimitContinuous: continuousOverSince.map { Date().timeIntervalSince($0) } ?? 0,
             captureIncomplete: sessionCaptureIncomplete
         )
@@ -392,6 +428,7 @@ public final class MeasurementRecorder {
     ///   - sessionLeq: 引擎排空队列后的最终 Leq。
     ///   - sessionLeqDuration: 上述 Leq 覆盖的真实时长。
     public func stop(sessionPeak: Float? = nil,
+                     sessionLpeak: Float? = nil,
                      sessionLeq: Float? = nil,
                      sessionLeqDuration: TimeInterval = 0,
                      captureStart: Date? = nil,
@@ -406,6 +443,7 @@ public final class MeasurementRecorder {
             meterLeq = nil
             enginePeak = nil
             livePeak = -.greatestFiniteMagnitude
+            liveLpeak = -.greatestFiniteMagnitude
             continuousOverSince = nil
             totalOverSeconds = 0
             lastFrameDate = nil
@@ -450,6 +488,7 @@ public final class MeasurementRecorder {
         } else {
             finalPeak = enginePeak ?? (livePeak.isFinite ? livePeak : (spls.max() ?? 0))
         }
+        let finalLpeak = sessionLpeak ?? (liveLpeak.isFinite ? liveLpeak : nil)
         return MeasurementStats(
             startTime: start,
             endTime: end,
@@ -458,6 +497,7 @@ public final class MeasurementRecorder {
             laeqSPL: finalLeq,
             // 1 Hz 趋势点会漏掉短峰值;峰值必须来自全部帧。
             peakSPL: finalPeak,
+            lpeakSPL: finalLpeak,
             l10: acousticStats?.l10,
             l50: acousticStats?.l50,
             l90: acousticStats?.l90,

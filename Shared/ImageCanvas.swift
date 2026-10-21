@@ -47,8 +47,9 @@ final class ImageCanvas {
 
     func fill(_ rect: CGRect, color: CGColor) {
         cgContext.setFillColor(color)
-        // 全屏填充不需要翻转(rect.y=0 时一致)
-        cgContext.fill(rect)
+        let flipped = CGRect(x: rect.minX, y: fy(rect.minY) - rect.height,
+                              width: rect.width, height: rect.height)
+        cgContext.fill(flipped)
     }
 
     func fillRound(_ rect: CGRect, color: CGColor, radius: CGFloat) {

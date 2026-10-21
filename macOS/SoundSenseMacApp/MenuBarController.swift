@@ -85,9 +85,13 @@ final class MenuBarController: NSObject, ObservableObject {
         menu.addItem(disabledItem(reading))
 
         if let live = viewModel?.liveStats {
+            let lpeak = live.lpeak.isFinite
+                ? String(format: "%.1f", live.lpeak)
+                : "--"
             menu.addItem(disabledItem(String(
-                format: "时长 %02d:%02d · LAeq %.1f · 峰值 %.1f",
-                Int(live.duration) / 60, Int(live.duration) % 60, live.laeq, live.peak)))
+                format: "时长 %02d:%02d · LAeq %.1f · 峰值 %.1f · Lpk %@",
+                Int(live.duration) / 60, Int(live.duration) % 60,
+                live.laeq, live.peak, lpeak)))
         }
 
         menu.addItem(.separator())

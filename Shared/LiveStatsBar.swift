@@ -2,7 +2,7 @@
 //  LiveStatsBar.swift
 //  SoundSense
 //
-//  实时统计栏:测量进行中显示 时长 / 等效声级 LAeq / 峰值。
+//  实时统计栏:测量进行中显示 时长 / 等效声级 / 时间计权峰值 / 采样峰值。
 //  iOS 与 macOS 共用(深色 UI 风格)。
 //
 
@@ -35,10 +35,16 @@ public struct LiveStatsBar: View {
             statItem(value: formatDuration(stats.duration), label: "时长", recordingDot: isRecording)
             divider
             statItem(value: stats.laeq.isFinite ? String(format: "%.1f", stats.laeq) : "--",
-                     label: "\(weighting == .c ? "LCeq" : "LAeq") dB")
+                     label: "\(weighting == .c ? "LCeq" : "LAeq")",
+                     unit: "dB")
             divider
             statItem(value: stats.peak.isFinite ? String(format: "%.1f", stats.peak) : "--",
-                     label: "\(peakMetricLabel) dB")
+                     label: peakMetricLabel,
+                     unit: "dB")
+            divider
+            statItem(value: stats.lpeak.isFinite ? String(format: "%.1f", stats.lpeak) : "--",
+                     label: "\(weighting == .c ? "LC" : "LA")peak",
+                     unit: "dB")
         }
         .overlay(alignment: .topTrailing) {
             if stats.captureIncomplete {
@@ -65,16 +71,19 @@ public struct LiveStatsBar: View {
     private var divider: some View {
         Rectangle()
             .fill(Color.white.opacity(0.08))
-            .frame(width: 1, height: 30)
+            .frame(width: 1, height: 38)
     }
 
-    private func statItem(value: String, label: String, recordingDot: Bool = false) -> some View {
+    private func statItem(value: String, label: String,
+                          unit: String? = nil, recordingDot: Bool = false) -> some View {
         VStack(spacing: 3) {
             HStack(alignment: .top, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
                 if recordingDot {
                     Circle()
                         .fill(MeterTheme.riskColor)
@@ -85,10 +94,18 @@ public struct LiveStatsBar: View {
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.62))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            if let unit {
+                Text(unit)
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.34))
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label) \(value)")
+        .accessibilityLabel("\(label) \(value) \(unit ?? "")")
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {

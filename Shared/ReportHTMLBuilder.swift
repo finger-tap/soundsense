@@ -99,6 +99,7 @@ public enum ReportHTMLBuilder {
             <div class="stats">
               \(row(level(stats.laeqSPL), "\(stats.leqMetricLabel) 等效声级"))
               \(row(level(stats.peakSPL), "峰值 \(stats.peakMetricLabel)"))
+              \(row(stats.lpeakSPL.map(level) ?? "--", "采样峰值 \(stats.lpeakMetricLabel)"))
               \(row(level(stats.l10), "L10"))
               \(row(level(stats.l50), "L50"))
               \(row(level(stats.l90), "L90"))
@@ -112,6 +113,7 @@ public enum ReportHTMLBuilder {
           <footer>
             设备:\(escape(deviceName)) · 校准偏移:\(String(format: "%+.1f", calibrationOffset)) dB<br>
             IEC 61672-1 \(stats.resolvedWeighting) 计权 · \(stats.resolvedTimeWeighting) 时间计权 · 4096 点 FFT · vDSP · 由闻声 SoundSense 生成
+            <br>Lpeak 为离散 PCM 采样峰值，非 inter-sample true peak。
           </footer>
         </div>
         </body>

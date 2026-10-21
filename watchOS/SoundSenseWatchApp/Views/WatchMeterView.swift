@@ -53,18 +53,20 @@ struct WatchMeterView: View {
                         .foregroundColor(MeterTheme.secondaryText)
                 }
 
-                // —— 实时统计(时长 / LAeq / 峰值) ——
+                // —— 实时统计(一行省电,标签缩为手表可读的短口径) ——
                 if let live = viewModel.liveStats {
-                    HStack(spacing: 0) {
+                    HStack(spacing: 6) {
                         watchStat(String(format: "%02d:%02d",
                                          Int(live.duration) / 60, Int(live.duration) % 60),
-                                  label: "时长")
+                                  label: "时间")
                         watchStat(live.laeq.isFinite ? String(format: "%.0f", live.laeq) : "--",
-                                  label: "LAeq")
+                                  label: viewModel.engine.weighting == .c ? "LCeq" : "LAeq")
                         watchStat(live.peak.isFinite ? String(format: "%.0f", live.peak) : "--",
-                                  label: "峰值")
+                                  label: "瞬峰")
+                        watchStat(live.lpeak.isFinite ? String(format: "%.0f", live.lpeak) : "--",
+                                  label: "采样峰")
                     }
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 2)
                     if viewModel.captureIncomplete {
                         // 手表可用高度很紧，压成单行，避免把声波/频谱挤出屏幕。
                         HStack(spacing: 3) {
@@ -162,12 +164,16 @@ struct WatchMeterView: View {
     private func watchStat(_ value: String, label: String) -> some View {
         VStack(spacing: 1) {
             Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Text(label)
-                .font(.system(size: 9))
+                .font(.system(size: 8))
                 .foregroundColor(MeterTheme.secondaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
     }

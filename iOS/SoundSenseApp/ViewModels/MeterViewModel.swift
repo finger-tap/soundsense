@@ -134,6 +134,7 @@ final class MeterViewModel: ObservableObject {
         await engine.freezeForFinalization()
         stopLiveTimer()
         if var stats = recorder.stop(sessionPeak: engine.sessionPeakSPL,
+                                     sessionLpeak: engine.sessionLpeakSPL,
                                      sessionLeq: engine.sessionLeqSPL,
                                      sessionLeqDuration: engine.sessionLeqDuration,
                                      captureStart: engine.captureTimeRange?.lowerBound,
@@ -167,6 +168,7 @@ final class MeterViewModel: ObservableObject {
         noiseLevel = NoiseLevel.level(for: spl)
         recorder.record(spl: spl,
                         sessionPeak: engine.sessionPeakSPL,
+                        sessionLpeak: engine.sessionLpeakSPL,
                         sessionLeq: engine.sessionLeqSPL,
                         sessionLeqDuration: engine.sessionLeqDuration)
         recorder.updateCaptureCompleteness(

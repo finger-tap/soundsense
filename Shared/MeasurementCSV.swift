@@ -23,6 +23,7 @@ public enum MeasurementCSV {
         rows.append("# 等效声级 \(stats.leqMetricLabel)(dB),\(level(stats.laeqSPL))")
         rows.append("# 平均 SPL(dB),\(level(stats.avgSPL))")
         rows.append("# 时间计权峰值 \(stats.peakMetricLabel)(dB),\(level(stats.peakSPL))")
+        rows.append("# 采样峰值 \(stats.lpeakMetricLabel)(dB),\(stats.lpeakSPL.map(level) ?? "")")
         rows.append("# 统计声级 L10(dB),\(level(stats.l10))")
         rows.append("# 统计声级 L50(dB),\(level(stats.l50))")
         rows.append("# 统计声级 L90(dB),\(level(stats.l90))")

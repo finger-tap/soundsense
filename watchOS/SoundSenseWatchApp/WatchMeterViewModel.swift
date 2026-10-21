@@ -72,6 +72,7 @@ final class WatchMeterViewModel: ObservableObject {
     func stop() async {
         await engine.freezeForFinalization()
         _ = recorder.stop(sessionPeak: engine.sessionPeakSPL,
+                          sessionLpeak: engine.sessionLpeakSPL,
                           sessionLeq: engine.sessionLeqSPL,
                           sessionLeqDuration: engine.sessionLeqDuration,
                           captureStart: engine.captureTimeRange?.lowerBound,
@@ -93,6 +94,7 @@ final class WatchMeterViewModel: ObservableObject {
         noiseLevel = NoiseLevel.level(for: spl)
         recorder.record(spl: spl,
                         sessionPeak: engine.sessionPeakSPL,
+                        sessionLpeak: engine.sessionLpeakSPL,
                         sessionLeq: engine.sessionLeqSPL,
                         sessionLeqDuration: engine.sessionLeqDuration)
         recorder.updateCaptureCompleteness(
