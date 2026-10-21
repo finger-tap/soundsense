@@ -2,7 +2,7 @@
 //  SourceTestListView.swift
 //  SoundSense iOS
 //
-//  三点测试记录列表 + 详情(结论/三点位/录音回放/HTML 分享)。
+//  方向倾向测试记录列表 + 详情(结论/点位/录音回放/HTML 分享)。
 //
 
 import SwiftUI
@@ -108,12 +108,16 @@ struct SourceTestListView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
                 Spacer()
-                Text(SourceTestHTMLBuilder.verdictText(result.verdict))
+                Text(result.rejectedByDrift
+                     ? "环境变化过大"
+                     : SourceTestHTMLBuilder.verdictText(result.verdict))
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(MeterTheme.waveColor)
             }
             HStack {
-                Text("置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType))")
+                Text(result.rejectedByDrift
+                     ? "中央漂移 \(driftText(result))，建议重测"
+                     : "置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType))")
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.55))
                 Spacer()
@@ -141,6 +145,10 @@ struct SourceTestListView: View {
         f.dateFormat = "MM-dd HH:mm"
         return f
     }()
+
+    private func driftText(_ result: SourceTestResult) -> String {
+        result.centerDrift.map { String(format: "%.1f dB", $0) } ?? "超过 2 dB"
+    }
 }
 
 /// 测试详情:结论卡 + 录音回放 + HTML 分享

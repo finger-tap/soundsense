@@ -21,6 +21,15 @@ public enum MonitorHTMLBuilder {
 
         let end = session.endTime.map { df.string(from: $0) } ?? "进行中"
         let abnormal = session.abnormalEnd ? " · 异常结束" : ""
+        let incomplete = session.captureIncomplete
+            ? " · 采集或分析链路曾中断/积压（最终 Leq/峰值来自全帧统计）" : ""
+        let thresholdDescription = thresholdDescription(for: session)
+        let absoluteDescription: String
+        if let absolute = session.absoluteThreshold {
+            absoluteDescription = "，绝对阈值 \(String(format: "%.0f", absolute)) dB（取较低者）"
+        } else {
+            absoluteDescription = ""
+        }
 
         // 事件时间线行
         let eventRows = session.events.enumerated().map { i, e -> String in
@@ -73,16 +82,19 @@ public enum MonitorHTMLBuilder {
         <div class="wrap">
           <div class="brand">SOUNDSENSE</div>
           <h1>噪音监听报告</h1>
-          <div class="meta">\(full.string(from: session.startTime)) — \(end)\(abnormal)</div>
+          <div class="meta">\(full.string(from: session.startTime)) — \(end)\(abnormal)\(incomplete)</div>
           <section class="card">
             <div class="stats">
-              <div class="stat"><b>\(String(format: "%.1f", session.overallLaeq))</b><span>总 LAeq dB</span></div>
-              <div class="stat"><b>\(String(format: "%.0f", session.maxSPL))</b><span>峰值 dB</span></div>
-              <div class="stat"><b>\(session.events.count)</b><span>异常事件</span></div>
+              <div class="stat"><b>\(String(format: "%.1f", session.overallLaeq))</b><span>总 \(session.leqMetricLabel) dB</span></div>
+              <div class="stat"><b>\(String(format: "%.0f", session.maxSPL))</b><span>\(session.peakMetricLabel) dB</span></div>
+              <div class="stat"><b>\(session.totalEventCount)</b><span>异常事件</span></div>
             </div>
           </section>
           <section class="card">
-            <h2>事件时间线(阈值:背景 +\(String(format: "%.0f", session.thresholdOverBackground)) dB)</h2>
+            <h2>事件时间线(阈值:\(thresholdDescription))</h2>
+            \(session.droppedEventCount > 0
+              ? "<div class=\"clipmeta\">仅显示最近 \(session.events.count) 条，另有 \(session.droppedEventCount) 条较早事件未保留明细；累计数量与事件峰值仍完整。</div>"
+              : "")
             <table>
               <tr><th>时间</th><th>峰值</th><th>时长</th><th>类型</th><th>位置推测</th></tr>
               \(eventRows)
@@ -93,7 +105,7 @@ public enum MonitorHTMLBuilder {
             \(audioBlocks.isEmpty ? "无片段" : audioBlocks)
           </section>
           <footer>
-            事件判定:超过背景基线(L90)+\(String(format: "%.0f", session.thresholdOverBackground)) dB 的瞬态/连续声<br>
+            事件判定:超过背景基线(L90)+\(String(format: "%.0f", session.thresholdOverBackground)) dB\(absoluteDescription) 的瞬态/连续声<br>
             位置推测仅供参考 · 由闻声 SoundSense 生成
           </footer>
         </div>
@@ -114,6 +126,12 @@ public enum MonitorHTMLBuilder {
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
+    }
+
+    private static func thresholdDescription(for session: MonitorSession) -> String {
+        let relative = "背景 +\(String(format: "%.0f", session.thresholdOverBackground)) dB"
+        guard let absolute = session.absoluteThreshold else { return relative }
+        return "\(relative) / 绝对 \(String(format: "%.0f", absolute)) dB（取较低者）"
     }
 }
 

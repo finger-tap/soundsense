@@ -100,6 +100,12 @@
 				AABB00000000000000000010 /* SourceTestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000011 /* SourceTestStore.swift */; };
 				AABB00000000000000000011 /* EventClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000012 /* EventClipRecorder.swift */; };
 				AABB00000000000000000012 /* MonitorSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000013 /* MonitorSessionStore.swift */; };
+				AABB00000000000000000013 /* SourceTestHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000014 /* SourceTestHTMLBuilder.swift */; };
+				AABB00000000000000000014 /* MonitorHTMLBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000015 /* MonitorHTMLBuilder.swift */; };
+				AA0000000000000000000025 /* MacSourceTestViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000008 /* MacSourceTestViewModel.swift */; };
+				AA0000000000000000000026 /* MacMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000009 /* MacMonitorViewModel.swift */; };
+				AA0000000000000000000027 /* MacSourceTestOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA020000000000000000000A /* MacSourceTestOverlay.swift */; };
+				AA0000000000000000000028 /* MacMonitorOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA020000000000000000000B /* MacMonitorOverlay.swift */; };
 				AA0000000000000000000023 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA0200000000000000000006 /* AppIcon.icns */; };
 		AACC00000000000000000013 /* AudioInputDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CC00000000000000000001 /* AudioInputDeviceManager.swift */; };
 /* End PBXBuildFile section - macOS sources */
@@ -129,9 +135,13 @@
 		AA0200000000000000000001 /* SoundSenseMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundSenseMacApp.swift; sourceTree = "<group>"; };
 		AA0200000000000000000002 /* MeterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterViewModel.swift; sourceTree = "<group>"; };
 		AA0200000000000000000003 /* MacMainMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacMainMeterView.swift; sourceTree = "<group>"; };
-		AA0200000000000000000004 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
-		AA0200000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-			AA0200000000000000000030 /* SoundSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
+			AA0200000000000000000004 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
+			AA0200000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+			AA0200000000000000000008 /* MacSourceTestViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSourceTestViewModel.swift; sourceTree = "<group>"; };
+			AA0200000000000000000009 /* MacMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacMonitorViewModel.swift; sourceTree = "<group>"; };
+			AA020000000000000000000A /* MacSourceTestOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSourceTestOverlay.swift; sourceTree = "<group>"; };
+			AA020000000000000000000B /* MacMonitorOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacMonitorOverlay.swift; sourceTree = "<group>"; };
+				AA0200000000000000000030 /* SoundSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2BB00000000000000000001 /* MeasurementRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementRecorder.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000002 /* ReportRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportRenderer.swift; sourceTree = "<group>"; };
 		A2BB00000000000000000003 /* ImageCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCanvas.swift; sourceTree = "<group>"; };
@@ -268,6 +278,8 @@
 					AA0200000000000000000001 /* SoundSenseMacApp.swift */,
 					AA0200000000000000000002 /* MeterViewModel.swift */,
 					AA0200000000000000000007 /* MenuBarController.swift */,
+					AA0200000000000000000008 /* MacSourceTestViewModel.swift */,
+					AA0200000000000000000009 /* MacMonitorViewModel.swift */,
 					AA50000000000000000000032 /* Views */,
 					AA0200000000000000000006 /* AppIcon.icns */,
 					AA0200000000000000000005 /* Info.plist */,
@@ -282,6 +294,8 @@
 				AA0200000000000000000004 /* MacSettingsView.swift */,
 				AA02BB000000000000000004 /* ReportExporter.swift */,
 				AA02BB000000000000000005 /* HistoryOverlayView.swift */,
+				AA020000000000000000000A /* MacSourceTestOverlay.swift */,
+				AA020000000000000000000B /* MacMonitorOverlay.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -597,6 +611,12 @@
 				AABB00000000000000000010 /* SourceTestStore.swift in Sources */,
 				AABB00000000000000000011 /* EventClipRecorder.swift in Sources */,
 				AABB00000000000000000012 /* MonitorSessionStore.swift in Sources */,
+				AABB00000000000000000013 /* SourceTestHTMLBuilder.swift in Sources */,
+				AABB00000000000000000014 /* MonitorHTMLBuilder.swift in Sources */,
+				AA0000000000000000000025 /* MacSourceTestViewModel.swift in Sources */,
+				AA0000000000000000000026 /* MacMonitorViewModel.swift in Sources */,
+				AA0000000000000000000027 /* MacSourceTestOverlay.swift in Sources */,
+				AA0000000000000000000028 /* MacMonitorOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

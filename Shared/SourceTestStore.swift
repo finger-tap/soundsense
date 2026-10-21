@@ -2,7 +2,7 @@
 //  SourceTestStore.swift
 //  SoundSense
 //
-//  三点声源倾向测试的持久化:JSON 结果 + 关联录音文件生命周期。
+//  声源方向倾向测试的持久化:JSON 结果 + 关联录音文件生命周期。
 //  录音存 Application Support/SoundSense/Recordings/Tests/<audioID>.m4a
 //  (与测量历史录音目录隔离)。删除/清空/淘汰/启动清扫不留孤儿文件。
 //

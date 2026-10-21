@@ -84,13 +84,13 @@ public enum ReportRenderer {
 
     private static func drawHero(_ r: ImageCanvas, stats: MeasurementStats) {
         // 小标签
-        drawCentered(r, "等效连续声级 LAeq", atX: 540, y: 250,
+        drawCentered(r, "等效连续声级 \(stats.leqMetricLabel)", atX: 540, y: 250,
                      font: font(20), color: rgb(1, 1, 1, 0.45))
         // 巨型读数
-        let value = String(format: "%.1f", stats.laeqSPL)
+        let value = formatLevel(stats.laeqSPL)
         drawCentered(r, value, atX: 540, y: 400,
                      font: boldFont(150), color: teal)
-        drawCentered(r, "dB(A)", atX: 540, y: 440,
+        drawCentered(r, "dB", atX: 540, y: 440,
                      font: font(22), color: rgb(1, 1, 1, 0.4))
 
         // dB 标尺(与 App 内 DBRulerGauge 同款)
@@ -154,19 +154,22 @@ public enum ReportRenderer {
 
     private static func drawStatStrip(_ r: ImageCanvas, stats: MeasurementStats) {
         let y: CGFloat = 660
-        let colW: CGFloat = (1000 - 80) / 4
+        let colW: CGFloat = (1000 - 80) / 5
+        let exposureLabel = String(format: "超 %.0f dB 时长",
+                                   stats.resolvedExposureLimit)
         let items: [(String, String, CGColor)] = [
-            (String(format: "%.1f", stats.peakSPL), "峰值 PEAK", coral),
-            (String(format: "%.1f", stats.avgSPL), "平均 AVG", rgb(1, 1, 1, 0.85)),
-            (String(format: "%.1f", stats.minSPL), "最低 MIN", blue),
-            (String(format: "%.0f s", stats.overLimitTotal), "超 85dB 时长", amber),
+            (formatLevel(stats.peakSPL), "峰值 \(stats.peakMetricLabel)", coral),
+            (formatLevel(stats.avgSPL), "平均 AVG", rgb(1, 1, 1, 0.85)),
+            (formatLevel(stats.minSPL), "最低 MIN", blue),
+            (formatLevel(stats.l90), "L90 背景", teal),
+            (String(format: "%.0f s", stats.overLimitTotal), exposureLabel, amber),
         ]
         for (i, item) in items.enumerated() {
             let cx = 80 + colW * CGFloat(i) + colW / 2
             drawCentered(r, item.0, atX: cx, y: y + 52,
-                         font: boldFont(42), color: item.2)
+                         font: boldFont(38), color: item.2)
             drawCentered(r, item.1, atX: cx, y: y,
-                         font: font(17), color: rgb(1, 1, 1, 0.4))
+                         font: font(15), color: rgb(1, 1, 1, 0.4))
             if i > 0 {
                 r.line(from: CGPoint(x: 80 + colW * CGFloat(i), y: y - 12),
                        to: CGPoint(x: 80 + colW * CGFloat(i), y: y + 62),
@@ -180,8 +183,9 @@ public enum ReportRenderer {
     private static func drawExposureBanner(_ r: ImageCanvas, stats: MeasurementStats) {
         let rect = CGRect(x: 80, y: 745, width: 920, height: 56)
         r.fillRound(rect, color: rgb(1.0, 0.27, 0.24, 0.85), radius: 12)
-        r.text("⚠️ " + String(format: "测量期间有 %.0f 秒超过 85 dB,长时间暴露可能损伤听力",
-                              stats.overLimitTotal),
+        r.text("⚠️ " + String(format: "测量期间有 %.0f 秒超过 %.0f dB,长时间暴露可能损伤听力",
+                              stats.overLimitTotal,
+                              stats.resolvedExposureLimit),
                at: CGPoint(x: 104, y: 780),
                font: font(21), color: rgb(1, 1, 1))
     }
@@ -217,7 +221,7 @@ public enum ReportRenderer {
         let laeqY = yFor(max(minDB, min(maxDB, stats.laeqSPL)))
         r.dashedLine(from: CGPoint(x: plotX0, y: laeqY), to: CGPoint(x: plotX1, y: laeqY),
                      color: rgb(0.24, 0.85, 0.75, 0.5), width: 1.5)
-        drawRight(r, String(format: "LAeq %.1f", stats.laeqSPL),
+        drawRight(r, "\(stats.leqMetricLabel) \(formatLevel(stats.laeqSPL))",
                   rightX: plotX1, y: laeqY - 10,
                   font: font(16), color: rgb(0.24, 0.85, 0.75, 0.9))
 
@@ -244,7 +248,7 @@ public enum ReportRenderer {
         if let peakIdx = samples.firstIndex(where: { $0.spl == stats.peakSPL }) {
             let p = points[peakIdx]
             r.fillCircle(center: p, radius: 5, color: coral)
-            drawCentered(r, String(format: "峰值 %.1f", stats.peakSPL),
+            drawCentered(r, "峰值 \(formatLevel(stats.peakSPL))",
                          atX: min(max(p.x, plotX0 + 90), plotX1 - 90), y: p.y - 18,
                          font: boldFont(17), color: coral)
         }
@@ -280,7 +284,7 @@ public enum ReportRenderer {
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"
         drawRight(r, "生成于 \(df.string(from: Date()))", rightX: 1000, y: fy + 34,
                   font: font(16), color: rgb(1, 1, 1, 0.3))
-        drawRight(r, "IEC 61672-1 A 计权 · 4096 点 FFT · vDSP",
+        drawRight(r, "IEC 61672-1 \(stats.resolvedWeighting) 计权 · \(stats.resolvedTimeWeighting) 时间计权 · 4096 点 FFT · vDSP",
                   rightX: 1000, y: fy + 64,
                   font: font(16), color: rgb(1, 1, 1, 0.3))
     }
@@ -307,6 +311,10 @@ public enum ReportRenderer {
         let s = Int(seconds)
         if s >= 3600 { return String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60) }
         return String(format: "%d 分 %02d 秒", s / 60, s % 60)
+    }
+
+    private static func formatLevel(_ value: Float) -> String {
+        value.isFinite ? String(format: "%.1f", value) : "--"
     }
 }
 

@@ -282,7 +282,7 @@ struct HistoryView: View {
                 }
             }
             HStack {
-                Text("LAeq \(String(format: "%.1f", session.overallLaeq)) dB · \(session.events.count) 次事件")
+                Text("\(session.leqMetricLabel) \(String(format: "%.1f", session.overallLaeq)) dB · \(session.totalEventCount) 次事件")
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
@@ -446,7 +446,8 @@ struct HistoryRow: View {
             }
 
             HStack(spacing: 0) {
-                stat(value: record.laeqSPL, label: "LAeq", color: MeterTheme.waveColor)
+                stat(value: record.laeqSPL, label: record.leqMetricLabel,
+                     color: MeterTheme.waveColor)
                 stat(value: record.avgSPL, label: "平均", color: .white.opacity(0.85))
                 stat(value: record.peakSPL, label: "峰值", color: MeterTheme.brass)
                 stat(value: Float(Int(record.duration)), label: "秒", color: .white.opacity(0.6),
@@ -455,7 +456,9 @@ struct HistoryRow: View {
 
             if record.overLimitTotal >= 1 {
                 Label {
-                    Text(String(format: "有 %.0f 秒超过 85 dB", record.overLimitTotal))
+                    Text(String(format: "有 %.0f 秒超过 %.0f dB",
+                                record.overLimitTotal,
+                                record.resolvedExposureLimit))
                         .font(.system(size: 11))
                         .foregroundColor(MeterTheme.riskColor)
                 } icon: {
@@ -463,6 +466,12 @@ struct HistoryRow: View {
                         .font(.system(size: 10))
                         .foregroundColor(MeterTheme.riskColor)
                 }
+            }
+
+            if !record.isCompleteCapture {
+                Label("本次存在丢帧，统计仅覆盖已处理数据", systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(MeterTheme.brass)
             }
         }
         .padding(14)
@@ -483,7 +492,7 @@ struct HistoryRow: View {
     private func stat(value: Float, label: String, color: Color,
                       format: String = "%.1f") -> some View {
         VStack(spacing: 2) {
-            Text(String(format: format, value))
+            Text(value.isFinite ? String(format: format, value) : "--")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundColor(color)
                 .monospacedDigit()

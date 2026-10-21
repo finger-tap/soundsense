@@ -71,16 +71,20 @@ struct MainMeterView: View {
                         Spacer()
                         Menu {
                             Button {
-                                stopMeasurementIfNeeded()
-                                showingMonitor = true
+                                Task {
+                                    await stopMeasurementIfNeeded()
+                                    showingMonitor = true
+                                }
                             } label: {
                                 Label("长时间监听", systemImage: "moon.zzz")
                             }
                             Button {
-                                stopMeasurementIfNeeded()
-                                showingSourceTest = true
+                                Task {
+                                    await stopMeasurementIfNeeded()
+                                    showingSourceTest = true
+                                }
                             } label: {
-                                Label("声源定位", systemImage: "dot.radiowaves.left.and.right")
+                                Label("方向倾向", systemImage: "dot.radiowaves.left.and.right")
                             }
                         } label: {
                             HStack(spacing: 5) {
@@ -99,7 +103,7 @@ struct MainMeterView: View {
                             )
                         }
                         .accessibilityLabel("测量工具")
-                        .accessibilityHint("包含长时间监听和声源定位")
+                        .accessibilityHint("包含长时间监听和声源方向倾向测试")
 
                         headerIconButton("clock.arrow.circlepath", label: "测量历史") {
                             showingHistory = true
@@ -148,7 +152,10 @@ struct MainMeterView: View {
 
                         // —— 实时统计(测量中显示) ——
                         if let live = viewModel.liveStats {
-                            LiveStatsBar(stats: live, isRecording: viewModel.isRecording)
+                            LiveStatsBar(stats: live,
+                                         weighting: viewModel.weighting,
+                                         timeWeighting: viewModel.engine.timeWeighting,
+                                         isRecording: viewModel.isRecording)
                                 .padding(.horizontal, marginX)
                                 .padding(.top, 10)
                         }
@@ -377,9 +384,9 @@ struct MainMeterView: View {
         }
     }
 
-    private func stopMeasurementIfNeeded() {
+    private func stopMeasurementIfNeeded() async {
         if viewModel.engine.state == .running {
-            viewModel.stop()
+            await viewModel.stop()
         }
     }
 
@@ -394,7 +401,7 @@ struct MainMeterView: View {
         return Button {
             Task {
                 if isRunning {
-                    viewModel.stop()
+                    await viewModel.stop()
                 } else {
                     await viewModel.start()
                 }

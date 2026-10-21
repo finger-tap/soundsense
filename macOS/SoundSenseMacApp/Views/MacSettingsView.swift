@@ -81,14 +81,15 @@ struct SettingsOverlay: View {
 
     // MARK: - 输入源卡片
 
-    /// 当前实际生效的设备 UID(选定优先,否则系统默认)
-    private var effectiveUID: String? {
-        viewModel.selectedDeviceUID ?? viewModel.defaultInputUID
-    }
-
     private var inputSourceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("输入源").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            HStack {
+                Text("输入源").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                Spacer()
+                Text("仅允许一个固定输入")
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundColor(.white.opacity(0.38))
+            }
 
             // 首项:跟随系统默认
             inputRow(icon: "arrow.triangle.2.circlepath",
@@ -102,10 +103,18 @@ struct SettingsOverlay: View {
                 inputRow(icon: device.sfSymbolName,
                          title: device.name,
                          subtitle: subtitle(for: device),
-                         isActive: effectiveUID == device.uid) {
-                    Task { await viewModel.selectDevice(uid: device.uid) }
+                         isActive: viewModel.selectedDeviceUID == device.uid) {
+                    // 再次点击已固定的设备 = 取消固定，回到跟随系统默认。
+                    let nextUID = viewModel.selectedDeviceUID == device.uid
+                        ? nil : device.uid
+                    Task { await viewModel.selectDevice(uid: nextUID) }
                 }
             }
+
+            Text("再次点击已勾选麦克风可取消固定；取消后跟随系统默认。")
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.42))
+                .fixedSize(horizontal: false, vertical: true)
 
             // 连续互通引导:列表里没有 iPhone 时提示如何开启(能力探测,不做版本判断)。
             // 可关闭,@AppStorage 记住选择,不重复打扰。
@@ -126,13 +135,19 @@ struct SettingsOverlay: View {
     private var defaultInputSubtitle: String {
         if let uid = viewModel.defaultInputUID,
            let device = viewModel.devices.first(where: { $0.uid == uid }) {
-            return "当前:\(device.name)"
+            return "自动使用当前系统输入：\(device.name)"
         }
-        return "使用系统「声音」设置中选择的输入设备"
+        return "自动使用系统「声音」设置中的输入设备"
     }
 
     private func subtitle(for device: AudioInputDevice) -> String {
         // 蓝牙输入:HFP 链路采样率低且带自动增益,分贝读数不可信,明确标注
+        if device.kind == .aggregate {
+            return "\(device.kindDisplayName) · 仅用于特殊路由，不建议测量"
+        }
+        if device.kind == .virtualDevice {
+            return "\(device.kindDisplayName) · 测的是系统声音，不是环境噪音"
+        }
         if device.isNotRecommended {
             return "\(device.kindDisplayName) · 不推荐:采样率低且带自动增益"
         }
@@ -267,7 +282,9 @@ struct SettingsOverlay: View {
                     Text("实时校准").font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
                     Spacer()
                     Text("当前读数").font(.system(size: 10)).foregroundColor(MeterTheme.tertiaryText)
-                    Text(String(format: "%.1f dB", viewModel.currentSPL))
+                    Text(viewModel.currentSPL.isFinite && viewModel.currentSPL > -80
+                         ? String(format: "%.1f dB", viewModel.currentSPL)
+                         : "-- dB")
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
                         .foregroundColor(MeterTheme.waveColor)
                 }
@@ -302,7 +319,7 @@ struct SettingsOverlay: View {
                 } else if viewModel.engine.state == .starting {
                     HStack(spacing: 7) {
                         ProgressView().controlSize(.small)
-                        Text("正在启动麦克风...")
+                        Text("正在检查权限并启动麦克风...")
                             .font(.system(size: 10.5))
                             .foregroundColor(MeterTheme.secondaryText)
                     }
@@ -319,6 +336,7 @@ struct SettingsOverlay: View {
                                 .fill(MeterTheme.primaryActionGradient))
                     }
                     .buttonStyle(.plain)
+                    .disabled(viewModel.engine.state == .starting)
                 }
             }
         }
@@ -365,9 +383,8 @@ struct SettingsOverlay: View {
                                          : Color.white.opacity(0.07),
                                 lineWidth: 1))
             )
-        }
-        .buttonStyle(.plain)
-        .help("\(label)：\(String(format: "+%.0f dB", offset))")
+                }
+                .buttonStyle(.plain)
     }
 
     // MARK: - 测量卡片(计权 / 警告阈值 / 预设)
@@ -389,10 +406,15 @@ struct SettingsOverlay: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 220)
+                .disabled(viewModel.engine.state == .running || viewModel.engine.state == .starting)
             }
             Text("A 计权模拟人耳感受,适合日常噪音;C 计权保留低频能量,适合音响、空调、机械等低频噪音。")
                 .font(.system(size: 10.5)).foregroundColor(MeterTheme.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
+            if viewModel.engine.state == .running || viewModel.engine.state == .starting {
+                Text("测量中已锁定计权方式,避免同一场报告混用 A/C 数据。停止后可切换。")
+                    .font(.system(size: 10)).foregroundColor(MeterTheme.brass)
+            }
 
             Divider().overlay(MeterTheme.hairline)
 
@@ -450,6 +472,7 @@ struct SettingsOverlay: View {
             row(title: "版本", value: appVersionString())
             row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
             row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
+            row(title: "峰值口径", value: "时间计权最大值,非 Lpeak")
             row(title: "隐私", value: "测量与录音仅保存在本机")
             Divider().background(.white.opacity(0.1))
             Link(destination: URL(string: "https://github.com/finger-tap/soundsense")!) {
@@ -463,7 +486,7 @@ struct SettingsOverlay: View {
                 }
                 .foregroundColor(MeterTheme.waveColor)
             }
-            Text("核心算法基于 Accelerate/vDSP,符合 IEC 61672-1 国际标准。")
+            Text("计权曲线按 IEC 61672-1 设计,但本应用不是经型式批准的 Class 1/2 声级计。")
                 .font(.system(size: 10.5)).foregroundColor(MeterTheme.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }

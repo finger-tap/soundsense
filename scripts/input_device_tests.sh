@@ -21,6 +21,8 @@ xcrun -sdk macosx swiftc -disable-sandbox \
   Shared/AudioMeterEngine.swift \
   macOS/SoundSenseMacApp/MeterViewModel.swift \
   Shared/MeasurementRecorder.swift \
+  Shared/NoiseEventEngine.swift \
+  Shared/SourceTendencyAnalyzer.swift \
   Shared/SessionAudioRecorder.swift \
   Shared/MeasurementHistoryStore.swift \
   Shared/NoiseLevel.swift \

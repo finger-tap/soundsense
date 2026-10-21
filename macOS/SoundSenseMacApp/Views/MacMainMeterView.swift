@@ -18,6 +18,8 @@ struct MacMainMeterView: View {
     @Environment(\.openURL) private var openURL
     @State private var showingSettings = false
     @State private var showingHistory = false
+    @State private var showingSourceTest = false
+    @State private var showingMonitor = false
 
     /// 当前等级色(贯穿数字、仪表、按钮)
     private var levelColor: Color {
@@ -32,6 +34,7 @@ struct MacMainMeterView: View {
                 headerBar
                     .frame(maxWidth: 840)
                     .frame(maxWidth: .infinity)
+                    .disabled(overlayPresented)
                     .padding(.horizontal, 28).padding(.top, 18).padding(.bottom, 8)
 
                 // 中间内容(窗口太小时可滚动)
@@ -45,7 +48,10 @@ struct MacMainMeterView: View {
 
                         // 实时统计(测量中显示)
                         if let live = viewModel.liveStats {
-                            LiveStatsBar(stats: live, isRecording: viewModel.isRecording)
+                            LiveStatsBar(stats: live,
+                                         weighting: viewModel.weighting,
+                                         timeWeighting: viewModel.engine.timeWeighting,
+                                         isRecording: viewModel.isRecording)
                                 .padding(.horizontal, 28)
                                 .transition(.opacity)
                         }
@@ -61,7 +67,9 @@ struct MacMainMeterView: View {
                         VStack(spacing: 12) {
                             HStack(spacing: 12) {
                                 Card(title: "声波") {
-                                    WaveformView(values: viewModel.history, color: levelColor)
+                                    WaveformView(values: viewModel.history,
+                                                 slotCount: 120,
+                                                 color: levelColor)
                                         .frame(height: 56)
                                 }
                                 Card(title: "频谱") {
@@ -99,6 +107,7 @@ struct MacMainMeterView: View {
                 }
                 .frame(maxWidth: 620)
                 .frame(maxWidth: .infinity)
+                .disabled(overlayPresented)
                 .padding(.horizontal, 28).padding(.bottom, 22).padding(.top, 6)
             }
 
@@ -113,6 +122,25 @@ struct MacMainMeterView: View {
                                calibrationOffset: viewModel.calibrationOffset,
                                isPresented: $showingHistory)
             }
+            if showingSourceTest {
+                MacSourceTestOverlay(
+                    calibrationOffset: viewModel.calibrationOffset,
+                    inputDeviceUID: viewModel.selectedDeviceUID,
+                    weighting: viewModel.weighting,
+                    timeWeighting: viewModel.engine.timeWeighting,
+                    isPresented: $showingSourceTest)
+            }
+            if showingMonitor {
+                MacMonitorOverlay(
+                    calibrationOffset: viewModel.calibrationOffset,
+                    inputDeviceUID: viewModel.selectedDeviceUID,
+                    weighting: viewModel.weighting,
+                    timeWeighting: viewModel.engine.timeWeighting,
+                    isPresented: $showingMonitor)
+            }
+        }
+        .onChange(of: overlayPresented) { presented in
+            viewModel.setAnalysisToolPresented(presented)
         }
         // 整个 ZStack 撑满窗口(背景色覆盖到窗口边缘,无白边)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -122,6 +150,14 @@ struct MacMainMeterView: View {
             if let r = r { viewModel.consume(r) }
         }
         .onAppear {
+            viewModel.openMainWindow = {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                for window in NSApplication.shared.windows
+                where window.canBecomeMain {
+                    window.makeKeyAndOrderFront(nil)
+                    return
+                }
+            }
             viewModel.refreshAudioInputAvailability()
         }
         .onReceive(NotificationCenter.default.publisher(
@@ -142,6 +178,44 @@ struct MacMainMeterView: View {
                     .foregroundColor(MeterTheme.tertiaryText)
             }
             Spacer()
+            Menu {
+                Button {
+                    Task {
+                        await viewModel.stop()
+                        showingMonitor = true
+                    }
+                } label: {
+                    Label("长时间监听", systemImage: "moon.zzz")
+                }
+                Button {
+                    Task {
+                        await viewModel.stop()
+                        showingSourceTest = true
+                    }
+                } label: {
+                    Label("方向倾向", systemImage: "dot.radiowaves.left.and.right")
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("工具")
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .foregroundColor(MeterTheme.secondaryText)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(
+                    Capsule()
+                        .fill(.white.opacity(0.055))
+                        .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .disabled(overlayPresented)
+            .opacity(overlayPresented ? 0.55 : 1)
+            .accessibilityLabel("噪音分析工具")
             Button {
                 showingHistory = true
             } label: {
@@ -153,7 +227,6 @@ struct MacMainMeterView: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("h", modifiers: .command)
-            .help("测量历史 (⌘H)")
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 15)).foregroundColor(MeterTheme.secondaryText)
@@ -163,7 +236,6 @@ struct MacMainMeterView: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut(",", modifiers: .command)
-            .help("设置 (⌘,)")
         }
     }
 
@@ -261,7 +333,7 @@ struct MacMainMeterView: View {
         return Button {
             Task {
                 if running {
-                    viewModel.stop()
+                    await viewModel.stop()
                 } else {
                     await viewModel.start()
                 }
@@ -287,10 +359,13 @@ struct MacMainMeterView: View {
                     radius: 10, y: 4)
         }
         .buttonStyle(.plain)
-        .disabled(starting || showingSettings || showingHistory || !viewModel.hasAudioInput)
-        .opacity((starting || showingSettings || showingHistory || !viewModel.hasAudioInput) ? 0.62 : 1)
+        .disabled(starting || overlayPresented || !viewModel.hasAudioInput)
+        .opacity((starting || overlayPresented || !viewModel.hasAudioInput) ? 0.62 : 1)
         .keyboardShortcut(.space, modifiers: [])
-        .help(running ? "停止检测 (空格)" : "开始检测 (空格)")
+    }
+
+    private var overlayPresented: Bool {
+        showingSettings || showingHistory || showingSourceTest || showingMonitor
     }
 
     /// 导出报告按钮(停止检测后出现)

@@ -32,7 +32,7 @@ struct WatchMeterView: View {
                             .font(.system(size: 30, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .monospacedDigit()
-                        Text("dB(A)")
+                        Text(viewModel.engine.weighting == .c ? "dB(C)" : "dB(A)")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(MeterTheme.secondaryText)
                     }
@@ -59,10 +59,21 @@ struct WatchMeterView: View {
                         watchStat(String(format: "%02d:%02d",
                                          Int(live.duration) / 60, Int(live.duration) % 60),
                                   label: "时长")
-                        watchStat(String(format: "%.0f", live.laeq), label: "LAeq")
-                        watchStat(String(format: "%.0f", live.peak), label: "峰值")
+                        watchStat(live.laeq.isFinite ? String(format: "%.0f", live.laeq) : "--",
+                                  label: "LAeq")
+                        watchStat(live.peak.isFinite ? String(format: "%.0f", live.peak) : "--",
+                                  label: "峰值")
                     }
                     .padding(.horizontal, 6)
+                    if viewModel.captureIncomplete {
+                        // 手表可用高度很紧，压成单行，避免把声波/频谱挤出屏幕。
+                        HStack(spacing: 3) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                            Text("采集中断")
+                        }
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(MeterTheme.brass)
+                    }
                 }
 
                 // —— 迷你声波条 ——
@@ -78,11 +89,13 @@ struct WatchMeterView: View {
                         .padding(.horizontal, 8)
                 }
 
-                // —— 声源定位 / 校准入口 ——
+                // —— 声源方向倾向 / 校准入口 ——
                 HStack(spacing: 18) {
                     Button {
-                        viewModel.stop()
-                        showingSourceTest = true
+                        Task {
+                            await viewModel.stop()
+                            showingSourceTest = true
+                        }
                     } label: {
                         Label("定位", systemImage: "dot.radiowaves.left.and.right")
                             .font(.system(size: 10, weight: .medium))
@@ -92,7 +105,7 @@ struct WatchMeterView: View {
                             .background(Capsule().fill(.white.opacity(0.06)))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("声源定位")
+                    .accessibilityLabel("声源方向倾向")
                     Button {
                         showingSettings = true
                     } label: {
@@ -122,7 +135,7 @@ struct WatchMeterView: View {
             case .active:
                 Task { await viewModel.start() }
             case .inactive, .background:
-                viewModel.stop()
+                Task { await viewModel.stop() }
             default:
                 break
             }
@@ -136,7 +149,7 @@ struct WatchMeterView: View {
         .sheet(isPresented: $showingSettings) {
             WatchSettingsView(viewModel: viewModel)
         }
-        // 声源定位测试(结果同步到 iPhone)
+        // 声源方向倾向测试(结果同步到 iPhone)
         // onDismiss 恢复主测量:进入 sheet 前 stop() 过,而 sheet 关闭时 scenePhase
         // 一直是 .active、onChange 不会再触发,不在这里重启就会永远停在"抬腕即测"。
         .sheet(isPresented: $showingSourceTest, onDismiss: {
@@ -196,20 +209,23 @@ struct WatchMeterView: View {
 
     private var miniWaveform: some View {
         Canvas { context, size in
-            let values = viewModel.history
+            let values = Array(viewModel.history.suffix(36))
             guard !values.isEmpty else { return }
-            let count = values.count
-            let barWidth = size.width / CGFloat(count) * 0.7
-            let gap = size.width / CGFloat(count) * 0.3
+            let slotWidth = size.width / 36
+            let barWidth = max(1, slotWidth * 0.62)
+            let startSlot = 36 - values.count
             let color = viewModel.noiseLevel?.color ?? MeterTheme.waveColor
             for (i, v) in values.enumerated() {
                 let normalized = CGFloat(max(0, min(1, (v - 20) / 80)))
                 let h = max(1, normalized * size.height)
-                let x = CGFloat(i) * (barWidth + gap)
+                let x = CGFloat(startSlot + i) * slotWidth
+                    + (slotWidth - barWidth) / 2
                 let y = (size.height - h) / 2
                 let rect = CGRect(x: x, y: y, width: barWidth, height: h)
                 context.fill(Path(roundedRect: rect, cornerRadius: barWidth / 2),
-                             with: .color(color.opacity(0.4 + 0.6 * Double(i) / Double(max(1, count - 1)))))
+                             with: .color(color.opacity(i == values.count - 1
+                                                        ? 1
+                                                        : 0.4 + 0.6 * Double(i) / Double(max(1, values.count - 1)))))
             }
         }
     }

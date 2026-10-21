@@ -6,7 +6,8 @@
 //  仅 iOS / macOS 编译(watchOS 不录音)。
 //
 //  管线:输入(设备速率 Float32 单声道)→ FIR 低通 → 整数倍降采样(48k→24k)
-//        → AVAudioFile(.m4a / AAC / 48kbps)。全程私有串行队列,写失败自动停用,
+//        → AVAudioFile(.m4a / AAC / 48kbps)。不能整数倍降采样时按源采样率直写,
+//        避免 44.1k 素材被错误标记成 24k。全程私有串行队列,写失败自动停用,
 //        测量主流程不受影响。到 maxDuration 停写保文件;不足 minKeepDuration 丢弃。
 //
 
@@ -107,13 +108,14 @@ public final class SessionAudioRecorder: @unchecked Sendable {
     public var maxDuration: TimeInterval = 3600
     /// 低于此时长(秒)的会话在结束时丢弃
     public var minKeepDuration: TimeInterval = 3
-    /// 目标采样率(Hz)
+    /// 可整数倍降采样时优先使用的采样率(Hz)
     public let targetSampleRate: Float = 24000
 
     private let queue = DispatchQueue(label: "com.dinghao.soundsense.sessionRecorder")
     private var file: AVAudioFile?
     private var fileURL: URL?
     private var decimator: FIRDecimator?
+    private var outputSampleRate: Float = 24000
     private var writtenFrames = 0
     private var stopped = true   // 未开始 / 已结束 / 已失败 / 已到上限
 
@@ -127,16 +129,22 @@ public final class SessionAudioRecorder: @unchecked Sendable {
                                                      withIntermediateDirectories: true)
             let id = UUID().uuidString
             let url = directory.appendingPathComponent("\(id).m4a")
-            file = AACWriteSupport.openFile(forWriting: url, targetSampleRate: targetSampleRate)
-            if file == nil { return nil }
-            fileURL = url
             let factor = Int(inputSampleRate / targetSampleRate)
             if Float(factor) * targetSampleRate == inputSampleRate && factor > 1 {
                 decimator = FIRDecimator(taps: AACWriteSupport.makeTaps(
                     count: 33, cutoffRatio: 0.45 / Float(factor)), factor: factor)
+                outputSampleRate = targetSampleRate
             } else {
-                decimator = nil   // 速率不整除:原速率直写(AAC 编码器自适配)
+                decimator = nil
+                outputSampleRate = inputSampleRate
             }
+            file = AACWriteSupport.openFile(forWriting: url,
+                                            targetSampleRate: outputSampleRate)
+            if file == nil {
+                decimator = nil
+                return nil
+            }
+            fileURL = url
             writtenFrames = 0
             stopped = false
             return id
@@ -197,7 +205,7 @@ public final class SessionAudioRecorder: @unchecked Sendable {
     }
 
     private var durationLocked: TimeInterval {
-        TimeInterval(writtenFrames) / TimeInterval(targetSampleRate)
+        TimeInterval(writtenFrames) / TimeInterval(outputSampleRate)
     }
 
     private static func pcmBuffer(samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {

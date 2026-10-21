@@ -20,6 +20,7 @@ final class WatchMeterViewModel: ObservableObject {
     @Published private(set) var noiseLevel: NoiseLevel?
     /// 实时统计(时长 / LAeq / 峰值)
     @Published private(set) var liveStats: LiveMeasurementStats?
+    @Published private(set) var captureIncomplete = false
 
     /// 表盘声波条历史长度短一些(适配小屏)
     private let historyCapacity = 36
@@ -56,15 +57,29 @@ final class WatchMeterViewModel: ObservableObject {
     }
 
     func start() async {
+        guard engine.refreshInputAvailability() else {
+            engine.stop()
+            return
+        }
         await engine.start()
         guard engine.state == .running else { return }
+        recorder.weighting = engine.weighting == .c ? "C" : "A"
+        recorder.timeWeighting = engine.timeWeighting == .slow ? "S" : "F"
         recorder.start()
+        captureIncomplete = false
     }
 
-    func stop() {
-        engine.stop()
-        recorder.stop()
+    func stop() async {
+        await engine.freezeForFinalization()
+        _ = recorder.stop(sessionPeak: engine.sessionPeakSPL,
+                          sessionLeq: engine.sessionLeqSPL,
+                          sessionLeqDuration: engine.sessionLeqDuration,
+                          captureStart: engine.captureTimeRange?.lowerBound,
+                          captureEnd: engine.captureTimeRange?.upperBound,
+                          completeCapture: engine.sessionDroppedSampleCount == 0)
+        engine.finishFinalization()
         liveStats = nil
+        captureIncomplete = false
         history.removeAll(keepingCapacity: true)
         noiseLevel = nil
     }
@@ -76,7 +91,13 @@ final class WatchMeterViewModel: ObservableObject {
             history.removeFirst(history.count - historyCapacity)
         }
         noiseLevel = NoiseLevel.level(for: spl)
-        recorder.record(spl: spl)
+        recorder.record(spl: spl,
+                        sessionPeak: engine.sessionPeakSPL,
+                        sessionLeq: engine.sessionLeqSPL,
+                        sessionLeqDuration: engine.sessionLeqDuration)
+        recorder.updateCaptureCompleteness(
+            droppedSampleCount: result.totalDroppedSampleCount)
+        captureIncomplete = !result.measurementCoverageComplete
         liveStats = recorder.liveStats()
     }
 

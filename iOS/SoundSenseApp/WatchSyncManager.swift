@@ -2,7 +2,7 @@
 //  WatchSyncManager.swift
 //  SoundSense iOS
 //
-//  接收手表发来的三点测试结果,解码后入 SourceTestStore,并发通知供 UI 提示。
+//  接收手表发来的方向倾向结果,解码后入 SourceTestStore,并发通知供 UI 提示。
 //
 
 import Foundation

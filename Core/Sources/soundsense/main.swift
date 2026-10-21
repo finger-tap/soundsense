@@ -9,6 +9,9 @@
 //
 
 import Foundation
+#if canImport(CoreAudio)
+import CoreAudio
+#endif
 // SwiftPM 模块化编译需要显式 import SoundSenseCore;
 // scripts/build.sh 走 swiftc 单文件编译(把算法源码直接并入编译单元),
 // 此时模块不存在,用 canImport 守卫跳过,两种方式都能编译。
@@ -177,16 +180,20 @@ func runTests() {
 
     // 4. 极端情况
     print("── 测试组 4：边界情况 ──────────────────────────────────")
-    let silence = [Float](repeating: 0, count: n)
-    if let r = meter.process(Array(silence[fftSize..<(fftSize+fftSize)])) {
-        print("✅ 静音信号: \(r)")
-        if r.dbfsFlat < -180 {
-            print("   （预期: 接近 -∞，因为 RMS=0）")
-            passed += 1
-        } else {
-            print("❌ 静音 dBFS 偏高，可能有问题")
-            failed += 1
-        }
+    let silenceMeter = DBMeter(config: MeterConfig(sampleRate: sampleRate,
+                                                    fftSize: fftSize,
+                                                    calibrationOffset: 0))
+    let silence = [Float](repeating: 0, count: fftSize)
+    if let r = silenceMeter.process(silence) {
+        let silenceOK = r.dbfsFlat.isFinite && r.dbfsFlat <= -199.9
+            && r.dbfsAWeighted <= -199.9
+            && r.splA <= -199.9
+            && r.splInstant <= -199.9
+            && r.leqSPL == -Float.infinity
+            && silenceMeter.leqDuration > 0
+        print("\(silenceOK ? "✅" : "❌") 静音信号: \(r)")
+        print("   （预期: dBFS 有限下限、计权/瞬时/Leq 均为 -∞，不再落入约 0 dB 的无效读数）")
+        silenceOK ? (passed += 1) : (failed += 1)
     }
     print()
 
@@ -246,7 +253,7 @@ func runTests() {
             }
             var results: [MeterResult] = []
             start = 0
-            for k in 0..<12 {
+            for _ in 0..<12 {
                 if let r = m.process(Array(sig[start..<(start + fftSize)]), hopSamples: fftSize / 2) {
                     results.append(r)
                 }
@@ -268,7 +275,7 @@ func runTests() {
     }
     print()
 
-    // 7. Leq 能量平均:20 帧 -40 dBFS + 20 帧 -20 dBFS → -22.97 dBFS
+    // 7. Leq 能量积分:20 帧 -40 dBFS + 20 帧 -20 dBFS → -22.97 dBFS
     print("── 测试组 7：Leq 能量域平均 ────────────────────────────")
     do {
         let m = DBMeter(config: MeterConfig(sampleRate: sampleRate, fftSize: fftSize))
@@ -292,8 +299,27 @@ func runTests() {
         print("\(ok ? "✅" : "❌") Leq(-40×20帧 + -20×20帧) = \(String(format: "%.2f", leq)) dBFS " +
               "(期望 \(String(format: "%.2f", expected)))")
         print("     Leq 覆盖时长 = \(String(format: "%.2f", m.leqDuration)) s (期望 ≈ 1.71)")
-        ok && abs(m.leqDuration - 40 * Double(fftSize / 2) / 48000.0) < 0.01
-            ? (passed += 1) : (failed += 1)
+        let durationOK = abs(m.leqDuration - 40 * Double(fftSize / 2) / 48000.0) < 0.01
+        (ok && durationOK) ? (passed += 1) : (failed += 1)
+
+        // 运行中校准只改变 dBFS→SPL 偏移,不得把已累计 Leq 清零。
+        let beforeCalibration = m.currentLeq()
+        let beforeDuration = m.leqDuration
+        m.setCalibrationOffset(10)
+        let calibrationOK = abs(m.currentLeq() - (beforeCalibration + 10)) < 0.01
+            && abs(m.leqDuration - beforeDuration) < 1e-9
+        print("\(calibrationOK ? "✅" : "❌") 运行中校准 +10 dB 保留整场 Leq " +
+              "(得 \(String(format: "%.2f", m.currentLeq())), " +
+              "时长 \(String(format: "%.2f", m.leqDuration)) s)")
+        calibrationOK ? (passed += 1) : (failed += 1)
+
+        // F/S 与 Leq 无关:切换时间计权不得清空 Leq。
+        m.setTimeWeighting(.slow)
+        let weightingOK = abs(m.currentLeq() - (beforeCalibration + 10)) < 0.01
+            && abs(m.leqDuration - beforeDuration) < 1e-9
+        print("\(weightingOK ? "✅" : "❌") 切换 F/S 保留 Leq " +
+              "(得 \(String(format: "%.2f", m.currentLeq())) dBFS)")
+        weightingOK ? (passed += 1) : (failed += 1)
     }
     print()
 
@@ -326,23 +352,24 @@ func runTests() {
               "(解析 \(String(format: "%+.2f", analyticWhite)))")
         okW ? (passed += 1) : (failed += 1)
 
-        // 粉红噪声(1/f):解析按 Σ W²(f)/f 归一,允许 ±1 dB
+        // 粉红噪声(1/f):解析按 Σ W²(f)/f 归一。信号发生器是 1/f 近似,
+        // 不是严格 PSD,给 1.5 dB 工程容差。
         let pink = SignalGenerator.pinkNoise(amplitude: 0.5, count: fftSize * 32)
         let pinkCorr = meanCorrection(pink, frames: 24, weighting: .a)
         let analyticPink = 10 * log10(
             binFreqs.dropFirst().map { pow(10, AWeighting.gain(at: $0) / 10) / $0 }.reduce(0, +)
             / binFreqs.dropFirst().map { 1 / $0 }.reduce(0, +))
-        let okP = abs(pinkCorr - analyticPink) < 1.0
+        let okP = abs(pinkCorr - analyticPink) < 1.5
         print("\(okP ? "✅" : "❌") 粉红噪声 A 修正量 = \(String(format: "%+.2f", pinkCorr)) dB " +
               "(解析 \(String(format: "%+.2f", analyticPink)))")
         okP ? (passed += 1) : (failed += 1)
     }
     print()
 
-    // 9. 频谱显示聚合:低频空段(段宽 < bin 间距)插值填充,不再出现恒贴底死柱
-    //    复现真机 bug:48k/4096 下 32 段对数轴,第 2 段(24.6~30.4 Hz)与
-    //    第 4 段(37.4~46.1 Hz)没有任何 bin 落入,旧实现恒为 -140 dB 贴底。
-    print("── 测试组 9：频谱显示聚合(空段插值) ────────────────────")
+    // 9. 频谱显示聚合:低频空段插值 + 多 bin 功率平均
+    //    48k/4096 下 32 段对数轴,第 2 段(24.6~30.4 Hz)与第 4 段
+    //    (37.4~46.1 Hz)没有 bin 落入;空段必须插值而不是恒贴底。
+    print("── 测试组 9：频谱显示聚合(空段插值/功率平均) ───────────")
     do {
         let fs: Float = 48000
         let freqs = (0..<fftSize / 2).map { Float($0) * fs / Float(fftSize) }
@@ -373,6 +400,172 @@ func runTests() {
         print("\(ok ? "✅" : "❌") 全部段非空=\(noneEmpty), " +
               "段2=\(String(format: "%.3f", bandAvg(1))) (期望 0.5~1.0), " +
               "段4=\(String(format: "%.3f", bandAvg(3))) (期望 0.25~1.0)")
+        ok ? (passed += 1) : (failed += 1)
+
+        // 构造一个窄桶,仅包含 110/120 Hz 两根非零 bin;同桶另有一个零 bin。
+        let freqs2: [Float] = [100, 110, 120, 130, 140, 150]
+        let spec2: [Float] = [0, 1, 0.5, 0, 0, 0]
+        let levels = SpectrumBands.bandLevelsDB(spectrum: spec2, frequencies: freqs2,
+                                                bandCount: 1, minFrequency: 100,
+                                                maxFrequency: 139)
+        // 区间 [100,139) 纳入 100/110/120/130 四个 bin。
+        let expectedPowerDB = Float(10 * log10((1.0 + 0.25) / 4.0))
+        let amplitudeAvgDB = Float(20 * log10((1.0 + 0.5) / 4.0))
+        let powerOK = levels.count == 1
+            && abs(levels[0] - expectedPowerDB) < 0.01
+            && levels[0] > amplitudeAvgDB
+        print("\(powerOK ? "✅" : "❌") 多 bin 采用功率平均: " +
+              "\(String(format: "%+.2f", levels.first ?? 0)) dB " +
+              "(功率平均 \(String(format: "%+.2f", expectedPowerDB)), " +
+              "幅度平均 \(String(format: "%+.2f", amplitudeAvgDB)))")
+        powerOK ? (passed += 1) : (failed += 1)
+    }
+    print()
+
+    // 10. 时域 A/C 滤波器频响:直接验证数字 IIR 与 IEC 解析曲线
+    print("── 测试组 10：时域 A/C IIR 滤波器频响 ─────────────────")
+    do {
+        let keyFrequencies: [Float] = [
+            20, 31.5, 63, 125, 250, 500, 1000,
+            2000, 4000, 8000, 10000, 12500, 16000
+        ]
+        for fs in [Float(44100), 48000, 96000] {
+            for weighting in [Weighting.a, Weighting.c] {
+                let filter = WeightingFilter(weighting: weighting, sampleRate: fs)
+                var worst: Float = 0
+                var worstFrequency: Float = 0
+                for frequency in keyFrequencies where frequency < fs * 0.49 {
+                    let reference = weighting == .a
+                        ? AWeighting.gain(at: frequency)
+                        : CWeighting.gain(at: frequency)
+                    let error = filter.gain(at: frequency) - reference
+                    if abs(error) > abs(worst) {
+                        worst = error
+                        worstFrequency = frequency
+                    }
+                }
+                let ok = abs(worst) < 0.5
+                print("\(ok ? "✅" : "❌") " +
+                      "\(Int(fs)) Hz · \(weighting.rawValue.uppercased()) 计权 " +
+                      "最大偏差 \(String(format: "%+.3f", worst)) dB " +
+                      "@ \(String(format: "%.1f", worstFrequency)) Hz")
+                ok ? (passed += 1) : (failed += 1)
+            }
+        }
+    }
+    print()
+
+    // 11. 滤波器状态连续性:同一段信号,分块喂入与整段喂入的均方值应一致
+    print("── 测试组 11：计权滤波器的分块连续性 ─────────────────")
+    do {
+        let fs: Float = 48000
+        let f1k = Float(85) * binWidth
+        let signal = SignalGenerator.sineWave(frequency: f1k, amplitude: 0.5,
+                                               sampleRate: fs, count: fftSize * 8)
+
+        var wholeFilter = WeightingFilter(weighting: .a, sampleRate: fs)
+        let whole = wholeFilter.meanSquare(of: signal, filterRange: 0..<signal.count)
+
+        var chunkedFilter = WeightingFilter(weighting: .a, sampleRate: fs)
+        var energy = 0.0
+        var count = 0
+        let chunkSize = 333
+        var offset = 0
+        while offset < signal.count {
+            let end = min(offset + chunkSize, signal.count)
+            let chunk = Array(signal[offset..<end])
+            let ms = chunkedFilter.meanSquare(of: chunk, filterRange: 0..<chunk.count)
+            energy += ms * Double(chunk.count)
+            count += chunk.count
+            offset = end
+        }
+        let chunked = energy / Double(count)
+        let diffDB = 10 * log10(max(chunked, 1e-20) / max(whole, 1e-20))
+        let ok = abs(diffDB) < 0.01
+        print("\(ok ? "✅" : "❌") 状态跨块连续:整段与 333 点分块差 " +
+              "\(String(format: "%+.4f", diffDB)) dB")
+        ok ? (passed += 1) : (failed += 1)
+    }
+    print()
+
+    // 12. 停止收尾:不足一个 FFT 窗口的尾部也要计入 Leq 时长与能量
+    print("── 测试组 12：测量尾部样本计入 Leq ───────────────────")
+    do {
+        let fs: Float = 48000
+        let f1k = Float(85) * binWidth
+        let signal = SignalGenerator.sineWave(frequency: f1k, amplitude: 0.5,
+                                               sampleRate: fs, count: fftSize * 3)
+        let m = DBMeter(config: MeterConfig(sampleRate: fs, fftSize: fftSize))
+        _ = m.process(Array(signal[0..<fftSize]), hopSamples: fftSize / 2)
+        let beforeLeq = m.currentLeq()
+        let beforeDuration = m.leqDuration
+        let tail = Array(signal[fftSize..<(fftSize + 1000)])
+        let tailResult = m.processTail(tail)
+        let expectedTailDuration = TimeInterval(tail.count) / TimeInterval(fs)
+        let tailOK = tailResult != nil
+            && abs(m.leqDuration - beforeDuration - expectedTailDuration) < 0.001
+            && abs(m.currentLeq() - beforeLeq) < 0.05
+        print("\(tailOK ? "✅" : "❌") 尾样本 \(tail.count) 点: " +
+              "Leq 时长 \(String(format: "%.4f", m.leqDuration)) s, " +
+              "Leq 变化 \(String(format: "%+.3f", m.currentLeq() - beforeLeq)) dB")
+        tailOK ? (passed += 1) : (failed += 1)
+
+        // 新样本已在上一次 process() 中完整覆盖时，不能把同一段再次喂给
+        // 滤波器。否则尾段会重复计入 Leq，且滤波器状态会人为前移。
+        let m2 = DBMeter(config: MeterConfig(sampleRate: fs, fftSize: fftSize))
+        let before = m2.leqDuration
+        _ = m2.process(Array(signal[0..<fftSize]), hopSamples: fftSize / 2)
+        let afterProcess = m2.leqDuration
+        let duplicateTail = Array(signal[(fftSize / 2)..<fftSize])
+        _ = m2.processTail(duplicateTail, skipSamples: duplicateTail.count)
+        let duplicateOK = abs(m2.leqDuration - afterProcess) < 1e-6
+            && afterProcess > before
+        print("\(duplicateOK ? "✅" : "❌") 已统计窗口不重复计入尾段 " +
+              "(处理 \(String(format: "%.4f", afterProcess)) s → " +
+              "收尾 \(String(format: "%.4f", m2.leqDuration)) s)")
+        duplicateOK ? (passed += 1) : (failed += 1)
+
+        // 重叠窗口后若还带新样本，只统计新增部分，不能把已测 hop 再算一次。
+        let m3 = DBMeter(config: MeterConfig(sampleRate: fs, fftSize: fftSize))
+        _ = m3.process(Array(signal[0..<fftSize]), hopSamples: fftSize / 2)
+        let beforeFresh = m3.leqDuration
+        let freshTail = Array(signal[(fftSize / 2)..<(fftSize + 1000)])
+        _ = m3.processTail(freshTail, skipSamples: fftSize / 2)
+        let freshOK = abs(m3.leqDuration - beforeFresh - 1000 / Double(fs)) < 1e-6
+        print("\(freshOK ? "✅" : "❌") 尾段只新增 1000 点 " +
+              "(新增 \(String(format: "%.4f", m3.leqDuration - beforeFresh)) s)")
+        freshOK ? (passed += 1) : (failed += 1)
+    }
+    print()
+
+    // 13. 新一场测量:滤波器/检波器/Leq 都必须从干净状态开始
+    print("── 测试组 13：跨测量状态复位 ─────────────────────────")
+    do {
+        let fs: Float = 48000
+        let f1k = Float(85) * binWidth
+        let loud = SignalGenerator.sineWave(frequency: f1k, amplitude: 0.8,
+                                             sampleRate: fs, count: fftSize * 8)
+        let m = DBMeter(config: MeterConfig(sampleRate: fs, fftSize: fftSize))
+        var offset = 0
+        for _ in 0..<8 {
+            _ = m.process(Array(loud[offset..<(offset + fftSize)]),
+                          hopSamples: fftSize / 2)
+            offset += fftSize / 2
+        }
+        let oldDuration = m.leqDuration
+        m.resetSmoothing()
+
+        let silence = [Float](repeating: 0, count: fftSize)
+        let result = m.process(silence, hopSamples: fftSize / 2)
+        let hopDuration = TimeInterval(fftSize / 2) / TimeInterval(fs)
+        let ok = result != nil
+            && result!.dbfsAWeighted <= -199.9
+            && result!.splA <= -199.9
+            && abs(m.leqDuration - hopDuration) < 1e-5
+            && oldDuration > 0
+        print("\(ok ? "✅" : "❌") resetSmoothing 后首帧不再带上一场状态 " +
+              "(旧时长 \(String(format: "%.2f", oldDuration)) s → " +
+              "新时长 \(String(format: "%.3f", m.leqDuration)) s)")
         ok ? (passed += 1) : (failed += 1)
     }
     print()
@@ -415,6 +608,19 @@ func runSweep() {
     }
     print()
 
+    // A 计权完整 IEC 关键频点(含低频与高频滚降)。sweep 不只是显示,
+    // 全部点超差时以非零状态退出,才能用于 CI/发布前回归。
+    let aPoints: [Float: Float] = [
+        20: -50.5, 31.5: -39.4, 63: -26.2, 125: -16.1,
+        250: -8.6, 500: -3.2, 1000: 0, 2000: 1.2, 4000: 1.0,
+        8000: -1.1, 12500: -4.3, 16000: -6.6,
+    ]
+    var aFailures = 0
+    for f in aPoints.keys.sorted() {
+        let ref = aPoints[f]!
+        if abs(AWeighting.gain(at: f) - ref) >= 0.5 { aFailures += 1 }
+    }
+
     // C 计权曲线(IEC 61672-1 表 A.2 关键点)
     // 回归背景:C 曾错把 A 的 107.7/737.9 中频因子抄进分母,
     // 导致 20Hz 放大 +17dB、10kHz 衰减 -42dB,宽带读数严重失真。
@@ -427,16 +633,22 @@ func runSweep() {
     print("  频率         C计权增益(dB)   参考标准值(dB)")
     print("  ──────────   ─────────────   ──────────────")
     let cFreqs: [Float] = [20, 31.5, 63, 125, 500, 1000, 2000, 4000, 8000, 10000, 20000]
+    var cFailures = 0
     for f in cFreqs {
         let calc = CWeighting.gain(at: f)
         let ref = cReference[f] ?? 0
         let mark = abs(calc - ref) < 0.5 ? "✅" : "❌"
+        if mark == "❌" { cFailures += 1 }
         print("  \(String(format: "%8.1f Hz", f))   " +
               "\(String(format: "%+12.2f", calc))   " +
               "\(String(format: "%+12.2f", ref))  \(mark)")
     }
     print()
-    print("  ✅ = 偏差 < 0.5 dB，符合 IEC 61672 容差")
+    if aFailures > 0 || cFailures > 0 {
+        print("  ❌ A 计权超差 \(aFailures) 点，C 计权超差 \(cFailures) 点")
+        exit(1)
+    }
+    print("  ✅ A/C 计权全部偏差 < 0.5 dB，符合 IEC 61672 容差")
 }
 
 // MARK: - 模式 3：实时麦克风
@@ -486,6 +698,8 @@ import AVFoundation
 
 final class LiveMeter {
 
+    static let noInputDeviceMessage = "未检测到可用的麦克风。请连接麦克风，或在系统设置中检查输入设备。"
+
     static func create() -> LiveMeter? {
         LiveMeter()
     }
@@ -494,32 +708,33 @@ final class LiveMeter {
     private let meter: DBMeter
     private let sampleRate: Double
     private var isRunning = false
+    private var tapInstalled = false
 
     private init?() {
         // macOS 不需要 AVAudioSession（那是 iOS 专属）。
-        // AVAudioEngine 在 macOS 上直接用即可。
-
-        let inputNode = engine.inputNode
-
-        // 先启动一次 engine 来获取真实的麦克风格式
-        // （engine 未启动时 inputNode 的 format 可能是占位值）
-        do {
-            try engine.start()
-        } catch {
-            logToFile("❌ 无法启动音频引擎（可能没有麦克风权限）: \(error)")
-            logToFile("   请到 系统设置 -> 隐私与安全 -> 麦克风 授权给终端")
+        // 必须在触达 AVAudioEngine.inputNode 之前先查 CoreAudio 真实设备:
+        // 无麦克风时 inputNode/installTap 可能直接抛 Objective-C 异常,Swift 接不住。
+        #if canImport(CoreAudio)
+        guard MacInputDeviceProbe.hasInputDevice() else {
+            logToFile("❌ \(Self.noInputDeviceMessage)")
             return nil
         }
+        #endif
 
-        let format = inputNode.outputFormat(forBus: 0)
+        let inputNode = engine.inputNode
+        // 优先读输入 format;部分机器在 engine 未启动时 outputFormat 为占位值。
+        let inputFormat = inputNode.inputFormat(forBus: 0)
+        let format = (inputFormat.sampleRate > 0 && inputFormat.channelCount > 0)
+                     ? inputFormat : inputNode.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            logToFile("❌ \(Self.noInputDeviceMessage)")
+            return nil
+        }
         self.sampleRate = format.sampleRate
 
         logToFile("  采样率: \(Int(format.sampleRate)) Hz")
         logToFile("  声道数: \(format.channelCount)")
         logToFile("  格式: \(format)")
-
-        // 先停掉 engine，稍后在 start() 里装 tap 后再启动
-        engine.stop()
 
         self.meter = DBMeter(config: MeterConfig(
             sampleRate: Float(format.sampleRate),
@@ -529,8 +744,20 @@ final class LiveMeter {
     }
 
     func start() {
+        #if canImport(CoreAudio)
+        guard MacInputDeviceProbe.hasInputDevice() else {
+            logToFile("❌ \(Self.noInputDeviceMessage)")
+            return
+        }
+        #endif
         let inputNode = engine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
+        let inputFormat = inputNode.inputFormat(forBus: 0)
+        let format = (inputFormat.sampleRate > 0 && inputFormat.channelCount > 0)
+                     ? inputFormat : inputNode.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            logToFile("❌ \(Self.noInputDeviceMessage)")
+            return
+        }
 
         // 诊断：打印 tap 格式信息
         logToFile("  Tap 格式: \(Int(format.sampleRate)) Hz, \(format.channelCount) ch")
@@ -568,6 +795,7 @@ final class LiveMeter {
         }
 
         do {
+            tapInstalled = true
             try engine.start()
             isRunning = true
             logToFile("  🎙 麦克风已启动，开始测量...")
@@ -577,6 +805,10 @@ final class LiveMeter {
             // 保持运行
             RunLoop.main.run()
         } catch {
+            if tapInstalled {
+                inputNode.removeTap(onBus: 0)
+                tapInstalled = false
+            }
             logToFile("❌ 音频引擎启动失败: \(error)")
         }
     }
@@ -616,7 +848,59 @@ final class LiveMeter {
     }
 
     deinit {
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+        }
         engine.stop()
     }
 }
+
+#if canImport(CoreAudio)
+/// CoreAudio 设备预检。只查询系统默认输入设备及其输入通道,
+/// 不依赖 AVAudioEngine 的占位 format。
+private enum MacInputDeviceProbe {
+    static func hasInputDevice() -> Bool {
+        guard let deviceID = defaultInputDeviceID() else { return false }
+        return inputChannelCount(of: deviceID) > 0
+    }
+
+    private static func defaultInputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil, &size, &deviceID
+        )
+        guard status == noErr, deviceID != kAudioObjectUnknown else { return nil }
+        return deviceID
+    }
+
+    private static func inputChannelCount(of deviceID: AudioDeviceID) -> Int {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(deviceID, &address, 0, nil, &size) == noErr,
+              size >= UInt32(MemoryLayout<AudioBufferList>.size) else { return 0 }
+
+        let raw = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(size),
+            alignment: MemoryLayout<AudioBufferList>.alignment
+        )
+        defer { raw.deallocate() }
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, raw) == noErr else {
+            return 0
+        }
+        let bufferList = raw.bindMemory(to: AudioBufferList.self, capacity: 1)
+        return UnsafeMutableAudioBufferListPointer(bufferList)
+            .reduce(0) { $0 + Int($1.mNumberChannels) }
+    }
+}
+#endif

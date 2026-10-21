@@ -96,6 +96,10 @@ final class MenuBarController: NSObject, ObservableObject {
                                 action: #selector(toggleMeasurement),
                                 keyEquivalent: "")
         toggle.target = self
+        if !running, viewModel?.analysisToolPresented == true {
+            toggle.title = "噪音分析工具使用中"
+            toggle.isEnabled = false
+        }
         menu.addItem(toggle)
 
         // 权限被拒时给出系统设置的直达入口
@@ -132,7 +136,7 @@ final class MenuBarController: NSObject, ObservableObject {
         guard let vm = viewModel else { return }
         Task { @MainActor in
             if vm.engine.state == .running {
-                vm.stop()
+                await vm.stop()
             } else {
                 await vm.start()
             }
@@ -140,16 +144,7 @@ final class MenuBarController: NSObject, ObservableObject {
     }
 
     @objc private func openMainWindow() {
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        for window in NSApplication.shared.windows
-        where window.windowController?.window?.contentViewController != nil
-            || window.contentView != nil {
-            // 激活并置前主窗口(排除菜单栏面板等无边框窗口)
-            if window.canBecomeMain {
-                window.makeKeyAndOrderFront(nil)
-                return
-            }
-        }
+        viewModel?.openMainWindow?()
     }
 
     @objc private func quitApp() {

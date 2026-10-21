@@ -2,7 +2,7 @@
 //  SourceTestHTMLBuilder.swift
 //  SoundSense
 //
-//  三点声源倾向测试的 HTML 单文件报告:结论 + 三点位对比 + 录音内嵌。
+//  声源方向倾向测试的 HTML 单文件报告:结论 + 四点位对比 + 录音内嵌。
 //  复用 ReportHTMLBuilder 的深色主题样式。
 //
 
@@ -17,7 +17,9 @@ public enum SourceTestHTMLBuilder {
                              audioBase64: String?) -> String {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let verdictText = Self.verdictText(result.verdict)
+        let verdictText = result.rejectedByDrift
+            ? "环境变化过大"
+            : Self.verdictText(result.verdict)
         let confidenceText = Self.confidenceText(result.confidence)
         let typeText = Self.typeText(result.noiseType)
 
@@ -33,10 +35,12 @@ public enum SourceTestHTMLBuilder {
             audioBlock = ""
         }
 
-        // 三点位对比条(以最高 LAeq 归一)
-        let maxLaeq = result.positions.map { $0.laeq }.max() ?? 1
+        // 四点位对比条使用相对差值,避免 40 dB 与 45 dB 看起来完全一样长。
+        let finiteLaeq = result.positions.map { $0.laeq }.filter { $0.isFinite }
+        let minLaeq = finiteLaeq.min() ?? 0
+        let maxLaeq = max(finiteLaeq.max() ?? 1, minLaeq + 1)
         let rows = result.positions.enumerated().map { i, p -> String in
-            let pct = maxLaeq > 0 ? Int(max(4, (p.laeq / maxLaeq) * 100)) : 4
+            let pct = Int(max(4, ((p.laeq - minLaeq) / (maxLaeq - minLaeq)) * 100))
             return """
               <div class="row">
                 <span class="label">\(escape(p.name))</span>
@@ -45,6 +49,15 @@ public enum SourceTestHTMLBuilder {
               </div>
             """
         }.joined(separator: "\n")
+        let driftSubline: String
+        if result.rejectedByDrift {
+            let drift = result.centerDrift.map { String(format: "%.1f dB", $0) } ?? "超过 2 dB"
+            driftSubline = "中央复测漂移 \(drift)，环境变化过大，本次不下方向结论"
+        } else if let drift = result.centerDrift {
+            driftSubline = String(format: "中央复测漂移 %.1f dB，环境稳定性校验通过", drift)
+        } else {
+            driftSubline = "旧版三位置记录，无中央复测漂移数据"
+        }
 
         return """
         <!DOCTYPE html>
@@ -74,15 +87,17 @@ public enum SourceTestHTMLBuilder {
           <div class="card">
             <div class="verdict">\(verdictText)</div>
             <div class="sub">置信度:\(confidenceText) · 噪音类型:\(typeText) · 推测仅供参考</div>
+            <div class="sub">\(driftSubline)</div>
           </div>
           <section class="card">
-            <h2>三点位对比(各 30 秒)</h2>
+            <h2>点位对比(当前流程每点 30 秒)</h2>
             \(rows)
           </section>
           \(audioBlock)
           <footer>
             设备:\(escape(deviceName)) · 由闻声 SoundSense 生成<br>
-            三点位增益判别法:靠墙增益显著 → 隔壁;靠顶增益显著 → 楼上
+            方向倾向判别:靠墙有效增益 ≥ 3 dB 且领先 → 倾向隔壁；靠顶有效增益 ≥ 3 dB 且领先 → 倾向楼上。<br>
+            单麦克风无法做真实三维定位；中央复测漂移 > 2 dB 时不下结论。
           </footer>
         </div>
         </body>

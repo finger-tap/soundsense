@@ -64,7 +64,7 @@ public final class RecordingPlayer: NSObject, ObservableObject {
 
     private func startTimer() {
         timer?.invalidate()
-        let t = Timer(timeInterval: 0.2, repeats: true) { _ in
+        let t = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.tick()
             }

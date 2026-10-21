@@ -27,16 +27,21 @@ struct MonitorView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("关闭") {
-                        vm.stop()
-                        dismiss()
+                        Task {
+                            await vm.stop()
+                            dismiss()
+                        }
                     }
                     .foregroundColor(MeterTheme.waveColor)
                 }
             }
         }
         .navigationViewStyle(.stack)
-        .onChange(of: vm.engine.latestResult) { result in
-            if let result = result { vm.consume(result) }
+        .onChange(of: vm.engine.audioRecoveryNote) { _ in
+            vm.refreshAudioRecoveryState()
+        }
+        .onDisappear {
+            Task { await vm.stop() }
         }
     }
 
@@ -53,7 +58,7 @@ struct MonitorView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("超过「背景基线 + \(Int(vm.thresholdOver)) dB」的声音会被自动录下一段,并标注类型与位置推测。")
                 Text("锁屏后继续运行;整晚监听建议插电。")
-                Text("做过「声源定位」测试后,位置推测会更准。")
+                Text("做过「方向倾向」测试后,位置推测仅会增加一致性提示,不代表精确定位。")
             }
             .font(.system(size: 12))
             .foregroundColor(MeterTheme.secondaryText)
@@ -81,6 +86,23 @@ struct MonitorView: View {
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 12)
                     .fill(MeterTheme.riskColor.opacity(0.10)))
+            }
+
+            if let note = vm.audioRecoveryNote {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: vm.waitingForAudioRecovery
+                          ? "pause.circle.fill" : "waveform.badge.checkmark")
+                        .foregroundColor(vm.waitingForAudioRecovery
+                                         ? .orange : MeterTheme.waveColor)
+                    Text(note)
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12)
+                    .fill(.white.opacity(0.05)))
             }
 
             Button {
@@ -147,6 +169,22 @@ struct MonitorView: View {
 
     private var running: some View {
         VStack(spacing: 22) {
+            if let note = vm.audioRecoveryNote {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: vm.waitingForAudioRecovery
+                          ? "pause.circle.fill" : "waveform.badge.checkmark")
+                        .foregroundColor(vm.waitingForAudioRecovery
+                                         ? .orange : MeterTheme.waveColor)
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(.white.opacity(0.05)))
+            }
             HStack(spacing: 8) {
                 Circle()
                     .fill(MeterTheme.riskColor)
@@ -173,7 +211,7 @@ struct MonitorView: View {
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundColor(MeterTheme.waveColor)
                     .monospacedDigit()
-                Text("已抓拍异常事件")
+                Text("已记录异常事件")
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
             }
@@ -193,7 +231,7 @@ struct MonitorView: View {
 
             Spacer()
             Button {
-                vm.stop()
+                Task { await vm.stop() }
             } label: {
                 Text("停止监听")
                     .font(.system(size: 15, weight: .semibold))
@@ -222,9 +260,31 @@ struct MonitorSessionDetailView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     HStack {
-                        stat(String(format: "%.1f", session.overallLaeq), "总 LAeq")
-                        stat(String(format: "%.0f", session.maxSPL), "峰值")
-                        stat("\(session.events.count)", "事件")
+                        stat(String(format: "%.1f", session.overallLaeq), "总 \(session.leqMetricLabel)")
+                        stat(String(format: "%.0f", session.maxSPL), session.peakMetricLabel)
+                        stat("\(session.totalEventCount)", "事件")
+                    }
+
+                    if session.captureIncomplete {
+                        Label("采集或分析链路曾中断/积压；最终 Leq/峰值来自全帧统计，事件时间线可能不完整。",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.orange.opacity(0.10)))
+                    }
+
+                    if session.droppedEventCount > 0 {
+                        Label("仅保留最近 \(session.events.count) 条事件明细；累计 \(session.totalEventCount) 条，事件峰值统计不受影响。",
+                              systemImage: "clock.arrow.circlepath")
+                            .font(.system(size: 11))
+                            .foregroundColor(MeterTheme.secondaryText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(RoundedRectangle(cornerRadius: 10)
+                                .fill(.white.opacity(0.05)))
                     }
 
                     if session.events.isEmpty {

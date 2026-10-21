@@ -17,6 +17,8 @@ final class MeterViewModel: ObservableObject {
     let engine: AudioMeterEngine
     /// 输入设备管理器(枚举系统输入源、监听插拔)
     let deviceManager = AudioInputDeviceManager()
+    /// 菜单栏扬声器图标点击时打开主窗口；由 App 入口注入。
+    var openMainWindow: (() -> Void)?
     /// 可用输入设备列表(转发自 deviceManager,供设置页展示)
     @Published private(set) var devices: [AudioInputDevice] = []
     /// 系统默认输入设备 UID(「跟随系统默认」时实际生效的设备)
@@ -31,6 +33,9 @@ final class MeterViewModel: ObservableObject {
     @Published private(set) var exposureWarning = false
     /// 测量历史(持久化)
     let historyStore = MeasurementHistoryStore.shared
+    /// 声源定位或长时间监听浮层打开时，其他入口不得再启动麦克风。
+    /// 这是主测量与两个 macOS 工具之间的共享互锁。
+    @Published private(set) var analysisToolPresented = false
 
     /// 大屏历史数组容量大一些
     private let historyCapacity = 120
@@ -119,6 +124,7 @@ final class MeterViewModel: ObservableObject {
     var weighting: Weighting {
         get { storedWeighting == "C" ? .c : .a }
         set {
+            guard engine.state != .running && engine.state != .starting else { return }
             storedWeighting = newValue.rawValue.uppercased()
             engine.weighting = newValue
         }
@@ -163,7 +169,8 @@ final class MeterViewModel: ObservableObject {
         let e = AudioMeterEngine(calibrationOffset: offset,
                                   throttleInterval: 1.0 / 30.0,  // 30fps,桌面端更流畅
                                   fftSize: 4096,
-                                  weighting: weighting)
+                                  weighting: weighting,
+                                  inputDeviceUID: selectedUID)
         self.engine = e
         self.recorder = MeasurementRecorder(exposureLimit: threshold)
         e.objectWillChange
@@ -192,8 +199,12 @@ final class MeterViewModel: ObservableObject {
     }
 
     func start() async {
-        hasAudioInput = engine.hasAudioInput
-        guard hasAudioInput else { return }
+        guard !analysisToolPresented else { return }
+        hasAudioInput = engine.refreshInputAvailability()
+        guard hasAudioInput else {
+            engine.stop()
+            return
+        }
         // 选定了非默认输入源:启动前先绑定设备,保证 installTap 读到正确的设备格式
         if let uid = storedInputDeviceUID,
            let device = deviceManager.devices.first(where: { $0.uid == uid }) {
@@ -201,6 +212,8 @@ final class MeterViewModel: ObservableObject {
         }
         await engine.start()
         guard engine.state == .running else { return }
+        recorder.weighting = engine.weighting == .c ? "C" : "A"
+        recorder.timeWeighting = engine.timeWeighting == .slow ? "S" : "F"
         recorder.start()
         sessionRecorder.startSession(directory: historyStore.recordingsDirectory,
                                       inputSampleRate: engine.activeSampleRate)
@@ -215,16 +228,32 @@ final class MeterViewModel: ObservableObject {
         }
     }
 
-    /// 重新探测输入设备;从系统设置接回麦克风后无需重启 App。
-    func refreshAudioInputAvailability() {
-        hasAudioInput = engine.hasAudioInput
+    /// 由主界面设置。工具关闭时会重新探测输入设备，
+    /// 让菜单栏的可见状态及时恢复。
+    func setAnalysisToolPresented(_ presented: Bool) {
+        guard analysisToolPresented != presented else { return }
+        analysisToolPresented = presented
+        if !presented {
+            refreshAudioInputAvailability()
+        }
     }
 
-    func stop() {
-        engine.stop()
-        engine.setSampleSink(nil)
+    /// 重新探测输入设备;从系统设置接回麦克风后无需重启 App。
+    func refreshAudioInputAvailability() {
+        hasAudioInput = engine.refreshInputAvailability()
+    }
+
+    func stop() async {
+        // 先冻结采集并排空 meter 队列,拿到包含最后一批样本的权威统计,
+        // 再关闭录音、清空挂点和入库。不能先 engine.stop(),否则尾部帧会丢。
+        await engine.freezeForFinalization()
         stopLiveTimer()
-        if var stats = recorder.stop() {
+        if var stats = recorder.stop(sessionPeak: engine.sessionPeakSPL,
+                                     sessionLeq: engine.sessionLeqSPL,
+                                     sessionLeqDuration: engine.sessionLeqDuration,
+                                     captureStart: engine.captureTimeRange?.lowerBound,
+                                     captureEnd: engine.captureTimeRange?.upperBound,
+                                     completeCapture: engine.sessionDroppedSampleCount == 0) {
             if let audioURL = sessionRecorder.finishSession(keep: true) {
                 stats.audioID = audioURL.deletingPathExtension().lastPathComponent
             }
@@ -233,6 +262,8 @@ final class MeterViewModel: ObservableObject {
         } else {
             sessionRecorder.finishSession(keep: false)
         }
+        engine.setSampleSink(nil)
+        engine.finishFinalization()
         liveStats = nil
         exposureWarning = false
         history.removeAll(keepingCapacity: true)
@@ -264,6 +295,7 @@ final class MeterViewModel: ObservableObject {
 
         // 4. 应用到引擎(engine 内部处理运行中的摘 tap / 停 / 重配 / 重启)
         await engine.setInputDevice(device?.id, uid: effectiveUID)
+        hasAudioInput = engine.hasAudioInput
 
         // 5. 运行中切换后:引擎的公开 stop() 会清掉样本挂点(sinkBox.set(nil))。
         //    防御性重挂 sink —— 无论切换路径上挂点是否被清,都保证同步录音不丢数据,
@@ -283,7 +315,12 @@ final class MeterViewModel: ObservableObject {
             history.removeFirst(history.count - historyCapacity)
         }
         noiseLevel = NoiseLevel.level(for: spl)
-        recorder.record(spl: spl)
+        recorder.record(spl: spl,
+                        sessionPeak: engine.sessionPeakSPL,
+                        sessionLeq: engine.sessionLeqSPL,
+                        sessionLeqDuration: engine.sessionLeqDuration)
+        recorder.updateCaptureCompleteness(
+            droppedSampleCount: result.totalDroppedSampleCount)
         liveStats = recorder.liveStats()
 
         // 暴露警告:连续超限达到阈值
@@ -317,7 +354,7 @@ final class MeterViewModel: ObservableObject {
 
     private func startLiveTimer() {
         liveTimer?.invalidate()
-        let timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self = self, self.engine.state == .running else { return }
                 self.liveStats = self.recorder.liveStats()

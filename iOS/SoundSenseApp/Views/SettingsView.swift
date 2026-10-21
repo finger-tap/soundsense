@@ -70,9 +70,15 @@ private struct MeasurementCard: View {
                     Text("C").tag(Weighting.c)
                 }
                 .pickerStyle(.segmented)
+                .disabled(viewModel.engine.state == .running || viewModel.engine.state == .starting)
                 Text("A 计权模拟人耳感受,适合日常噪音;C 计权保留低频能量,适合音响、空调、机械等低频噪音。")
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
+                if viewModel.engine.state == .running || viewModel.engine.state == .starting {
+                    Text("测量中已锁定计权方式,停止后可切换。")
+                        .font(.system(size: 12))
+                        .foregroundColor(MeterTheme.brass)
+                }
             }
 
             Divider().overlay(MeterTheme.hairline)
@@ -216,7 +222,9 @@ private struct CalibrationCard: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundColor(MeterTheme.secondaryText)
                 }
-                Text(String(format: "%.1f", viewModel.currentSPL))
+                Text(viewModel.currentSPL.isFinite && viewModel.currentSPL > -80
+                     ? String(format: "%.1f", viewModel.currentSPL)
+                     : "--")
                     .font(.system(size: 40, weight: .bold, design: .monospaced))
                     .foregroundColor(MeterTheme.waveColor)
                     .frame(maxWidth: .infinity)
@@ -373,6 +381,7 @@ private struct AboutCard: View {
             row(title: "版本", value: appVersionString())
             row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
             row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
+            row(title: "峰值口径", value: "时间计权最大值,非 Lpeak")
             row(title: "隐私", value: "测量与录音仅保存在本机")
             Link(destination: URL(string: "https://github.com/finger-tap/soundsense")!) {
                 HStack {
@@ -385,7 +394,7 @@ private struct AboutCard: View {
                 .foregroundColor(MeterTheme.waveColor)
                 .padding(.top, 2)
             }
-            Text("核心算法基于 Accelerate/vDSP,符合 IEC 61672-1 国际标准。")
+            Text("计权曲线按 IEC 61672-1 设计,但本应用不是经型式批准的 Class 1/2 声级计。")
                 .font(.system(size: 12))
                 .foregroundColor(MeterTheme.secondaryText)
                 .padding(.top, 4)

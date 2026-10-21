@@ -33,7 +33,10 @@ final class MacAppModel: ObservableObject {
     let meterModel = MeterViewModel()
     let menuBar = MenuBarController()
 
-    private init() {}
+    private init() {
+        // 上次进程被系统直接结束时，把遗留的“进行中”监听会话标成异常结束。
+        MonitorSessionStore.shared.finalizeInterruptedSessions()
+    }
 }
 
 /// 桌面端窗口:设置合理的最小尺寸并恢复缩放/全屏能力。

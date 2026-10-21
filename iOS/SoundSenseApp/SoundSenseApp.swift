@@ -21,8 +21,10 @@ struct SoundSenseApp: App {
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
 
-        // 手表三点测试结果接收
+        // 手表方向倾向测试结果接收
         WatchSyncManager.shared.activate()
+        // 上次若被系统直接终止，历史里的监听会话不应永远显示“进行中”。
+        MonitorSessionStore.shared.finalizeInterruptedSessions()
     }
 
     var body: some Scene {

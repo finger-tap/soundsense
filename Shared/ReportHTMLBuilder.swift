@@ -24,6 +24,8 @@ public enum ReportHTMLBuilder {
       .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
               border-radius: 14px; padding: 16px 18px; margin-top: 16px; }
       .card h2 { font-size: 14px; color: rgba(255,255,255,.6); margin: 0 0 10px; }
+      .card.warn { border-color: rgba(230,120,100,.45); background: rgba(230,120,100,.08); }
+      .card.warn p { margin: 0; color: rgba(255,255,255,.75); font-size: 13px; line-height: 1.7; }
       .stats { display: flex; flex-wrap: wrap; gap: 8px; }
       .stat { flex: 1 1 100px; text-align: center; padding: 10px 4px;
               background: rgba(255,255,255,.03); border-radius: 10px; }
@@ -60,6 +62,18 @@ public enum ReportHTMLBuilder {
         let row = { (_ v: String, _ label: String) in
             "<div class=\"stat\"><b>\(v)</b><span>\(label)</span></div>"
         }
+        let level = { (value: Float) -> String in
+            value.isFinite ? String(format: "%.1f dB", value) : "--"
+        }
+        let exposureLabel = String(format: "超 %.0f dB 时长",
+                                   stats.resolvedExposureLimit)
+        let completenessBlock = stats.isCompleteCapture ? "" : """
+          <section class="card warn">
+            <h2>测量完整性提示</h2>
+            <p>本次测量期间设备处理不及时，部分音频帧未能参与统计。
+            当前 Leq、峰值与暴露时长只代表已处理的数据，建议关闭其他高负载 App 后重新测量。</p>
+          </section>
+        """
 
         return """
         <!DOCTYPE html>
@@ -83,17 +97,21 @@ public enum ReportHTMLBuilder {
           <section class="card">
             <h2>关键指标</h2>
             <div class="stats">
-              \(row(String(format: "%.1f dB", stats.laeqSPL), "LAeq 等效声级"))
-              \(row(String(format: "%.1f dB", stats.peakSPL), "峰值"))
-              \(row(String(format: "%.1f dB", stats.avgSPL), "平均"))
-              \(row(String(format: "%.1f dB", stats.minSPL), "最低"))
-              \(row(String(format: "%.0f 秒", stats.overLimitTotal), "超 85dB 时长"))
+              \(row(level(stats.laeqSPL), "\(stats.leqMetricLabel) 等效声级"))
+              \(row(level(stats.peakSPL), "峰值 \(stats.peakMetricLabel)"))
+              \(row(level(stats.l10), "L10"))
+              \(row(level(stats.l50), "L50"))
+              \(row(level(stats.l90), "L90"))
+              \(row(level(stats.avgSPL), "平均"))
+              \(row(level(stats.minSPL), "最低"))
+              \(row(String(format: "%.0f 秒", stats.overLimitTotal), exposureLabel))
             </div>
           </section>
+          \(completenessBlock)
           \(audioBlock)
           <footer>
             设备:\(escape(deviceName)) · 校准偏移:\(String(format: "%+.1f", calibrationOffset)) dB<br>
-            IEC 61672-1 A 计权 · 4096 点 FFT · vDSP · 由闻声 SoundSense 生成
+            IEC 61672-1 \(stats.resolvedWeighting) 计权 · \(stats.resolvedTimeWeighting) 时间计权 · 4096 点 FFT · vDSP · 由闻声 SoundSense 生成
           </footer>
         </div>
         </body>

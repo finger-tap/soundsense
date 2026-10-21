@@ -67,6 +67,51 @@ enum ReportExporter {
         }
     }
 
+    /// 导出声源方向倾向 HTML 报告。
+    static func exportSourceHTML(result: SourceTestResult,
+                                 deviceName: String,
+                                 audioURL: URL?) {
+        let audioBase64 = audioURL.flatMap { try? Data(contentsOf: $0) }?
+            .base64EncodedString()
+        let html = SourceTestHTMLBuilder.build(result: result,
+                                               deviceName: deviceName,
+                                               audioBase64: audioBase64)
+        saveHTML(html,
+                 filename: SourceTestHTMLBuilder.filename(for: result),
+                 title: "导出声源方向倾向报告")
+    }
+
+    /// 导出监听 HTML 报告。片段按最长 3 段内嵌，避免文件无限膨胀。
+    static func exportMonitorHTML(session: MonitorSession,
+                                  store: MonitorSessionStore) {
+        let html = MonitorHTMLBuilder.build(session: session) { clipFile in
+            store.clipURL(sessionID: session.id, clipFile: clipFile)
+        }
+        saveHTML(html,
+                 filename: MonitorHTMLBuilder.filename(for: session),
+                 title: "导出监听报告")
+    }
+
+    private static func saveHTML(_ html: String,
+                                 filename: String,
+                                 title: String) {
+        guard let data = html.data(using: .utf8) else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.html]
+        panel.nameFieldStringValue = filename
+        panel.title = title
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try data.write(to: url)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "导出失败"
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+            }
+        }
+    }
+
     /// NSImage → PNG 数据
     static func pngData(from image: NSImage) -> Data? {
         guard let tiff = image.tiffRepresentation,

@@ -10,11 +10,26 @@ import UniformTypeIdentifiers
 
 struct HistoryOverlay: View {
     @ObservedObject var store: MeasurementHistoryStore
+    @ObservedObject private var sourceStore = SourceTestStore.shared
+    @ObservedObject private var monitorStore = MonitorSessionStore.shared
     let deviceName: String
     let calibrationOffset: Float
     @Binding var isPresented: Bool
+    @State private var tab = 0
     @State private var sharingStats: MeasurementStats?
+    @State private var selectedSource: SourceTestResult?
+    @State private var selectedSession: MonitorSession?
     @State private var showingClearConfirmation = false
+
+    init(store: MeasurementHistoryStore,
+         deviceName: String,
+         calibrationOffset: Float,
+         isPresented: Binding<Bool>) {
+        self.store = store
+        self.deviceName = deviceName
+        self.calibrationOffset = calibrationOffset
+        _isPresented = isPresented
+    }
 
     var body: some View {
         ZStack {
@@ -24,9 +39,10 @@ struct HistoryOverlay: View {
 
             VStack(spacing: 0) {
                 header
+                typePicker
                 content
             }
-            .frame(width: 500, height: 580)
+            .frame(width: 620, height: 600)
             .background(
                 RoundedRectangle(cornerRadius: 18)
                     .fill(MeterTheme.panelGradient)
@@ -41,11 +57,17 @@ struct HistoryOverlay: View {
                                   deviceName: deviceName,
                                   calibrationOffset: calibrationOffset)
         }
-        .confirmationDialog("清空全部测量记录？",
+        .sheet(item: $selectedSource) { result in
+            MacSourceTestDetailSheet(result: result, store: sourceStore)
+        }
+        .sheet(item: $selectedSession) { session in
+            MacMonitorSessionDetailSheet(session: session, store: monitorStore)
+        }
+        .confirmationDialog(clearConfirmationTitle,
                             isPresented: $showingClearConfirmation,
                             titleVisibility: .visible) {
-            Button("清空测量记录", role: .destructive) {
-                store.removeAll()
+            Button(clearActionTitle, role: .destructive) {
+                clearCurrentTab()
             }
             Button("取消", role: .cancel) {}
         } message: {
@@ -55,9 +77,14 @@ struct HistoryOverlay: View {
 
     private var header: some View {
         HStack {
-            Text("测量历史").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("记录").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                Text("测量、声源方向倾向与长时间监听")
+                    .font(.system(size: 10))
+                    .foregroundColor(MeterTheme.tertiaryText)
+            }
             Spacer()
-            if !store.records.isEmpty {
+            if tab == 0, !store.records.isEmpty {
                 Button {
                     exportCSV(text: MeasurementCSV.csv(forAll: store.records),
                               filename: "闻声数据_全部记录.csv")
@@ -66,6 +93,8 @@ struct HistoryOverlay: View {
                         .foregroundColor(MeterTheme.waveColor)
                 }
                 .buttonStyle(.plain)
+            }
+            if hasCurrentRecords {
                 Button {
                     showingClearConfirmation = true
                 } label: {
@@ -89,37 +118,258 @@ struct HistoryOverlay: View {
         .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 14)
     }
 
+    private var typePicker: some View {
+        Picker("记录类型", selection: $tab) {
+            Text("测量").tag(0)
+            Text("方向倾向").tag(1)
+            Text("噪音监听").tag(2)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
+    }
+
     @ViewBuilder
     private var content: some View {
+        switch tab {
+        case 0:
+            measurementContent
+        case 1:
+            sourceContent
+        default:
+            monitorContent
+        }
+    }
+
+    @ViewBuilder
+    private var measurementContent: some View {
         if store.records.isEmpty {
-            VStack(spacing: 10) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 34))
-                    .foregroundColor(MeterTheme.tertiaryText)
-                Text("还没有测量记录")
-                    .font(.system(size: 14)).foregroundColor(MeterTheme.secondaryText)
-                Text("完成一次测量后,报告会自动保存在这里")
-                    .font(.system(size: 11)).foregroundColor(.white.opacity(0.35))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            emptyRecord(icon: "clock.arrow.circlepath",
+                        title: "还没有测量记录",
+                        subtitle: "完成一次测量后，报告会自动保存在这里")
         } else {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(Array(store.records.enumerated()), id: \.offset) { index, record in
-                    MacHistoryRow(record: record) {
-                        sharingStats = record
-                    } onDelete: {
-                        store.delete(at: IndexSet(integer: index))
-                    } onExportCSV: {
-                        exportCSV(text: MeasurementCSV.csv(for: record),
-                                  filename: MeasurementCSV.filename(for: record))
-                    }
+                        MacHistoryRow(record: record) {
+                            sharingStats = record
+                        } onDelete: {
+                            store.delete(at: IndexSet(integer: index))
+                        } onExportCSV: {
+                            exportCSV(text: MeasurementCSV.csv(for: record),
+                                      filename: MeasurementCSV.filename(for: record))
+                        }
                     }
                 }
                 .padding(.horizontal, 20).padding(.bottom, 20)
             }
         }
     }
+
+    @ViewBuilder
+    private var sourceContent: some View {
+        if sourceStore.results.isEmpty {
+            emptyRecord(icon: "dot.radiowaves.left.and.right",
+                        title: "还没有方向倾向记录",
+                        subtitle: "完成一次四点位测试后，结论和录音会保存在这里")
+        } else {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(Array(sourceStore.results.enumerated()), id: \.offset) { index, result in
+                        HStack(spacing: 8) {
+                            Button {
+                                selectedSource = result
+                            } label: {
+                                sourceRow(result)
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                sourceStore.delete(at: IndexSet(integer: index))
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(MeterTheme.tertiaryText)
+                                    .frame(width: 30, height: 30)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20).padding(.bottom, 20)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var monitorContent: some View {
+        if monitorStore.sessions.isEmpty {
+            emptyRecord(icon: "moon.zzz",
+                        title: "还没有监听记录",
+                        subtitle: "开启一次长时间监听后，事件时间线会保存在这里")
+        } else {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(Array(monitorStore.sessions.enumerated()), id: \.offset) { index, session in
+                        HStack(spacing: 8) {
+                            Button {
+                                selectedSession = session
+                            } label: {
+                                monitorRow(session)
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                monitorStore.delete(at: IndexSet(integer: index))
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(MeterTheme.tertiaryText)
+                                    .frame(width: 30, height: 30)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20).padding(.bottom, 20)
+            }
+        }
+    }
+
+    private func sourceRow(_ result: SourceTestResult) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text(Self.rowDate.string(from: result.startTime))
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+                Text(result.rejectedByDrift
+                     ? "环境变化过大"
+                     : SourceTendencyAnalyzer.verdictText(result.verdict))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(MeterTheme.waveColor)
+            }
+            HStack(spacing: 5) {
+                if result.rejectedByDrift {
+                    Text("中央复测漂移 \(result.centerDrift.map { String(format: "%.1f dB", $0) } ?? "超过 2 dB")")
+                } else {
+                    Text("置信度 \(SourceTendencyAnalyzer.confidenceText(result.confidence))")
+                    Text("·")
+                    Text(SourceTendencyAnalyzer.typeText(result.noiseType))
+                }
+                Spacer()
+                if result.audioID != nil {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 10))
+                        .foregroundColor(MeterTheme.secondaryText)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(MeterTheme.tertiaryText)
+            }
+            .font(.system(size: 10.5))
+            .foregroundColor(MeterTheme.secondaryText)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 11)
+                .fill(.white.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: 11)
+                    .stroke(.white.opacity(0.07), lineWidth: 1))
+        )
+    }
+
+    private func monitorRow(_ session: MonitorSession) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text(Self.rowDate.string(from: session.startTime))
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+                if session.endTime == nil {
+                    Text("进行中")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(MeterTheme.waveColor)
+                } else if session.abnormalEnd {
+                    Text("异常结束")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(MeterTheme.brass)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(MeterTheme.tertiaryText)
+            }
+            HStack {
+                Text("\(session.leqMetricLabel) \(String(format: "%.1f", session.overallLaeq)) dB")
+                Text("·")
+                Text("\(session.totalEventCount) 个异常事件")
+                Spacer()
+                Text("阈值 +\(Int(session.thresholdOverBackground)) dB")
+            }
+            .font(.system(size: 10.5))
+            .foregroundColor(MeterTheme.secondaryText)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 11)
+                .fill(.white.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: 11)
+                    .stroke(.white.opacity(0.07), lineWidth: 1))
+        )
+    }
+
+    private func emptyRecord(icon: String, title: String, subtitle: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 34))
+                .foregroundColor(MeterTheme.tertiaryText)
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundColor(MeterTheme.secondaryText)
+            Text(subtitle)
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.35))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var hasCurrentRecords: Bool {
+        switch tab {
+        case 0: return !store.records.isEmpty
+        case 1: return !sourceStore.results.isEmpty
+        default: return !monitorStore.sessions.isEmpty
+        }
+    }
+
+    private var clearConfirmationTitle: String {
+        switch tab {
+        case 0: return "清空全部测量记录？"
+        case 1: return "清空全部声源方向倾向记录？"
+        default: return "清空全部监听记录？"
+        }
+    }
+
+    private var clearActionTitle: String {
+        switch tab {
+        case 0: return "清空测量记录"
+        case 1: return "清空声源方向倾向记录"
+        default: return "清空监听记录"
+        }
+    }
+
+    private func clearCurrentTab() {
+        switch tab {
+        case 0: store.removeAll()
+        case 1: sourceStore.removeAll()
+        default: monitorStore.removeAll()
+        }
+    }
+
+    private static let rowDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
 
     /// 用 NSSavePanel 保存 CSV
     private func exportCSV(text: String, filename: String) {
@@ -163,7 +413,6 @@ private struct MacHistoryRow: View {
                         .foregroundColor(MeterTheme.secondaryText)
                 }
                 .buttonStyle(.plain)
-                .help("导出 CSV")
                 Button(action: onExport) {
                     HStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.up").font(.system(size: 11, weight: .semibold))
@@ -175,7 +424,8 @@ private struct MacHistoryRow: View {
             }
 
             HStack(spacing: 0) {
-                stat(record.laeqSPL, label: "LAeq dB", color: MeterTheme.waveColor)
+                stat(record.laeqSPL, label: "\(record.leqMetricLabel) dB",
+                     color: MeterTheme.waveColor)
                 stat(record.avgSPL, label: "平均 dB", color: .white.opacity(0.85))
                 stat(record.peakSPL, label: "峰值 dB", color: MeterTheme.brass)
                 stat(Float(record.duration), label: "时长(秒)", color: .white.opacity(0.6), format: "%.0f")
@@ -183,7 +433,9 @@ private struct MacHistoryRow: View {
 
             if record.overLimitTotal >= 1 {
                 Label {
-                    Text(String(format: "有 %.0f 秒超过 85 dB", record.overLimitTotal))
+                    Text(String(format: "有 %.0f 秒超过 %.0f dB",
+                                record.overLimitTotal,
+                                record.resolvedExposureLimit))
                         .font(.system(size: 10.5))
                         .foregroundColor(MeterTheme.riskColor)
                 } icon: {
@@ -191,6 +443,13 @@ private struct MacHistoryRow: View {
                         .font(.system(size: 9.5))
                         .foregroundColor(MeterTheme.riskColor)
                 }
+            }
+
+            if !record.isCompleteCapture {
+                Label("本次存在丢帧，统计仅覆盖已处理数据",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(MeterTheme.brass)
             }
         }
         .padding(12)

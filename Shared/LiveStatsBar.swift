@@ -9,14 +9,24 @@
 #if os(iOS) || os(macOS)
 
 import SwiftUI
+import SoundSenseCore
 
 public struct LiveStatsBar: View {
     public let stats: LiveMeasurementStats
+    /// 频率计权(A/C),用于正确显示 LAeq / LCeq。
+    public var weighting: Weighting
+    /// 时间计权(F/S),用于正确显示 LAFmax / LASmax 等峰值口径。
+    public var timeWeighting: TimeWeighting
     /// 同步录音进行中:时长旁显示红点提示
     public var isRecording: Bool = false
 
-    public init(stats: LiveMeasurementStats, isRecording: Bool = false) {
+    public init(stats: LiveMeasurementStats,
+                weighting: Weighting,
+                timeWeighting: TimeWeighting = .fast,
+                isRecording: Bool = false) {
         self.stats = stats
+        self.weighting = weighting
+        self.timeWeighting = timeWeighting
         self.isRecording = isRecording
     }
 
@@ -24,9 +34,23 @@ public struct LiveStatsBar: View {
         HStack(spacing: 0) {
             statItem(value: formatDuration(stats.duration), label: "时长", recordingDot: isRecording)
             divider
-            statItem(value: String(format: "%.1f", stats.laeq), label: "LAeq dB")
+            statItem(value: stats.laeq.isFinite ? String(format: "%.1f", stats.laeq) : "--",
+                     label: "\(weighting == .c ? "LCeq" : "LAeq") dB")
             divider
-            statItem(value: String(format: "%.1f", stats.peak), label: "峰值 dB")
+            statItem(value: stats.peak.isFinite ? String(format: "%.1f", stats.peak) : "--",
+                     label: "\(peakMetricLabel) dB")
+        }
+        .overlay(alignment: .topTrailing) {
+            if stats.captureIncomplete {
+                Label("采集不完整", systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundColor(MeterTheme.brass)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(MeterTheme.panel.opacity(0.96)))
+                    .padding(.top, -9)
+                    .padding(.trailing, 10)
+            }
         }
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
@@ -71,6 +95,10 @@ public struct LiveStatsBar: View {
         let s = Int(seconds)
         if s >= 3600 { return String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60) }
         return String(format: "%02d:%02d", s / 60, s % 60)
+    }
+
+    private var peakMetricLabel: String {
+        "L\(weighting == .c ? "C" : "A")\(timeWeighting == .slow ? "S" : "F")max"
     }
 }
 

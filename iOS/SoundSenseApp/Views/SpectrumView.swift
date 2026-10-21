@@ -24,18 +24,16 @@ struct SpectrumView: View {
     var body: some View {
         GeometryReader { geo in
             Canvas { context, size in
-                let bands = aggregatedBands()
-                guard !bands.isEmpty else { return }
-                let count = bands.count
+                let dbBands = SpectrumBands.bandLevelsDB(spectrum: spectrum,
+                                                         frequencies: frequencies,
+                                                         bandCount: bandCount,
+                                                         minFrequency: 20,
+                                                         maxFrequency: maxFrequency)
+                guard !dbBands.isEmpty else { return }
+                let count = dbBands.count
                 let barWidth = size.width / CGFloat(count) * 0.78
                 let gap = size.width / CGFloat(count) * 0.22
 
-                // 计算 max 用分贝域,避免单个尖峰压扁其他柱
-                let dbBands = bands.map { band -> Float in
-                    let sum = band.reduce(0, +)
-                    let avg = sum / Float(max(1, band.count))
-                    return 20 * log10(max(avg, 1e-7))
-                }
                 let minDB: Float = -80
                 let maxDB: Float = -10
 
@@ -51,17 +49,6 @@ struct SpectrumView: View {
                 }
             }
         }
-    }
-
-    /// 把全频谱按对数频率轴聚合成 bandCount 个频段。
-    /// 低频段可能窄于 FFT bin 间距(48 kHz/4096 点 ≈ 11.7 Hz),
-    /// 空段由 SpectrumBands 用相邻 bin 插值填充,否则会显示成恒贴底死柱。
-    private func aggregatedBands() -> [[Float]] {
-        SpectrumBands.aggregate(spectrum: spectrum,
-                                frequencies: frequencies,
-                                bandCount: bandCount,
-                                minFrequency: 20,
-                                maxFrequency: maxFrequency)
     }
 
     private func bandColor(normalized: Double) -> Color {

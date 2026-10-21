@@ -138,6 +138,19 @@ func runAllTests() async {
         }
     }
 
+    // ---- 6. 输入源选中状态(无真实设备也可验证) ----
+    // 设置页的勾选只看“用户固定选择”,不能把系统默认设备也算成固定选择,
+    // 否则“跟随系统默认”和具体设备会同时出现勾，且取消后仍像被选中。
+    do {
+        defaults.removeObject(forKey: uidKey)
+        let vm = MeterViewModel()
+        expect(vm.selectedDeviceUID == nil, "初始状态:跟随系统默认(无固定设备)")
+        await vm.selectDevice(uid: "test-device-that-does-not-exist")
+        expect(vm.selectedDeviceUID == nil, "不存在的设备不会留下固定选择")
+        expect(!vm.devices.contains(where: { $0.uid == "test-device-that-does-not-exist" }),
+               "无效 UID 不会意外进入设备列表")
+    }
+
     // 清理测试写入的 defaults,不污染环境
     defaults.removeObject(forKey: offsetsKey)
     defaults.removeObject(forKey: legacyKey)

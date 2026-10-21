@@ -65,6 +65,7 @@ final class MeterViewModel: ObservableObject {
     var weighting: Weighting {
         get { storedWeighting == "C" ? .c : .a }
         set {
+            guard engine.state != .running && engine.state != .starting else { return }
             storedWeighting = newValue.rawValue.uppercased()
             engine.weighting = newValue
         }
@@ -104,13 +105,15 @@ final class MeterViewModel: ObservableObject {
     // MARK: - 控制
 
     func start() async {
-        hasAudioInput = engine.hasAudioInput
+        hasAudioInput = engine.refreshInputAvailability()
         guard hasAudioInput else {
             engine.stop()
             return
         }
         await engine.start()
         guard engine.state == .running else { return }
+        recorder.weighting = engine.weighting == .c ? "C" : "A"
+        recorder.timeWeighting = engine.timeWeighting == .slow ? "S" : "F"
         recorder.start()
         sessionRecorder.startSession(directory: historyStore.recordingsDirectory,
                                       inputSampleRate: engine.activeSampleRate)
@@ -125,11 +128,17 @@ final class MeterViewModel: ObservableObject {
         }
     }
 
-    func stop() {
-        engine.stop()
-        engine.setSampleSink(nil)
+    func stop() async {
+        // 先冻结采集并排空 meter 队列,拿到包含最后一批样本的权威统计,
+        // 再关闭录音、清空挂点和入库。不能先 engine.stop(),否则尾部帧会丢。
+        await engine.freezeForFinalization()
         stopLiveTimer()
-        if var stats = recorder.stop() {
+        if var stats = recorder.stop(sessionPeak: engine.sessionPeakSPL,
+                                     sessionLeq: engine.sessionLeqSPL,
+                                     sessionLeqDuration: engine.sessionLeqDuration,
+                                     captureStart: engine.captureTimeRange?.lowerBound,
+                                     captureEnd: engine.captureTimeRange?.upperBound,
+                                     completeCapture: engine.sessionDroppedSampleCount == 0) {
             if let audioURL = sessionRecorder.finishSession(keep: true) {
                 stats.audioID = audioURL.deletingPathExtension().lastPathComponent
             }
@@ -141,6 +150,8 @@ final class MeterViewModel: ObservableObject {
         } else {
             sessionRecorder.finishSession(keep: false)
         }
+        engine.setSampleSink(nil)
+        engine.finishFinalization()
         liveStats = nil
         exposureWarning = false
         history.removeAll(keepingCapacity: true)
@@ -154,7 +165,12 @@ final class MeterViewModel: ObservableObject {
             history.removeFirst(history.count - historyCapacity)
         }
         noiseLevel = NoiseLevel.level(for: spl)
-        recorder.record(spl: spl)
+        recorder.record(spl: spl,
+                        sessionPeak: engine.sessionPeakSPL,
+                        sessionLeq: engine.sessionLeqSPL,
+                        sessionLeqDuration: engine.sessionLeqDuration)
+        recorder.updateCaptureCompleteness(
+            droppedSampleCount: result.totalDroppedSampleCount)
         liveStats = recorder.liveStats()
 
         // 暴露警告:连续超限达到阈值

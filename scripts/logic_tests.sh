@@ -4,8 +4,10 @@ set -e
 cd "$(dirname "$0")/.."
 mkdir -p .build/logic
 swiftc -O \
-  -framework Foundation -framework Combine \
+  -swift-version 5 \
+  -framework Foundation -framework Combine -framework Accelerate \
   Shared/MeasurementRecorder.swift \
+  Shared/MeasurementCSV.swift \
   Shared/MeasurementHistoryStore.swift \
   Shared/SessionAudioRecorder.swift \
   Shared/RecordingPlayer.swift \
@@ -15,6 +17,7 @@ swiftc -O \
   Shared/SourceTestStore.swift \
   Shared/EventClipRecorder.swift \
   Shared/MonitorSessionStore.swift \
+  Core/Sources/SoundSenseCore/SoundSenseCore.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
 .build/logic/logic_tests

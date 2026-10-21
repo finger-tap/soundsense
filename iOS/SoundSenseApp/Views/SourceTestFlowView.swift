@@ -2,7 +2,7 @@
 //  SourceTestFlowView.swift
 //  SoundSense iOS
 //
-//  三点声源倾向测试流程:引导 → 三点位计时(实时 LAeq + 倒计时 + 重测) → 结果卡。
+//  声源方向倾向测试流程:引导 → 四点位计时(实时 LAeq + 倒计时 + 重测) → 结果卡。
 //
 
 import SwiftUI
@@ -32,7 +32,7 @@ struct SourceTestFlowView: View {
                     failed(message)
                 }
             }
-            .navigationTitle("声源定位")
+            .navigationTitle("声源方向倾向")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -45,10 +45,8 @@ struct SourceTestFlowView: View {
             }
         }
         .navigationViewStyle(.stack)
-        .onChange(of: vm.engine.latestResult) { result in
-            if let result = result {
-                vm.consume(result)
-            }
+        .onDisappear {
+            vm.abandon()
         }
     }
 
@@ -59,14 +57,14 @@ struct SourceTestFlowView: View {
             Image(systemName: "location.north.line")
                 .font(.system(size: 42))
                 .foregroundColor(MeterTheme.waveColor)
-            Text("声源倾向测试")
+            Text("声源方向倾向测试")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.white)
             VStack(alignment: .leading, spacing: 12) {
-                step("1", "请在邻居噪音正在进行时开始测试")
-                step("2", "依次在 3 个位置各测 30 秒:房间中央、靠近共用墙、举高靠天花板")
-                step("3", "测完自动给出「倾向楼上/隔壁」的推测与置信度")
-                step("4", "全程同步录音,作为证据保存在测试记录里")
+                step("1", "请在待判断的噪音正在进行时开始")
+                step("2", "依次在 4 个位置各测 30 秒：中央 → 共用墙 → 靠天花板 → 回中央复测")
+                step("3", "中央前后变化超过 2 dB 时判为环境不稳定，不给出方向结论")
+                step("4", "全程同步录音；结果是方向倾向推测，不是三维定位或取证结论")
             }
             .padding(16)
             .background(
@@ -119,7 +117,7 @@ struct SourceTestFlowView: View {
     private func running(_ index: Int) -> some View {
         let position = SourceTestViewModel.positions[index]
         return VStack(spacing: 22) {
-            Text("第 \(index + 1)/3 步 · \(position.name)")
+            Text("第 \(index + 1)/\(SourceTestViewModel.positions.count) 步 · \(position.name)")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.white)
             Text(position.hint)
@@ -224,16 +222,19 @@ struct SourceTestResultCard: View {
     var body: some View {
         VStack(spacing: 14) {
             VStack(spacing: 6) {
-                Text(SourceTestHTMLBuilder.verdictText(result.verdict))
+                Text(result.rejectedByDrift
+                     ? "环境变化过大"
+                     : SourceTestHTMLBuilder.verdictText(result.verdict))
                     .font(.system(size: 30, weight: .heavy))
                     .foregroundColor(MeterTheme.waveColor)
-                Text("置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType)) · 推测仅供参考")
+                Text(detailText)
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.5))
             }
 
             VStack(spacing: 10) {
-                let maxLaeq = max(result.positions.map { $0.laeq }.max() ?? 1, 1)
+                let minLaeq = result.positions.map { $0.laeq }.filter { $0.isFinite }.min() ?? 0
+                let maxLaeq = max(result.positions.map(\.laeq).max() ?? 1, 1)
                 ForEach(Array(result.positions.enumerated()), id: \.offset) { _, p in
                     HStack(spacing: 10) {
                         Text(p.name)
@@ -247,7 +248,8 @@ struct SourceTestResultCard: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(MeterTheme.waveColor)
                                     .frame(width: geo.size.width
-                                        * max(0.04, CGFloat(p.laeq / maxLaeq)))
+                                        * max(0.04, CGFloat(
+                                            (p.laeq - minLaeq) / max(1, maxLaeq - minLaeq))))
                             }
                         }
                         .frame(height: 12)
@@ -273,5 +275,16 @@ struct SourceTestResultCard: View {
                 .overlay(RoundedRectangle(cornerRadius: 16)
                     .stroke(MeterTheme.cardBorder, lineWidth: 1))
         )
+    }
+
+    private var detailText: String {
+        if result.rejectedByDrift {
+            let drift = result.centerDrift.map { String(format: "%.1f dB", $0) } ?? "超过 2 dB"
+            return "中央复测漂移 \(drift) · 请保持声源稳定后重新测试"
+        }
+        let drift = result.centerDrift.map {
+            String(format: " · 中央漂移 %.1f dB", $0)
+        } ?? ""
+        return "置信度 \(SourceTestHTMLBuilder.confidenceText(result.confidence)) · \(SourceTestHTMLBuilder.typeText(result.noiseType))\(drift) · 方向倾向仅供参考"
     }
 }

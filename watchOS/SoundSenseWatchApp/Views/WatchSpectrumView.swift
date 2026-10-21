@@ -18,13 +18,12 @@ struct WatchSpectrumView: View {
 
     var body: some View {
         Canvas { context, size in
-            let bands = aggregatedBands()
-            guard !bands.isEmpty else { return }
-            let dbBands = bands.map { band -> Float in
-                let sum = band.reduce(0, +)
-                let avg = sum / Float(max(1, band.count))
-                return 20 * log10(max(avg, 1e-7))
-            }
+            let dbBands = SpectrumBands.bandLevelsDB(spectrum: spectrum,
+                                                     frequencies: frequencies,
+                                                     bandCount: bandCount,
+                                                     minFrequency: 20,
+                                                     maxFrequency: maxFrequency)
+            guard !dbBands.isEmpty else { return }
             let minDB: Float = -80
             let maxDB: Float = -10
             let count = dbBands.count
@@ -43,12 +42,4 @@ struct WatchSpectrumView: View {
         }
     }
 
-    /// 对数频率轴聚合;空段(段宽 < bin 间距时)由 SpectrumBands 插值填充
-    private func aggregatedBands() -> [[Float]] {
-        SpectrumBands.aggregate(spectrum: spectrum,
-                                frequencies: frequencies,
-                                bandCount: bandCount,
-                                minFrequency: 20,
-                                maxFrequency: maxFrequency)
-    }
 }
