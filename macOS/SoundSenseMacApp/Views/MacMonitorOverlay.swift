@@ -28,7 +28,7 @@ struct MacMonitorOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.52)
+            MeterTheme.overlayScrim
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -72,7 +72,7 @@ struct MacMonitorOverlay: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("噪音监听")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("异常声自动抓拍 · 事件时间线 · 位置推测")
                     .font(.system(size: 10.5))
                     .foregroundColor(MeterTheme.tertiaryText)
@@ -85,7 +85,7 @@ struct MacMonitorOverlay: View {
                         .frame(width: 7, height: 7)
                     Text("监听中")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(MeterTheme.primaryText)
                 }
                 .padding(.horizontal, 10)
                 .frame(height: 24)
@@ -94,9 +94,9 @@ struct MacMonitorOverlay: View {
             Button(action: close) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(MeterTheme.secondaryText)
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(.white.opacity(0.08)))
+                    .background(Circle().fill(MeterTheme.surfaceStrongFill))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("关闭噪音监听")
@@ -112,7 +112,7 @@ struct MacMonitorOverlay: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("整晚值守，自动留下异常片段")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("监听会持续学习环境底噪（L90）。出现高于基线的脚步声、拖动声、说话或低频冲击时，自动保存前后数秒录音并标注类型。")
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
@@ -131,7 +131,7 @@ struct MacMonitorOverlay: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("上一次监听已结束")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.82))
+                                .foregroundColor(MeterTheme.primaryText)
                             Text("\(session.leqMetricLabel) \(String(format: "%.1f", session.overallLaeq)) dB · \(session.totalEventCount) 个事件，可在记录页查看")
                                 .font(.system(size: 10))
                                 .foregroundColor(MeterTheme.tertiaryText)
@@ -155,13 +155,13 @@ struct MacMonitorOverlay: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("监听设置")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
 
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text("相对背景阈值")
                             .font(.system(size: 11))
-                            .foregroundColor(.white.opacity(0.75))
+                            .foregroundColor(MeterTheme.secondaryText)
                         Spacer()
                         Text("+\(Int(vm.thresholdOver)) dB")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
@@ -180,7 +180,7 @@ struct MacMonitorOverlay: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("夜间绝对阈值")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(MeterTheme.primaryText)
                         Text("取较低阈值，提高低强度异常声检出")
                             .font(.system(size: 9.5))
                             .foregroundColor(MeterTheme.tertiaryText)
@@ -267,9 +267,9 @@ struct MacMonitorOverlay: View {
             .frame(width: 278)
             .background(
                 RoundedRectangle(cornerRadius: 15)
-                    .fill(.white.opacity(0.045))
+                    .fill(MeterTheme.surfaceFill)
                     .overlay(RoundedRectangle(cornerRadius: 15)
-                        .stroke(.white.opacity(0.07), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
         }
         .padding(24)
@@ -285,7 +285,7 @@ struct MacMonitorOverlay: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.82))
+                    .foregroundColor(MeterTheme.primaryText)
                 Text(detail)
                     .font(.system(size: 9.5))
                     .foregroundColor(MeterTheme.tertiaryText)
@@ -294,7 +294,7 @@ struct MacMonitorOverlay: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 9)
-            .fill(.white.opacity(0.035)))
+            .fill(MeterTheme.surfaceFill))
     }
 
     // MARK: - 运行中
@@ -306,7 +306,7 @@ struct MacMonitorOverlay: View {
                     Text(vm.currentLaeq.isFinite
                          ? String(format: "%.1f", vm.currentLaeq) : "--")
                         .font(.system(size: 64, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.primaryText)
                         .monospacedDigit()
                     Text("当前 LAeq dB")
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -366,7 +366,7 @@ struct MacMonitorOverlay: View {
                 HStack {
                     Text("实时事件")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.primaryText)
                     Spacer()
                     Text("最多保存 \(MacMonitorViewModel.maxEventsPerSession) 段录音；事件继续记录")
                         .font(.system(size: 9.5))
@@ -400,9 +400,9 @@ struct MacMonitorOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 15)
-                    .fill(.white.opacity(0.035))
+                    .fill(MeterTheme.surfaceFill)
                     .overlay(RoundedRectangle(cornerRadius: 15)
-                        .stroke(.white.opacity(0.06), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
         }
         .padding(24)
@@ -421,7 +421,7 @@ struct MacMonitorOverlay: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(RoundedRectangle(cornerRadius: 10)
-            .fill(.white.opacity(0.045)))
+            .fill(MeterTheme.surfaceFill))
     }
 
     private func liveEventRow(_ event: MonitorEvent) -> some View {
@@ -434,7 +434,7 @@ struct MacMonitorOverlay: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(Self.timeFormatter.string(from: event.time))
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.82))
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("\(SourceTendencyAnalyzer.typeText(event.type)) · \(event.guess)")
                     .font(.system(size: 9.5))
                     .foregroundColor(MeterTheme.tertiaryText)
@@ -446,7 +446,7 @@ struct MacMonitorOverlay: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 9)
-            .fill(.white.opacity(0.035)))
+            .fill(MeterTheme.surfaceFill))
     }
 
     private func icon(for type: NoiseType) -> String {
@@ -494,7 +494,7 @@ struct MacMonitorSessionDetailSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("监听时间线")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.primaryText)
                     Text("\(Self.dateFormatter.string(from: session.startTime)) · \(session.totalEventCount) 个异常事件")
                         .font(.system(size: 10))
                         .foregroundColor(MeterTheme.tertiaryText)
@@ -542,7 +542,7 @@ struct MacMonitorSessionDetailSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(9)
                     .background(RoundedRectangle(cornerRadius: 9)
-                        .fill(.white.opacity(0.05)))
+                        .fill(MeterTheme.surfaceFill))
             }
 
             ScrollView(showsIndicators: false) {
@@ -596,7 +596,7 @@ struct MacMonitorSessionDetailSheet: View {
                     .background(Circle().fill(MeterTheme.waveColor.opacity(0.12)))
                 Text(Self.dateFormatter.string(from: event.time))
                     .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.75))
+                    .foregroundColor(MeterTheme.secondaryText)
                     .frame(width: 62, alignment: .leading)
                 Text("\(SourceTendencyAnalyzer.typeText(event.type)) · \(event.guess)")
                     .font(.system(size: 10.5))
@@ -612,9 +612,9 @@ struct MacMonitorSessionDetailSheet: View {
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 9)
-                .fill(.white.opacity(0.035))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 9)
-                    .stroke(.white.opacity(0.05), lineWidth: 1)))
+                    .stroke(MeterTheme.hairline, lineWidth: 1)))
         }
         .buttonStyle(.plain)
         .disabled(event.clipFile == nil)
@@ -642,7 +642,7 @@ struct MacMonitorSessionDetailSheet: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 9)
         .background(RoundedRectangle(cornerRadius: 10)
-            .fill(.white.opacity(0.04)))
+            .fill(MeterTheme.surfaceFill))
     }
 
     private static let dateFormatter: DateFormatter = {

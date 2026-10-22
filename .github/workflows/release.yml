@@ -25,11 +25,28 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────
+  # 纯逻辑算法测试(发版前阻断)
+  # ─────────────────────────────────────────────────
+  logic-tests:
+    name: Logic tests
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Run logic tests
+        run: ./scripts/logic_tests.sh
+
+  # ─────────────────────────────────────────────────
   # macOS universal .app + DMG(不签名)
   # ─────────────────────────────────────────────────
   macos:
     name: macOS universal DMG (GUI app)
     runs-on: macos-14
+    needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,11 +62,14 @@ jobs:
       # 用 -target + -sdk macosx + ARCHS 出双架构,无需 simulator runtime。
       - name: Build macOS GUI app (universal)
         run: |
+          RELEASE_VERSION="${VERSION_SOURCE#v}"
           mkdir -p build
           xcodebuild -project SoundSense.xcodeproj \
             -target SoundSenseMac \
             -sdk macosx \
             -configuration Release \
+            MARKETING_VERSION="$RELEASE_VERSION" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -68,6 +88,16 @@ jobs:
             echo "❌ 产物未包含双架构"
             exit 1
           fi
+
+      - name: Verify app version
+        run: |
+          EXPECTED="${VERSION_SOURCE#v}"
+          ACTUAL=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            build/app/SoundSense.app/Contents/Info.plist)
+          test "$ACTUAL" = "$EXPECTED" || {
+            echo "❌ 版本号不一致:期望 $EXPECTED,实际 $ACTUAL"
+            exit 1
+          }
 
       # 打 DMG(拖拽安装),带品牌背景图
       - name: Package DMG
@@ -152,6 +182,7 @@ jobs:
   ios:
     name: iOS IPA (unsigned)
     runs-on: macos-14
+    needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -170,6 +201,7 @@ jobs:
 
       - name: Build iOS .app (unsigned)
         run: |
+          RELEASE_VERSION="${VERSION_SOURCE#v}"
           mkdir -p build/app
           # 用 -scheme + -destination build 出 .app(CONFIGURATION_BUILD_DIR
           # 指定输出目录,便于后续打包 ipa)。
@@ -177,6 +209,8 @@ jobs:
             -scheme SoundSense \
             -destination 'generic/platform=iOS' \
             -configuration Release \
+            MARKETING_VERSION="$RELEASE_VERSION" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -187,6 +221,13 @@ jobs:
             ls -la build/app/
             exit 1
           fi
+          EXPECTED="${VERSION_SOURCE#v}"
+          ACTUAL=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            build/app/SoundSense.app/Info.plist)
+          test "$ACTUAL" = "$EXPECTED" || {
+            echo "❌ 版本号不一致:期望 $EXPECTED,实际 $ACTUAL"
+            exit 1
+          }
 
       - name: Package unsigned .ipa
         run: |
@@ -210,6 +251,7 @@ jobs:
   watchos:
     name: watchOS IPA (unsigned)
     runs-on: macos-14
+    needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -227,6 +269,7 @@ jobs:
 
       - name: Build watchOS .app (unsigned)
         run: |
+          RELEASE_VERSION="${VERSION_SOURCE#v}"
           mkdir -p build/app
           # 用 -target + -sdk watchos(而非 -scheme + -destination),
           # 绕过 device destination 解析,更可靠。
@@ -236,6 +279,8 @@ jobs:
             -target SoundSenseWatch \
             -sdk watchos \
             -configuration Release \
+            MARKETING_VERSION="$RELEASE_VERSION" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -246,6 +291,13 @@ jobs:
             ls -la build/app/
             exit 1
           fi
+          EXPECTED="${VERSION_SOURCE#v}"
+          ACTUAL=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            build/app/SoundSenseWatch.app/Info.plist)
+          test "$ACTUAL" = "$EXPECTED" || {
+            echo "❌ 版本号不一致:期望 $EXPECTED,实际 $ACTUAL"
+            exit 1
+          }
 
       - name: Package unsigned .ipa
         run: |

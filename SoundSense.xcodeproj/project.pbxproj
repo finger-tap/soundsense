@@ -16,6 +16,7 @@
 		A10000000000000000000008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* SettingsView.swift */; };
 		A10000000000000000000009 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
 		A1000000000000000000000A /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
+		A10000000000000000000039 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000039 /* AppAppearance.swift */; };
 		A1000000000000000000000B /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
 			A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* Assets.xcassets */; };
 			A1BB00000000000000000001 /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
@@ -59,6 +60,7 @@
 		A10000000000000000000035 /* WatchSourceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* WatchSourceTestView.swift */; };
 		A10000000000000000000036 /* WatchSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* WatchSyncManager.swift */; };
 		A10000000000000000000012 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
+		A1000000000000000000003A /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000039 /* AppAppearance.swift */; };
 		A10000000000000000000013 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
 		A10000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* Assets.xcassets */; };
 /* End PBXBuildFile section - watchOS sources */
@@ -80,6 +82,7 @@
 		AA000000000000000000001F /* LevelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LevelBadge.swift */; };
 		AA0000000000000000000020 /* AudioMeterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* AudioMeterEngine.swift */; };
 		AA0000000000000000000021 /* MeterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MeterTheme.swift */; };
+		AA0000000000000000000029 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000039 /* AppAppearance.swift */; };
 			AA0000000000000000000022 /* NoiseLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* NoiseLevel.swift */; };
 			AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000001 /* MeasurementRecorder.swift */; };
 			AABB00000000000000000002 /* ReportRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB00000000000000000002 /* ReportRenderer.swift */; };
@@ -121,6 +124,7 @@
 		A2000000000000000000000A /* AudioMeterEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMeterEngine.swift; sourceTree = "<group>"; };
 		A2CC00000000000000000001 /* AudioInputDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputDeviceManager.swift; sourceTree = "<group>"; };
 		A2000000000000000000000B /* MeterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterTheme.swift; sourceTree = "<group>"; };
+		A20000000000000000000039 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		A2000000000000000000000C /* NoiseLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseLevel.swift; sourceTree = "<group>"; };
 		A2000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000010 /* SoundSenseWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundSenseWatchApp.swift; sourceTree = "<group>"; };
@@ -230,6 +234,7 @@
 				A2000000000000000000000A /* AudioMeterEngine.swift */,
 				A2CC00000000000000000001 /* AudioInputDeviceManager.swift */,
 				A2000000000000000000000B /* MeterTheme.swift */,
+				A20000000000000000000039 /* AppAppearance.swift */,
 				A2000000000000000000000C /* NoiseLevel.swift */,
 				A2BB00000000000000000001 /* MeasurementRecorder.swift */,
 				A2BB00000000000000000002 /* ReportRenderer.swift */,
@@ -527,6 +532,7 @@
 				A10000000000000000000008 /* SettingsView.swift in Sources */,
 				A10000000000000000000009 /* AudioMeterEngine.swift in Sources */,
 				A1000000000000000000000A /* MeterTheme.swift in Sources */,
+				A10000000000000000000039 /* AppAppearance.swift in Sources */,
 				A1000000000000000000000B /* NoiseLevel.swift in Sources */,
 				A1BB00000000000000000001 /* MeasurementRecorder.swift in Sources */,
 				A1BB00000000000000000002 /* ReportRenderer.swift in Sources */,
@@ -568,6 +574,7 @@
 				A10000000000000000000010 /* WatchSpectrumView.swift in Sources */,
 				A10000000000000000000011 /* AudioMeterEngine.swift in Sources */,
 				A10000000000000000000012 /* MeterTheme.swift in Sources */,
+				A1000000000000000000003A /* AppAppearance.swift in Sources */,
 				A10000000000000000000013 /* NoiseLevel.swift in Sources */,
 				A1000000000000000000002E /* MeasurementRecorder.swift in Sources */,
 				A1000000000000000000002F /* WatchSettingsView.swift in Sources */,
@@ -591,6 +598,7 @@
 				AA0000000000000000000020 /* AudioMeterEngine.swift in Sources */,
 				AACC00000000000000000013 /* AudioInputDeviceManager.swift in Sources */,
 				AA0000000000000000000021 /* MeterTheme.swift in Sources */,
+				AA0000000000000000000029 /* AppAppearance.swift in Sources */,
 				AA0000000000000000000022 /* NoiseLevel.swift in Sources */,
 				AABB00000000000000000001 /* MeasurementRecorder.swift in Sources */,
 				AABB00000000000000000002 /* ReportRenderer.swift in Sources */,
@@ -723,7 +731,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
@@ -741,7 +749,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense";
 				PRODUCT_NAME = SoundSense;
 				SDKROOT = iphoneos;
@@ -758,7 +766,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -775,7 +783,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense";
 				PRODUCT_NAME = SoundSense;
 				SDKROOT = iphoneos;
@@ -792,7 +800,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -804,7 +812,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.watch";
 				PRODUCT_NAME = SoundSenseWatch;
 				SDKROOT = watchos;
@@ -822,7 +830,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -834,7 +842,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.watch";
 				PRODUCT_NAME = SoundSenseWatch;
 				SDKROOT = watchos;
@@ -851,7 +859,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -863,7 +871,7 @@
 					"$(executable_path)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.mac";
 				PRODUCT_NAME = SoundSense;
 				SDKROOT = macosx;
@@ -878,7 +886,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -890,7 +898,7 @@
 					"$(executable_path)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.dinghao.soundsense.mac";
 				PRODUCT_NAME = SoundSense;
 				SDKROOT = macosx;

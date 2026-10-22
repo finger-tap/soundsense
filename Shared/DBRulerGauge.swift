@@ -73,7 +73,9 @@ public struct DBRulerGauge: View {
                         let tickH: CGFloat = isRisk ? 16 : (isMajor ? 10 : 5)
                         let tickColor: Color = isRisk
                             ? MeterTheme.riskColor
-                            : Color.white.opacity(isMajor ? 0.45 : 0.22)
+                            : (isMajor
+                               ? MeterTheme.secondaryText.opacity(0.72)
+                               : MeterTheme.tertiaryText.opacity(0.55))
                         var tick = Path()
                         tick.move(to: CGPoint(x: x, y: baseY - tickH))
                         tick.addLine(to: CGPoint(x: x, y: baseY))
@@ -87,7 +89,7 @@ public struct DBRulerGauge: View {
                     var baseline = Path()
                     baseline.move(to: CGPoint(x: 0, y: baseY))
                     baseline.addLine(to: CGPoint(x: size.width, y: baseY))
-                    ctx.stroke(baseline, with: .color(.white.opacity(0.25)),
+                    ctx.stroke(baseline, with: .color(MeterTheme.hairline),
                                style: StrokeStyle(lineWidth: 1))
 
                     // 主刻度数字(每 20 dB)+ 风险刻度数字
@@ -96,7 +98,7 @@ public struct DBRulerGauge: View {
                         let labelX = max(14, min(size.width - 14, toX(Float(labelDB))))
                         ctx.draw(Text("\(labelDB)")
                                     .font(MeterTheme.mono(9))
-                                    .foregroundColor(.white.opacity(0.45)),
+                                    .foregroundColor(MeterTheme.tertiaryText),
                                  at: CGPoint(x: labelX, y: bandBottom + 8))
                     }
                     let riskX = max(14, min(size.width - 14, toX(riskDB)))
@@ -113,11 +115,11 @@ public struct DBRulerGauge: View {
                 let active = spl.isFinite && spl > -80
 
                 Capsule()
-                    .fill(active ? levelColor : Color.white.opacity(0.25))
+                    .fill(active ? levelColor : MeterTheme.tertiaryText.opacity(0.48))
                     .frame(width: 2.5, height: baseY - needleTop - 2)
                     .position(x: needleX, y: needleTop + (baseY - needleTop - 2) / 2)
                 Circle()
-                    .fill(active ? levelColor : Color.white.opacity(0.25))
+                    .fill(active ? levelColor : MeterTheme.tertiaryText.opacity(0.48))
                     .frame(width: 7, height: 7)
                     .shadow(color: active ? levelColor.opacity(0.9) : .clear, radius: 4)
                     .position(x: needleX, y: needleTop + 3)

@@ -26,8 +26,8 @@ cd "$PROJECT_ROOT"
 OUTPUT_DIR="${1:-build}"
 mkdir -p "$OUTPUT_DIR"
 
-# 版本号（从 git tag 获取，失败则用默认值）
-VERSION="${VERSION:-$(git describe --tags --always 2>/dev/null || echo 'dev')}"
+# 版本号（发布流程可注入；本地默认与 Xcode 工程保持一致）
+VERSION="${VERSION:-1.1}"
 echo "📦 版本: $VERSION"
 echo "📂 输出: $OUTPUT_DIR"
 echo ""

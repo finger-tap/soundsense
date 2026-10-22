@@ -28,7 +28,7 @@ struct MacSourceTestOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.52)
+            MeterTheme.overlayScrim
                 .ignoresSafeArea()
                 .onTapGesture {
                     if case .running = vm.phase { return }
@@ -70,7 +70,7 @@ struct MacSourceTestOverlay: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("声源方向倾向")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("四点位增益与漂移校验 · 结果仅供方向性参考")
                     .font(.system(size: 10.5))
                     .foregroundColor(MeterTheme.tertiaryText)
@@ -80,9 +80,9 @@ struct MacSourceTestOverlay: View {
             Button(action: close) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(MeterTheme.secondaryText)
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(.white.opacity(0.08)))
+                    .background(Circle().fill(MeterTheme.surfaceStrongFill))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("关闭声源方向倾向")
@@ -128,7 +128,7 @@ struct MacSourceTestOverlay: View {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("4 × 30")
                         .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(MeterTheme.primaryText)
                         .monospacedDigit()
                     Text("秒")
                         .font(.system(size: 15, weight: .semibold))
@@ -150,7 +150,7 @@ struct MacSourceTestOverlay: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
                                     .font(.system(size: 12.5, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.9))
+                                    .foregroundColor(MeterTheme.primaryText)
                                 Text(item.hint)
                                     .font(.system(size: 10.5))
                                     .foregroundColor(MeterTheme.tertiaryText)
@@ -162,7 +162,7 @@ struct MacSourceTestOverlay: View {
                         }
                         .padding(11)
                         .background(RoundedRectangle(cornerRadius: 10)
-                            .fill(.white.opacity(0.035)))
+                            .fill(MeterTheme.surfaceFill))
                     }
                 }
 
@@ -177,7 +177,7 @@ struct MacSourceTestOverlay: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("测试准备")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 readinessRow(icon: "mic.fill",
                              title: "输入设备",
                              value: vm.engine.hasAudioInput ? "已就绪" : "未检测到麦克风",
@@ -223,9 +223,9 @@ struct MacSourceTestOverlay: View {
             .frame(width: 244)
             .background(
                 RoundedRectangle(cornerRadius: 15)
-                    .fill(.white.opacity(0.045))
+                    .fill(MeterTheme.surfaceFill)
                     .overlay(RoundedRectangle(cornerRadius: 15)
-                        .stroke(.white.opacity(0.07), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
         }
         .padding(24)
@@ -244,7 +244,7 @@ struct MacSourceTestOverlay: View {
                     .foregroundColor(MeterTheme.tertiaryText)
                 Text(value)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(warning ? MeterTheme.brass : .white.opacity(0.82))
+                    .foregroundColor(warning ? MeterTheme.brass : MeterTheme.primaryText)
             }
             Spacer(minLength: 0)
         }
@@ -258,7 +258,7 @@ struct MacSourceTestOverlay: View {
             VStack(spacing: 5) {
                 Text(position.name)
                     .font(.system(size: 25, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Text(position.hint)
                     .font(.system(size: 12))
                     .foregroundColor(MeterTheme.secondaryText)
@@ -267,7 +267,7 @@ struct MacSourceTestOverlay: View {
             HStack(spacing: 36) {
                 ZStack {
                     Circle()
-                        .stroke(.white.opacity(0.07), lineWidth: 11)
+                        .stroke(MeterTheme.hairline, lineWidth: 11)
                     Circle()
                         .trim(from: 0, to: vm.progress)
                         .stroke(MeterTheme.waveColor,
@@ -276,7 +276,7 @@ struct MacSourceTestOverlay: View {
                     VStack(spacing: 1) {
                         Text("\(vm.secondsLeft)")
                             .font(.system(size: 56, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(MeterTheme.primaryText)
                             .monospacedDigit()
                         Text("秒")
                             .font(.system(size: 10))
@@ -303,7 +303,7 @@ struct MacSourceTestOverlay: View {
                         ForEach(0..<MacSourceTestViewModel.positions.count, id: \.self) { step in
                             Capsule()
                                 .fill(step <= index ? MeterTheme.waveColor
-                                                   : Color.white.opacity(0.08))
+                                                   : MeterTheme.surfaceStrongFill)
                                 .frame(width: step == index ? 42 : 24, height: 4)
                         }
                     }
@@ -321,7 +321,7 @@ struct MacSourceTestOverlay: View {
                         .foregroundColor(MeterTheme.secondaryText)
                         .frame(width: 130, height: 36)
                         .background(RoundedRectangle(cornerRadius: 9)
-                            .fill(.white.opacity(0.06)))
+                            .fill(MeterTheme.controlFill))
                 }
                 .buttonStyle(.plain)
 
@@ -379,7 +379,7 @@ struct MacSourceTestOverlay: View {
                                 .foregroundColor(MeterTheme.secondaryText)
                                 .frame(width: 110, height: 40)
                                 .background(RoundedRectangle(cornerRadius: 10)
-                                    .fill(.white.opacity(0.06)))
+                                    .fill(MeterTheme.controlFill))
                         }
                         .buttonStyle(.plain)
                     }
@@ -396,7 +396,7 @@ struct MacSourceTestOverlay: View {
                 .foregroundColor(MeterTheme.riskColor)
             Text(message)
                 .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.82))
+                .foregroundColor(MeterTheme.primaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
             Button {
@@ -479,11 +479,11 @@ struct MacSourceTestResultCard: View {
                     HStack(spacing: 10) {
                         Text(position.name)
                             .font(.system(size: 11.5))
-                            .foregroundColor(.white.opacity(0.72))
+                            .foregroundColor(MeterTheme.secondaryText)
                             .frame(width: 88, alignment: .leading)
                         GeometryReader { geometry in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(.white.opacity(0.06))
+                                Capsule().fill(MeterTheme.controlFill)
                                 Capsule()
                                     .fill(LinearGradient(
                                         colors: [MeterTheme.waveColor.opacity(0.65),
@@ -508,9 +508,9 @@ struct MacSourceTestResultCard: View {
             .padding(15)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(.white.opacity(0.035))
+                    .fill(MeterTheme.surfaceFill)
                     .overlay(RoundedRectangle(cornerRadius: 12)
-                        .stroke(.white.opacity(0.06), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
 
             HStack(spacing: 6) {
@@ -559,7 +559,7 @@ struct MacSourceTestDetailSheet: View {
             HStack {
                 Text("声源方向倾向详情")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Button("完成") { dismiss() }
                     .buttonStyle(.plain)

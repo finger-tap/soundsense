@@ -33,7 +33,7 @@ struct HistoryOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.45)
+            MeterTheme.overlayScrim
                 .ignoresSafeArea()
                 .onTapGesture { isPresented = false }
 
@@ -47,7 +47,7 @@ struct HistoryOverlay: View {
                 RoundedRectangle(cornerRadius: 18)
                     .fill(MeterTheme.panelGradient)
                     .overlay(RoundedRectangle(cornerRadius: 18)
-                        .stroke(.white.opacity(0.1), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
             .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
         }
@@ -78,7 +78,8 @@ struct HistoryOverlay: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("记录").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                Text("记录").font(.system(size: 16, weight: .bold))
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("测量、声源方向倾向与长时间监听")
                     .font(.system(size: 10))
                     .foregroundColor(MeterTheme.tertiaryText)
@@ -110,7 +111,7 @@ struct HistoryOverlay: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(MeterTheme.tertiaryText)
                     .frame(width: 24, height: 24)
-                    .background(Circle().fill(.white.opacity(0.1)))
+                    .background(Circle().fill(MeterTheme.surfaceStrongFill))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("关闭")
@@ -239,7 +240,7 @@ struct HistoryOverlay: View {
             HStack {
                 Text(Self.rowDate.string(from: result.startTime))
                     .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Text(result.rejectedByDrift
                      ? "环境变化过大"
@@ -272,9 +273,9 @@ struct HistoryOverlay: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 11)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 11)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -283,7 +284,7 @@ struct HistoryOverlay: View {
             HStack {
                 Text(Self.rowDate.string(from: session.startTime))
                     .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 if session.endTime == nil {
                     Text("进行中")
@@ -312,9 +313,9 @@ struct HistoryOverlay: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 11)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 11)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -328,7 +329,7 @@ struct HistoryOverlay: View {
                 .foregroundColor(MeterTheme.secondaryText)
             Text(subtitle)
                 .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.35))
+                .foregroundColor(MeterTheme.tertiaryText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -399,7 +400,8 @@ private struct MacHistoryRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(Self.df.string(from: record.startTime))
-                    .font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Button(action: onDelete) {
                     Image(systemName: "trash")
@@ -426,10 +428,11 @@ private struct MacHistoryRow: View {
             HStack(spacing: 0) {
                 stat(record.laeqSPL, label: "\(record.leqMetricLabel) dB",
                      color: MeterTheme.waveColor)
-                stat(record.avgSPL, label: "平均 dB", color: .white.opacity(0.85))
+                stat(record.avgSPL, label: "平均 dB", color: MeterTheme.primaryText)
                 stat(record.peakSPL, label: "\(record.peakMetricLabel) dB",
                      color: MeterTheme.brass)
-                stat(Float(record.duration), label: "时长(秒)", color: .white.opacity(0.6), format: "%.0f")
+                stat(Float(record.duration), label: "时长(秒)",
+                     color: MeterTheme.secondaryText, format: "%.0f")
             }
 
             if let lpeak = record.lpeakSPL {
@@ -465,9 +468,9 @@ private struct MacHistoryRow: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 12)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -504,7 +507,8 @@ struct MacReportPreviewSheet: View {
     var body: some View {
         VStack(spacing: 14) {
             Text("测量简报")
-                .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(MeterTheme.primaryText)
             Text("\(Self.df.string(from: stats.startTime)) · 时长 \(RecordingPlayer.formatTime(stats.duration))")
                 .font(.system(size: 11)).foregroundColor(MeterTheme.secondaryText)
 
@@ -526,9 +530,11 @@ struct MacReportPreviewSheet: View {
                     dismiss()
                 } label: {
                     Text("取消")
-                        .font(.system(size: 12, weight: .medium)).foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(MeterTheme.secondaryText)
                         .frame(width: 74, height: 30)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08)))
+                        .background(RoundedRectangle(cornerRadius: 8)
+                            .fill(MeterTheme.surfaceStrongFill))
                 }
                 .buttonStyle(.plain)
                 Button {
@@ -536,9 +542,11 @@ struct MacReportPreviewSheet: View {
                                            calibrationOffset: calibrationOffset)
                 } label: {
                     Text("导出 PNG")
-                        .font(.system(size: 12, weight: .medium)).foregroundColor(.white)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(MeterTheme.primaryText)
                         .frame(width: 92, height: 30)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.12)))
+                        .background(RoundedRectangle(cornerRadius: 8)
+                            .fill(MeterTheme.controlFill))
                 }
                 .buttonStyle(.plain)
                 Button {
@@ -587,7 +595,8 @@ struct MacRecordingPlayerBar: View {
             .buttonStyle(.plain)
             .disabled(!player.isAvailable)
             VStack(alignment: .leading, spacing: 2) {
-                Text("现场录音").font(.system(size: 11)).foregroundColor(.white.opacity(0.7))
+                Text("现场录音").font(.system(size: 11))
+                    .foregroundColor(MeterTheme.secondaryText)
                 if player.isAvailable {
                     Text("\(RecordingPlayer.formatTime(player.progress * player.duration)) / \(RecordingPlayer.formatTime(player.duration))")
                         .font(.system(size: 9, design: .monospaced))
@@ -602,6 +611,7 @@ struct MacRecordingPlayerBar: View {
                 .frame(width: 80)
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 10)
+            .fill(MeterTheme.surfaceFill))
     }
 }

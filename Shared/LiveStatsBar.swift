@@ -62,15 +62,15 @@ public struct LiveStatsBar: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.05))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
     private var divider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.08))
+            .fill(MeterTheme.hairline)
             .frame(width: 1, height: 38)
     }
 
@@ -80,7 +80,7 @@ public struct LiveStatsBar: View {
             HStack(alignment: .top, spacing: 4) {
                 Text(value)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(MeterTheme.primaryText)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -93,13 +93,13 @@ public struct LiveStatsBar: View {
             }
             Text(label)
                 .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.62))
+                .foregroundColor(MeterTheme.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
             if let unit {
                 Text(unit)
                     .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.34))
+                    .foregroundColor(MeterTheme.tertiaryText)
                     .lineLimit(1)
             }
         }
@@ -139,7 +139,7 @@ public struct ExposureWarningBanner: View {
                     .foregroundColor(.white)
                 Text(String(format: "环境已连续 30 秒以上超过 %.0f dB,长时间暴露可能损伤听力", threshold))
                     .font(.system(size: 11.5))
-                    .foregroundColor(.white.opacity(0.86))
+                    .foregroundColor(.white.opacity(0.92))
             }
             Spacer()
         }
@@ -148,7 +148,7 @@ public struct ExposureWarningBanner: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(MeterTheme.riskColor.opacity(0.84))
                 .overlay(RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1))
         )
         .transition(.move(edge: .top).combined(with: .opacity))
     }

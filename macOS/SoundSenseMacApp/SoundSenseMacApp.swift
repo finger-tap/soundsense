@@ -13,6 +13,7 @@ import AppKit
 @main
 struct SoundSenseMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var appearance = MacAppearanceController.shared
     /// 全局共享:主窗口与菜单栏控制器使用同一个视图模型
     @StateObject private var appModel = MacAppModel.shared
 
@@ -20,6 +21,7 @@ struct SoundSenseMacApp: App {
         WindowGroup {
             MacMainMeterView(viewModel: appModel.meterModel)
                 .frame(minWidth: 760, minHeight: 680)
+                .environmentObject(appearance)
         }
         .windowStyle(.hiddenTitleBar)
     }
@@ -42,6 +44,7 @@ final class MacAppModel: ObservableObject {
 /// 桌面端窗口:设置合理的最小尺寸并恢复缩放/全屏能力。
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        MacAppearanceController.shared.applyCurrent()
         DispatchQueue.main.async {
             self.configureWindows()
         }
@@ -71,5 +74,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 window.center()
             }
         }
+        // SwiftUI 可能在启动后创建新 NSWindow，统一补应用一次用户外观。
+        Task { @MainActor in
+            MacAppearanceController.shared.applyCurrent()
+        }
     }
+
 }

@@ -13,9 +13,10 @@ struct SettingsOverlay: View {
     @ObservedObject var viewModel: MeterViewModel
     @Binding var isPresented: Bool
     @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var appearanceController: MacAppearanceController
 
     /// 青绿色 accent(与全局一致)
-    private let accent = Color(red: 0.24, green: 0.83, blue: 0.69)
+    private var accent: Color { MeterTheme.waveColor }
 
     /// 连续互通引导条:用户手动关闭后不再显示
     @AppStorage("continuityGuideDismissed") private var continuityGuideDismissed = false
@@ -23,7 +24,7 @@ struct SettingsOverlay: View {
     var body: some View {
         ZStack {
             // 半透明遮罩(点击关闭)
-            Color.black.opacity(0.45)
+            MeterTheme.overlayScrim
                 .ignoresSafeArea()
                 .onTapGesture {
                     isPresented = false
@@ -33,16 +34,17 @@ struct SettingsOverlay: View {
             VStack(spacing: 0) {
                 // 标题栏
                 HStack {
-                    Text("设置").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                    Text("设置").font(.system(size: 16, weight: .bold))
+                        .foregroundColor(MeterTheme.primaryText)
                     Spacer()
                     Button {
                         isPresented = false
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(MeterTheme.secondaryText)
                             .frame(width: 24, height: 24)
-                            .background(Circle().fill(.white.opacity(0.1)))
+                            .background(Circle().fill(MeterTheme.surfaceStrongFill))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("关闭")
@@ -52,6 +54,7 @@ struct SettingsOverlay: View {
                 // 内容(隐藏系统滚动条)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 16) {
+                        appearanceCard
                         inputSourceCard
                         calibrationCard
                         measurementCard
@@ -65,7 +68,7 @@ struct SettingsOverlay: View {
                 RoundedRectangle(cornerRadius: 18)
                     .fill(MeterTheme.panelGradient)
                     .overlay(RoundedRectangle(cornerRadius: 18)
-                        .stroke(.white.opacity(0.1), lineWidth: 1))
+                        .stroke(MeterTheme.hairline, lineWidth: 1))
             )
             .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
         }
@@ -79,16 +82,69 @@ struct SettingsOverlay: View {
         }
     }
 
+    // MARK: - 外观卡片
+
+    private var appearanceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("外观").font(.system(size: 14, weight: .bold))
+                .foregroundColor(MeterTheme.primaryText)
+            Text("默认跟随 Mac 系统外观，也可以固定浅色或深色。仪表和文字颜色会随主题自动调整。")
+                .font(.system(size: 11.5))
+                .foregroundColor(MeterTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                ForEach(AppAppearance.allCases) { option in
+                    appearanceButton(option)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(MeterTheme.panelGradient)
+                .overlay(RoundedRectangle(cornerRadius: 13)
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
+        )
+    }
+
+    private func appearanceButton(_ option: AppAppearance) -> some View {
+        let selected = appearanceController.appearance == option
+        return Button {
+            appearanceController.select(option)
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: option.symbolName)
+                    .font(.system(size: 14, weight: .semibold))
+                Text(option.title)
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .foregroundColor(selected ? MeterTheme.waveColor : MeterTheme.secondaryText)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(selected ? MeterTheme.waveColor.opacity(0.12)
+                                   : MeterTheme.surfaceFill)
+                    .overlay(RoundedRectangle(cornerRadius: 9)
+                        .stroke(selected ? MeterTheme.waveColor.opacity(0.42)
+                                         : MeterTheme.hairline, lineWidth: 1))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("外观：\(option.title)")
+    }
+
     // MARK: - 输入源卡片
 
     private var inputSourceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("输入源").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                Text("输入源").font(.system(size: 14, weight: .bold))
+                    .foregroundColor(MeterTheme.primaryText)
                 Spacer()
                 Text("仅允许一个固定输入")
                     .font(.system(size: 9.5, weight: .medium))
-                    .foregroundColor(.white.opacity(0.38))
+                    .foregroundColor(MeterTheme.tertiaryText)
             }
 
             // 首项:跟随系统默认
@@ -113,7 +169,7 @@ struct SettingsOverlay: View {
 
             Text("再次点击已勾选麦克风可取消固定；取消后跟随系统默认。")
                 .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.42))
+                .foregroundColor(MeterTheme.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             // 连续互通引导:列表里没有 iPhone 时提示如何开启(能力探测,不做版本判断)。
@@ -126,9 +182,9 @@ struct SettingsOverlay: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 13)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 13)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -160,15 +216,15 @@ struct SettingsOverlay: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 13))
-                    .foregroundColor(isActive ? accent : .white.opacity(0.55))
+                    .foregroundColor(isActive ? accent : MeterTheme.secondaryText)
                     .frame(width: 22)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(MeterTheme.primaryText)
                     Text(subtitle)
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(MeterTheme.tertiaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
@@ -181,7 +237,7 @@ struct SettingsOverlay: View {
             .padding(.horizontal, 10).padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 9)
-                    .fill(.white.opacity(isActive ? 0.08 : 0.03))
+                    .fill(isActive ? MeterTheme.surfaceStrongFill : MeterTheme.surfaceFill)
             )
         }
         .buttonStyle(.plain)
@@ -194,7 +250,7 @@ struct SettingsOverlay: View {
                 .foregroundColor(accent)
             Text("想把 iPhone 当麦克风?需 macOS 13+ 且 iOS 16+。iPhone:设置 → 通用 → AirPlay 与连续互通 → 打开「连续互通相机」,之后 iPhone 会自动出现在列表中。")
                 .font(.system(size: 10.5))
-                .foregroundColor(.white.opacity(0.55))
+                .foregroundColor(MeterTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Button {
@@ -202,9 +258,9 @@ struct SettingsOverlay: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(MeterTheme.tertiaryText)
                     .frame(width: 18, height: 18)
-                    .background(Circle().fill(.white.opacity(0.08)))
+                    .background(Circle().fill(MeterTheme.surfaceStrongFill))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("关闭提示")
@@ -220,14 +276,16 @@ struct SettingsOverlay: View {
 
     private var calibrationCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("校准").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            Text("校准").font(.system(size: 14, weight: .bold))
+                .foregroundColor(MeterTheme.primaryText)
 
             Text("麦克风采集的是数字分贝(dBFS),加上偏移量换算成真实声压级(SPL)。默认 +100 dB 是 Mac 内建麦克风的保守估计(±6 dB 离散),校准值按输入设备分别保存。")
                 .font(.system(size: 11.5)).foregroundColor(MeterTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack {
-                Text("偏移量").font(.system(size: 12)).foregroundColor(.white.opacity(0.8))
+                Text("偏移量").font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
                 Text(String(format: "%+.1f dB", viewModel.calibrationOffset))
                     .font(.system(size: 18, weight: .semibold, design: .monospaced))
@@ -256,9 +314,11 @@ struct SettingsOverlay: View {
                 viewModel.calibrationOffset = CalibrationDefaults.macBuiltIn
             } label: {
                 Text("恢复默认 (+100)")
-                    .font(.system(size: 12, weight: .medium)).foregroundColor(.white)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(MeterTheme.primaryText)
                     .frame(maxWidth: .infinity).padding(.vertical, 9)
-                    .background(RoundedRectangle(cornerRadius: 9).fill(.white.opacity(0.06)))
+                    .background(RoundedRectangle(cornerRadius: 9)
+                        .fill(MeterTheme.controlFill))
             }
             .buttonStyle(.plain)
 
@@ -267,9 +327,9 @@ struct SettingsOverlay: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 13)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 13)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -279,7 +339,8 @@ struct SettingsOverlay: View {
         if viewModel.engine.state == .running {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("实时校准").font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
+                    Text("实时校准").font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(MeterTheme.primaryText)
                     Spacer()
                     Text("当前读数").font(.system(size: 10)).foregroundColor(MeterTheme.tertiaryText)
                     Text(viewModel.currentSPL.isFinite && viewModel.currentSPL > -80
@@ -299,7 +360,8 @@ struct SettingsOverlay: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(MeterTheme.surfaceFill))
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("提示:启动麦克风后,可对照标准声级计在当前页面实时微调偏移量。")
@@ -348,9 +410,10 @@ struct SettingsOverlay: View {
         } label: {
             Text(label)
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundColor(.white)
+                .foregroundColor(MeterTheme.primaryText)
                 .frame(maxWidth: .infinity).padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08)))
+                .background(RoundedRectangle(cornerRadius: 8)
+                    .fill(MeterTheme.surfaceStrongFill))
         }
         .buttonStyle(.plain)
     }
@@ -372,15 +435,15 @@ struct SettingsOverlay: View {
                     .font(.system(size: 10, design: .monospaced))
                     .opacity(0.7)
             }
-            .foregroundColor(selected ? MeterTheme.waveColor : .white)
+            .foregroundColor(selected ? MeterTheme.waveColor : MeterTheme.primaryText)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 9)
-                    .fill(.white.opacity(0.06))
+                    .fill(MeterTheme.controlFill)
                     .overlay(RoundedRectangle(cornerRadius: 9)
                         .stroke(selected ? MeterTheme.waveColor.opacity(0.55)
-                                         : Color.white.opacity(0.07),
+                                         : MeterTheme.hairline,
                                 lineWidth: 1))
             )
                 }
@@ -391,11 +454,13 @@ struct SettingsOverlay: View {
 
     private var measurementCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("测量").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            Text("测量").font(.system(size: 14, weight: .bold))
+                .foregroundColor(MeterTheme.primaryText)
 
             // 频率计权
             HStack {
-                Text("频率计权").font(.system(size: 12)).foregroundColor(.white.opacity(0.8))
+                Text("频率计权").font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
                 Picker("", selection: Binding(
                     get: { viewModel.weighting },
@@ -420,7 +485,8 @@ struct SettingsOverlay: View {
 
             // 警告阈值
             HStack {
-                Text("警告阈值").font(.system(size: 12)).foregroundColor(.white.opacity(0.8))
+                Text("警告阈值").font(.system(size: 12))
+                    .foregroundColor(MeterTheme.secondaryText)
                 Spacer()
                 Text(String(format: "%.0f dB", viewModel.warningThreshold))
                     .font(.system(size: 16, weight: .semibold, design: .monospaced))
@@ -445,7 +511,7 @@ struct SettingsOverlay: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("超限时发系统通知")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
+                        .foregroundColor(MeterTheme.primaryText)
                     Text("关闭时仅 App 内横幅提醒(默认)。开启后会在第一次测量时请求通知权限。")
                         .font(.system(size: 10))
                         .foregroundColor(MeterTheme.tertiaryText)
@@ -458,9 +524,9 @@ struct SettingsOverlay: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 13)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 13)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -468,13 +534,14 @@ struct SettingsOverlay: View {
 
     private var aboutCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("关于").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            Text("关于").font(.system(size: 14, weight: .bold))
+                .foregroundColor(MeterTheme.primaryText)
             row(title: "版本", value: appVersionString())
             row(title: "算法", value: "IEC 61672 A/C 计权 · F/S 检波 · FFT")
             row(title: "精度", value: "计权曲线 < 0.5 dB;绝对值取决于校准")
             row(title: "峰值口径", value: "时间计权最大值与采样峰值 Lpeak 分列")
             row(title: "隐私", value: "测量与录音仅保存在本机")
-            Divider().background(.white.opacity(0.1))
+            Divider().overlay(MeterTheme.hairline)
             Link(destination: URL(string: "https://github.com/finger-tap/soundsense")!) {
                 HStack {
                     Label("开源项目 · MIT License",
@@ -493,9 +560,9 @@ struct SettingsOverlay: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 13)
-                .fill(.white.opacity(0.04))
+                .fill(MeterTheme.surfaceFill)
                 .overlay(RoundedRectangle(cornerRadius: 13)
-                    .stroke(.white.opacity(0.07), lineWidth: 1))
+                    .stroke(MeterTheme.hairline, lineWidth: 1))
         )
     }
 
@@ -503,7 +570,8 @@ struct SettingsOverlay: View {
         HStack {
             Text(title).font(.system(size: 12)).foregroundColor(MeterTheme.tertiaryText)
             Spacer()
-            Text(value).font(.system(size: 12)).foregroundColor(.white.opacity(0.85))
+            Text(value).font(.system(size: 12))
+                .foregroundColor(MeterTheme.primaryText)
         }
     }
 

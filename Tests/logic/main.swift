@@ -36,6 +36,43 @@ func fakeAudioFile(in dir: URL, id: String) -> URL {
     return url
 }
 
+// ---- 0a. 外观偏好与菜单栏电平图 ----
+do {
+    expect(AppAppearance.system.nsAppearance == nil,
+           "跟随系统不强制 AppKit 外观")
+    expect(AppAppearance.light.nsAppearance?.name == .aqua
+           && AppAppearance.dark.nsAppearance?.name == .darkAqua,
+           "浅色/深色 AppKit 外观映射正确")
+    let appearanceSuite = "AppAppearanceTests.\(UUID().uuidString)"
+    let appearanceDefaults = UserDefaults(suiteName: appearanceSuite)!
+    defer { appearanceDefaults.removePersistentDomain(forName: appearanceSuite) }
+    MainActor.assumeIsolated {
+        let appearanceController = MacAppearanceController(defaults: appearanceDefaults)
+        appearanceController.select(.dark, applyImmediately: false)
+        appearanceController.select(.system, applyImmediately: false)
+        expect(appearanceController.appearance == .system,
+               "切回跟随系统后状态不再停留在深色")
+        expect(appearanceDefaults.string(forKey: MacAppearanceController.defaultsKey) == "system",
+               "跟随系统偏好被正确持久化")
+    }
+    expect(MenuBarWaveform.normalized(10) == 0,
+           "菜单栏声波低于量程时落在底部")
+    expect(MenuBarWaveform.normalized(30) == 0,
+           "菜单栏声波 30dB 落在底部")
+    expect(abs(MenuBarWaveform.normalized(70) - 0.5) < 0.000_1,
+           "菜单栏声波 70dB 位于量程中央")
+    expect(MenuBarWaveform.normalized(120) == 1,
+           "菜单栏声波超过量程时封顶")
+    let waveform = MenuBarWaveform.appending(70, to: [50, 60])
+    expect(waveform == [50, 60, 70],
+           "菜单栏声波从右侧追加新样本")
+    let capped = MenuBarWaveform.appending(
+        80,
+        to: Array(repeating: 40, count: MenuBarWaveform.sampleCount))
+    expect(capped.count == MenuBarWaveform.sampleCount && capped.last == 80,
+           "菜单栏声波只保留最近固定数量的样本")
+}
+
 // ---- 0. MeasurementRecorder 全帧统计:短峰值不因 1 Hz 趋势采样丢失 ----
 do {
     let rec = MeasurementRecorder()

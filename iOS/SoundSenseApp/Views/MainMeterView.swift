@@ -89,17 +89,19 @@ struct MainMeterView: View {
                         } label: {
                             HStack(spacing: 5) {
                                 Image(systemName: "wrench.and.screwdriver")
-                                    .font(.system(size: 13, weight: .medium))
-                                Text("工具")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("分析工具")
+                                    .font(.system(size: 12, weight: .bold))
                             }
-                            .foregroundColor(MeterTheme.secondaryText)
+                            .foregroundColor(MeterTheme.waveColor)
                             .padding(.horizontal, 10)
                             .frame(height: 38)
                             .background(
                                 Capsule()
-                                    .fill(Color.white.opacity(0.055))
-                                    .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
+                                    .fill(MeterTheme.waveColor.opacity(0.12))
+                                    .overlay(Capsule().stroke(
+                                        MeterTheme.waveColor.opacity(0.52),
+                                        lineWidth: 1.2))
                             )
                         }
                         .accessibilityLabel("测量工具")
@@ -230,9 +232,9 @@ struct MainMeterView: View {
                                     Text("导出报告")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundColor(MeterTheme.primaryText)
                                 .padding(.horizontal, 16).padding(.vertical, 8)
-                                .background(Capsule().fill(Color.white.opacity(0.12)))
+                                .background(Capsule().fill(MeterTheme.surfaceStrongFill))
                             }
                             .buttonStyle(.plain)
                             .transition(.opacity)
@@ -358,7 +360,7 @@ struct MainMeterView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
-        .background(Capsule().fill(Color.white.opacity(0.045)))
+        .background(Capsule().fill(MeterTheme.surfaceFill))
         .accessibilityElement(children: .contain)
     }
 

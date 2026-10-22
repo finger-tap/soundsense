@@ -46,6 +46,8 @@ struct MacMainMeterView: View {
                         // 等级文字
                         levelLabel
 
+                        statusLine.padding(.horizontal, 28)
+
                         // 实时统计(测量中显示)
                         if let live = viewModel.liveStats {
                             LiveStatsBar(stats: live,
@@ -88,8 +90,6 @@ struct MacMainMeterView: View {
                         }
                         .padding(.horizontal, 28)
 
-                        // 状态提示(放滚动区内,按钮下方)
-                        statusLine.padding(.horizontal, 28).padding(.top, 2)
                     }
                     .padding(.top, 6)
                     .padding(.bottom, 16)
@@ -172,57 +172,22 @@ struct MacMainMeterView: View {
     private var headerBar: some View {
         HStack {
             HStack(spacing: 10) {
-                Text("闻声").font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+                Text("闻声").font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(MeterTheme.primaryText)
                 Text("SOUNDSENSE").font(.system(size: 10, weight: .medium, design: .monospaced))
                     .tracking(1.2)
                     .foregroundColor(MeterTheme.tertiaryText)
             }
             Spacer()
-            Menu {
-                Button {
-                    Task {
-                        await viewModel.stop()
-                        showingMonitor = true
-                    }
-                } label: {
-                    Label("长时间监听", systemImage: "moon.zzz")
-                }
-                Button {
-                    Task {
-                        await viewModel.stop()
-                        showingSourceTest = true
-                    }
-                } label: {
-                    Label("方向倾向", systemImage: "dot.radiowaves.left.and.right")
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 12, weight: .medium))
-                    Text("工具")
-                        .font(.system(size: 11.5, weight: .semibold))
-                }
-                .foregroundColor(MeterTheme.secondaryText)
-                .padding(.horizontal, 10)
-                .frame(height: 30)
-                .background(
-                    Capsule()
-                        .fill(.white.opacity(0.055))
-                        .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
-                )
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .disabled(overlayPresented)
-            .opacity(overlayPresented ? 0.55 : 1)
-            .accessibilityLabel("噪音分析工具")
+            analysisToolsMenu
             Button {
                 showingHistory = true
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 15)).foregroundColor(MeterTheme.secondaryText)
                     .frame(width: 34, height: 34)
-                    .background(Circle().fill(.white.opacity(showingHistory ? 0.12 : 0)))
+                    .background(Circle().fill(
+                        showingHistory ? MeterTheme.surfaceStrongFill : .clear))
                     .accessibilityLabel("测量历史")
             }
             .buttonStyle(.plain)
@@ -231,7 +196,8 @@ struct MacMainMeterView: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 15)).foregroundColor(MeterTheme.secondaryText)
                     .frame(width: 34, height: 34)
-                    .background(Circle().fill(.white.opacity(showingSettings ? 0.12 : 0)))
+                    .background(Circle().fill(
+                        showingSettings ? MeterTheme.surfaceStrongFill : .clear))
                     .accessibilityLabel("设置")
             }
             .buttonStyle(.plain)
@@ -264,13 +230,55 @@ struct MacMainMeterView: View {
                 HStack(spacing: 8) {
                     Text(lv.emoji).font(.system(size: 15))
                     Text(lv.label).font(.system(size: 15, weight: .semibold)).foregroundColor(lv.color)
-                    Text("·").foregroundColor(.white.opacity(0.3))
+                    Text("·").foregroundColor(MeterTheme.tertiaryText)
                     Text(lv.detail).font(.system(size: 12)).foregroundColor(MeterTheme.secondaryText)
                 }
             } else {
                 Text("待机中").font(.system(size: 13)).foregroundColor(MeterTheme.secondaryText)
             }
         }
+    }
+
+    private var analysisToolsMenu: some View {
+        Menu {
+            Button {
+                Task {
+                    await viewModel.stop()
+                    showingMonitor = true
+                }
+            } label: {
+                Label("长时间监听", systemImage: "moon.zzz")
+            }
+            Button {
+                Task {
+                    await viewModel.stop()
+                    showingSourceTest = true
+                }
+            } label: {
+                Label("方向倾向", systemImage: "dot.radiowaves.left.and.right")
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "wrench.and.screwdriver.fill")
+                    .font(.system(size: 12, weight: .bold))
+                Text("分析工具")
+                    .font(.system(size: 12, weight: .bold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .opacity(0.75)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+            .background(Capsule().fill(MeterTheme.waveColor))
+            .contentShape(Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(overlayPresented)
+        .opacity(overlayPresented ? 0.55 : 1)
+        .accessibilityLabel("噪音分析工具")
+        .accessibilityHint("包含长时间监听与声源方向倾向测试")
     }
 
     private var statusLine: some View {
@@ -303,7 +311,7 @@ struct MacMainMeterView: View {
             switch viewModel.engine.state {
             case .running: return levelColor
             case .failed(_), .denied: return MeterTheme.riskColor
-            default: return Color.white.opacity(0.35)
+            default: return MeterTheme.tertiaryText
             }
         }()
         return Circle()
@@ -381,11 +389,11 @@ struct MacMainMeterView: View {
                 Text("导出报告")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(MeterTheme.primaryText)
             .frame(maxWidth: .infinity).padding(.vertical, 12)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.075))
+                .fill(MeterTheme.controlFill)
                     .overlay(Capsule().stroke(MeterTheme.hairline, lineWidth: 1))
             )
         }
@@ -446,7 +454,7 @@ private struct Card<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(MeterTheme.sectionLabel(10))
                 .tracking(1.5)
-                .foregroundColor(.white.opacity(0.42)).textCase(.uppercase)
+                .foregroundColor(MeterTheme.secondaryText).textCase(.uppercase)
                 .padding(.bottom, 2)
             content
         }
@@ -482,7 +490,8 @@ struct TrendChart: View {
             for db in [40, 60, 80] {
                 let y = CGFloat(1 - (Float(db) - minDB) / (maxDB - minDB)) * size.height
                 var l = Path(); l.move(to: CGPoint(x: 0, y: y)); l.addLine(to: CGPoint(x: size.width, y: y))
-                ctx.stroke(l, with: .color(.white.opacity(0.05)), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
+                ctx.stroke(l, with: .color(MeterTheme.hairline),
+                           style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
             }
             guard values.count >= 2 else {
                 ctx.draw(Text("等待数据").font(.system(size: 10)).foregroundColor(MeterTheme.tertiaryText),

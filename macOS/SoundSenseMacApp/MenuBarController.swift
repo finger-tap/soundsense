@@ -2,7 +2,7 @@
 //  MenuBarController.swift
 //  SoundSenseMac
 //
-//  菜单栏模式:NSStatusItem 常驻菜单栏,实时显示当前分贝,
+//  菜单栏模式:NSStatusItem 常驻菜单栏,用小型滚动声波显示实时噪音起伏,
 //  点击可开始/停止测量、打开主窗口、退出。(macOS 12 兼容,不用 MenuBarExtra)
 //
 
@@ -17,14 +17,18 @@ final class MenuBarController: NSObject, ObservableObject {
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
     private weak var viewModel: MeterViewModel?
+    private var waveformSamples: [Float] = []
+    private var lastSampleTime = Date.distantPast
+    private var lastMenuRefresh = Date.distantPast
 
     /// 装载菜单栏图标,绑定视图模型
     func attach(viewModel: MeterViewModel) {
         self.viewModel = viewModel
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
-        item.button?.title = "-- dB"
+        let item = NSStatusBar.system.statusItem(withLength: 38)
+        item.button?.title = ""
+        item.button?.imagePosition = .imageOnly
+        item.button?.imageScaling = .scaleProportionallyDown
         item.menu = buildMenu()
         statusItem = item
 
@@ -52,14 +56,85 @@ final class MenuBarController: NSObject, ObservableObject {
 
     private func refresh() {
         guard let button = statusItem?.button else { return }
+        let running = viewModel?.engine.state == .running
         let spl = viewModel?.currentSPL
-        if let spl = spl, spl.isFinite, spl > -80 {
-            button.title = String(format: "%.0f dB", spl)
-        } else {
-            button.title = "-- dB"
+        let validLevel = running && (spl?.isFinite == true) && (spl ?? -.greatestFiniteMagnitude) > -80
+
+        if validLevel, let spl {
+            let now = Date()
+            // 30 Hz 引擎更新只以 10 Hz 进入菜单栏，避免无意义的绘制开销。
+            if now.timeIntervalSince(lastSampleTime) >= 0.1 {
+                waveformSamples = MenuBarWaveform.appending(spl, to: waveformSamples)
+                lastSampleTime = now
+            }
+        } else if !running {
+            waveformSamples.removeAll(keepingCapacity: true)
         }
-        // 重建菜单(条目少,开销可忽略)
-        statusItem?.menu = buildMenu()
+
+        button.image = waveformImage(samples: waveformSamples, running: running)
+        button.toolTip = menuBarToolTip(spl: spl, running: running)
+        button.setAccessibilityLabel("闻声噪音电平")
+        button.setAccessibilityValue(button.toolTip ?? "")
+
+        // 菜单里的实时读数按 1 Hz 刷新；状态变化时立即刷新。
+        let now = Date()
+        if !running || now.timeIntervalSince(lastMenuRefresh) >= 1 {
+            lastMenuRefresh = now
+            statusItem?.menu = buildMenu()
+        }
+    }
+
+    private func menuBarToolTip(spl: Float?, running: Bool) -> String {
+        guard running else { return "闻声：未在测量" }
+        guard let spl, spl.isFinite, spl > -80 else { return "闻声：正在测量，等待音频" }
+        return String(format: "闻声：%.0f dB · 实时声波", spl)
+    }
+
+    /// 小型滚动声波。模板图由 macOS 自动反转前景色，
+    /// 浅色与深色菜单栏都能保持清晰。
+    private func waveformImage(samples: [Float], running: Bool) -> NSImage {
+        let size = NSSize(width: 32, height: 18)
+        let image = NSImage(size: size, flipped: false) { _ in
+            let path = NSBezierPath()
+            path.lineWidth = 1.8
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+
+            let left: CGFloat = 2
+            let right: CGFloat = 30
+            let top: CGFloat = 14.5
+            let bottom: CGFloat = 3.5
+            let slots = max(1, MenuBarWaveform.sampleCount - 1)
+            let firstSample = max(0, MenuBarWaveform.sampleCount - samples.count)
+
+            if samples.isEmpty {
+                path.move(to: NSPoint(x: left, y: 9))
+                path.line(to: NSPoint(x: right, y: 9))
+            } else if samples.count == 1 {
+                let level = CGFloat(MenuBarWaveform.normalized(samples[0]))
+                let y = bottom + level * (top - bottom)
+                path.move(to: NSPoint(x: left, y: y))
+                path.line(to: NSPoint(x: right, y: y))
+            } else {
+                for (index, sample) in samples.enumerated() {
+                    let slot = firstSample + index
+                    let x = left + CGFloat(slot) / CGFloat(slots) * (right - left)
+                    let level = CGFloat(MenuBarWaveform.normalized(sample))
+                    let y = bottom + level * (top - bottom)
+                    if index == 0 {
+                        path.move(to: NSPoint(x: x, y: y))
+                    } else {
+                        path.line(to: NSPoint(x: x, y: y))
+                    }
+                }
+            }
+
+            NSColor.black.withAlphaComponent(running ? 1 : 0.34).setStroke()
+            path.stroke()
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 
     private func buildMenu() -> NSMenu {

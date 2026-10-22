@@ -17,6 +17,7 @@ swiftc -O \
   Shared/SourceTestStore.swift \
   Shared/EventClipRecorder.swift \
   Shared/MonitorSessionStore.swift \
+  Shared/AppAppearance.swift \
   Core/Sources/SoundSenseCore/SoundSenseCore.swift \
   Tests/logic/main.swift \
   -o .build/logic/logic_tests
