@@ -252,6 +252,8 @@ final class MonitorViewModel: ObservableObject {
                 || engine.audioDiscontinuityCount > 0
                 || analysisQueueOverflowed
                 || analysisDrainTimedOut
+                || clipRecorder.droppedAppendCount > 0
+        s.droppedClipBlockCount = clipRecorder.droppedAppendCount
         store.update(s)
         store.flush()
         currentLaeq = finalLeq
@@ -320,6 +322,8 @@ final class MonitorViewModel: ObservableObject {
             || engine.sessionDroppedSampleCount > 0
             || engine.audioDiscontinuityCount > 0
             || analysisQueueOverflowed
+            || clipRecorder.droppedAppendCount > 0
+        s.droppedClipBlockCount = clipRecorder.droppedAppendCount
         store.update(s)
         session = s
         lastEventNote = "\(SourceTendencyAnalyzer.typeText(classification.type)) · \(classification.guess)"

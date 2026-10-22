@@ -276,6 +276,17 @@ struct MonitorSessionDetailView: View {
                                 .fill(Color.orange.opacity(0.10)))
                     }
 
+                    if session.droppedClipBlockCount > 0 {
+                        Label("有 \(session.droppedClipBlockCount) 个音频块因编码/写盘积压被丢弃，部分事件录音可能缺音；声级统计不受影响。",
+                              systemImage: "waveform.badge.exclamationmark")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.orange.opacity(0.10)))
+                    }
+
                     if session.droppedEventCount > 0 {
                         Label("仅保留最近 \(session.events.count) 条事件明细；累计 \(session.totalEventCount) 条，事件峰值统计不受影响。",
                               systemImage: "clock.arrow.circlepath")

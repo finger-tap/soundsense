@@ -224,6 +224,8 @@ final class MacMonitorViewModel: ObservableObject {
                     || engine.audioDiscontinuityCount > 0
                     || analysisQueueOverflowed
                     || analysisDrainTimedOut
+                    || clipRecorder.droppedAppendCount > 0
+            current.droppedClipBlockCount = clipRecorder.droppedAppendCount
             store.update(current)
             store.flush()
             liveSession = current
@@ -302,6 +304,8 @@ final class MacMonitorViewModel: ObservableObject {
             || engine.sessionDroppedSampleCount > 0
             || engine.audioDiscontinuityCount > 0
             || analysisQueueOverflowed
+            || clipRecorder.droppedAppendCount > 0
+        current.droppedClipBlockCount = clipRecorder.droppedAppendCount
         store.update(current)
         session = current
         liveSession = current
