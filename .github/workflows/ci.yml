@@ -45,7 +45,24 @@ jobs:
           swift --version
 
       - name: SwiftPM build (CLI 算法验证)
-        run: swift build --package-path Core
+        run: |
+          mkdir -p build
+          set -o pipefail
+          if ! swift build --package-path Core 2>&1 | tee build/swiftpm-build.log; then
+            grep -E 'error:|fatal error:' build/swiftpm-build.log | head -20 | while IFS= read -r line; do
+              echo "::error title=SwiftPM build::$line"
+            done
+            exit 1
+          fi
+
+      - name: Typecheck CLI against macOS deployment target
+        run: |
+          SDK=$(xcrun --sdk macosx --show-sdk-path)
+          xcrun swiftc -typecheck -swift-version 5 \
+            -target arm64-apple-macosx11.0 \
+            -sdk "$SDK" \
+            -I Core/.build/arm64-apple-macosx/debug/Modules \
+            Core/Sources/soundsense/main.swift
 
       - name: Build macOS GUI app
         run: |
