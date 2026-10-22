@@ -356,9 +356,15 @@ func runTests() {
         // 不是严格 PSD,给 1.5 dB 工程容差。
         let pink = SignalGenerator.pinkNoise(amplitude: 0.5, count: fftSize * 32)
         let pinkCorr = meanCorrection(pink, frames: 24, weighting: .a)
-        let analyticPink = 10 * log10(
-            binFreqs.dropFirst().map { pow(10, AWeighting.gain(at: $0) / 10) / $0 }.reduce(0, +)
-            / binFreqs.dropFirst().map { 1 / $0 }.reduce(0, +))
+        let pinkWeights = binFreqs.dropFirst().map { frequency -> Float in
+            pow(10, AWeighting.gain(at: frequency) / 10) / frequency
+        }
+        let pinkFrequencyWeights = binFreqs.dropFirst().map { frequency -> Float in
+            1 / frequency
+        }
+        let pinkWeightedSum = pinkWeights.reduce(0, +)
+        let pinkReferenceSum = pinkFrequencyWeights.reduce(0, +)
+        let analyticPink = 10 * log10(pinkWeightedSum / pinkReferenceSum)
         let okP = abs(pinkCorr - analyticPink) < 1.5
         print("\(okP ? "✅" : "❌") 粉红噪声 A 修正量 = \(String(format: "%+.2f", pinkCorr)) dB " +
               "(解析 \(String(format: "%+.2f", analyticPink)))")
