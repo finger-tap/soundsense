@@ -23,6 +23,8 @@ public enum MonitorHTMLBuilder {
         let abnormal = session.abnormalEnd ? " · 异常结束" : ""
         let incomplete = session.captureIncomplete
             ? " · 采集或分析链路曾中断/积压（最终 Leq/峰值来自全帧统计）" : ""
+        let clipIncomplete = session.droppedClipBlockCount > 0
+            ? " · 有 \(session.droppedClipBlockCount) 个音频块因编码/写盘积压被丢弃（声级统计不受影响）" : ""
         let thresholdDescription = thresholdDescription(for: session)
         let absoluteDescription: String
         if let absolute = session.absoluteThreshold {
@@ -82,7 +84,7 @@ public enum MonitorHTMLBuilder {
         <div class="wrap">
           <div class="brand">SOUNDSENSE</div>
           <h1>噪音监听报告</h1>
-          <div class="meta">\(full.string(from: session.startTime)) — \(end)\(abnormal)\(incomplete)</div>
+          <div class="meta">\(full.string(from: session.startTime)) — \(end)\(abnormal)\(incomplete)\(clipIncomplete)</div>
           <section class="card">
             <div class="stats">
               <div class="stat"><b>\(String(format: "%.1f", session.overallLaeq))</b><span>总 \(session.leqMetricLabel) dB</span></div>

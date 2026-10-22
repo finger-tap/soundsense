@@ -76,6 +76,9 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
     /// 采集/分析链路曾丢帧或积压。最终 Leq/峰值仍来自引擎全帧统计，
     /// 但事件时间线可能不完整。
     public var captureIncomplete: Bool
+    /// 事件片段录制链路因编码/写盘队列积压而丢弃的 PCM 块数。
+    /// 旧记录没有此字段时为 0；大于 0 表示部分事件录音可能缺音。
+    public var droppedClipBlockCount: Int
 
     public init(id: UUID = UUID(), startTime: Date, endTime: Date? = nil,
                 overallLaeq: Float, minSPL: Float, maxSPL: Float,
@@ -87,7 +90,8 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
                 eventPeakSPL: Float? = nil,
                 recentAvgLowRatio: Float? = nil,
                 abnormalEnd: Bool = false,
-                captureIncomplete: Bool = false) {
+                captureIncomplete: Bool = false,
+                droppedClipBlockCount: Int = 0) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -105,6 +109,7 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
         self.recentAvgLowRatio = recentAvgLowRatio
         self.abnormalEnd = abnormalEnd
         self.captureIncomplete = captureIncomplete
+        self.droppedClipBlockCount = max(0, droppedClipBlockCount)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -112,7 +117,7 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
         case weighting, timeWeighting
         case thresholdOverBackground, absoluteThreshold, events, abnormalEnd
         case captureIncomplete, totalEventCount, droppedEventCount, eventPeakSPL
-        case recentAvgLowRatio
+        case recentAvgLowRatio, droppedClipBlockCount
     }
 
     /// 兼容旧版本没有 absoluteThreshold / abnormalEnd 字段的 JSON。
@@ -143,6 +148,8 @@ public struct MonitorSession: Codable, Equatable, Identifiable {
             Bool.self, forKey: .abnormalEnd) ?? false
         captureIncomplete = try container.decodeIfPresent(
             Bool.self, forKey: .captureIncomplete) ?? false
+        droppedClipBlockCount = max(0, try container.decodeIfPresent(
+            Int.self, forKey: .droppedClipBlockCount) ?? 0)
     }
 
     /// 等效声级名称，如 LAeq / LCeq。

@@ -790,6 +790,14 @@ do {
            && drifted.confidence == .low
            && drifted.rejectedByDrift,
            "中央漂移 >2dB → 拒绝方向结论")
+
+    // 非有限点位值不能参与大小比较后产生“高置信”方向结论。
+    let nonFinite = SourceTendencyAnalyzer.analyze(
+        positions: [center(), pos("靠墙", .infinity), pos("靠顶", 40)],
+        duration: 90)
+    expect(nonFinite.verdict == .inconclusive
+           && nonFinite.confidence == .low,
+           "非有限点位值 → 无法判断/低置信")
 }
 
 // ---- 17. 判定器:噪音类型 ----
@@ -1058,6 +1066,18 @@ do {
     expect(disabled.beginClip() != nil, "重新 configure 后可恢复抓拍")
     disabled.finish()
     disabled.flush()
+
+    // 编码/写盘队列积压导致的 PCM 丢块必须可观测，不能静默假装片段完整。
+    let dropped = EventClipRecorder()
+    dropped.configure(directory: dir, inputSampleRate: 48000)
+    for _ in 0..<(EventClipRecorder.maxPendingAppendCount + 8) {
+        dropped.append(Array(repeating: 0.1, count: 4096))
+    }
+    dropped.flush()
+    expect(dropped.droppedAppendCount > 0,
+           "片段队列积压后暴露 droppedAppendCount (得 \(dropped.droppedAppendCount))")
+    dropped.finish()
+    dropped.flush()
     }
 }
 
@@ -1090,7 +1110,8 @@ do {
         startTime: Date(), endTime: Date(), overallLaeq: 40,
         minSPL: 30, maxSPL: 50, weighting: "C", timeWeighting: "S",
         thresholdOverBackground: 10,
-        absoluteThreshold: 45, captureIncomplete: true)
+        absoluteThreshold: 45, captureIncomplete: true,
+        droppedClipBlockCount: 7)
     store.add(thresholdSession)
     store.flushAndWait()
     let thresholdReloaded = MonitorSessionStore(fileURL: json)
@@ -1100,6 +1121,9 @@ do {
     expect(thresholdReloaded.sessions.first { $0.id == thresholdSession.id }?
         .captureIncomplete == true,
            "监听完整性诊断随会话持久化")
+    expect(thresholdReloaded.sessions.first { $0.id == thresholdSession.id }?
+        .droppedClipBlockCount == 7,
+           "事件片段丢块数随会话持久化")
     let reloadedMonitor = thresholdReloaded.sessions.first { $0.id == thresholdSession.id }
     expect(reloadedMonitor?.leqMetricLabel == "LCeq"
         && reloadedMonitor?.peakMetricLabel == "LCSmax",

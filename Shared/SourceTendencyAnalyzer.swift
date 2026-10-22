@@ -351,6 +351,10 @@ public enum SourceTendencyAnalyzer {
         guard positions.count == 3 || positions.count == 4 else {
             return (.inconclusive, .low)
         }
+        // 非有限值会让 max()/差值比较产生看似“主导”的伪结论。
+        guard positions.allSatisfy({ $0.laeq.isFinite }) else {
+            return (.inconclusive, .low)
+        }
         let center = averageCenter(positions)
         let wallGain = positions[1].laeq - center
         let ceilingGain = positions[2].laeq - center

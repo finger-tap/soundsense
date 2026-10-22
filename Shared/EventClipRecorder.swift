@@ -49,14 +49,22 @@ public final class EventClipRecorder: @unchecked Sendable {
     /// 继续填充环形缓冲，长时间监听会留下无意义的待处理工作。
     private var captureEnabled = false
     private var pendingAppendCount = 0
-    private var droppedAppendCount = 0
-    private static let maxPendingAppendCount = 64
+    private var droppedAppendCountValue = 0
+    static let maxPendingAppendCount = 64
     /// 事件开始时被硬时限截断后,endClip 仍应能找到对应片段。
     private var closedByLimit = false
     /// 片段定稿后等待监听 VM 把 URL 关联到事件;关联后置 false。
     private var lastClipEventNeedsUpdate = false
 
     public init() {}
+
+    /// 因编码/写盘队列积压而未进入片段链路的 PCM 块数。
+    /// 大于 0 时事件音频可能缺失，调用方必须把会话标记为不完整。
+    public var droppedAppendCount: Int {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return droppedAppendCountValue
+    }
 
     /// 配置输出目录与输入采样率(可重复调用,清空旧缓冲)
     public func configure(directory: URL, inputSampleRate: Float) {
@@ -91,7 +99,7 @@ public final class EventClipRecorder: @unchecked Sendable {
             stateLock.lock()
             captureEnabled = true
             pendingAppendCount = 0
-            droppedAppendCount = 0
+            droppedAppendCountValue = 0
             stateLock.unlock()
         }
     }
@@ -106,7 +114,7 @@ public final class EventClipRecorder: @unchecked Sendable {
             pendingAppendCount += 1
         } else if captureEnabled {
             // 磁盘/编码器短暂阻塞时丢弃新块，保持内存有界；正常路径不会走到这里。
-            droppedAppendCount += 1
+            droppedAppendCountValue += 1
         }
         stateLock.unlock()
         guard shouldAccept else { return }
