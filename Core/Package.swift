@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:5.5
 import PackageDescription
 
 let package = Package(
@@ -6,7 +6,7 @@ let package = Package(
     platforms: [
         .macOS(.v11),
         .iOS(.v15),
-        .watchOS(.v9),
+        .watchOS(.v8),
     ],
     products: [
         .library(name: "SoundSenseCore", targets: ["SoundSenseCore"]),

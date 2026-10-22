@@ -22,6 +22,7 @@ permissions:
 env:
   # 原始版本输入:手动触发时是 inputs.version(纯数字),tag 触发时是 ref_name(v1.x.x)
   VERSION_SOURCE: ${{ inputs.version || github.ref_name }}
+  RELEASE_BUILD_NUMBER: "2"
 
 jobs:
   # ─────────────────────────────────────────────────
@@ -29,13 +30,16 @@ jobs:
   # ─────────────────────────────────────────────────
   logic-tests:
     name: Logic tests
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Show toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Run logic tests
         run: ./scripts/logic_tests.sh
@@ -45,18 +49,17 @@ jobs:
   # ─────────────────────────────────────────────────
   macos:
     name: macOS universal DMG (GUI app)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Resolve packages
+      - name: Show toolchain
         run: |
-          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       # 编译 macOS GUI app(universal binary: arm64 + x86_64)。
       # 用 -target + -sdk macosx + ARCHS 出双架构,无需 simulator runtime。
@@ -69,7 +72,7 @@ jobs:
             -sdk macosx \
             -configuration Release \
             MARKETING_VERSION="$RELEASE_VERSION" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
+            CURRENT_PROJECT_VERSION="$RELEASE_BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -181,41 +184,36 @@ jobs:
   # ─────────────────────────────────────────────────
   ios:
     name: iOS IPA (unsigned)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      # 下载 iOS simulator runtime(Assets.xcassets 编译需要)。
-      # runner 可能未预装与 Xcode 版本匹配的 runtime。
-      - name: Download iOS simulator runtime
-        run: xcodebuild -downloadPlatform iOS
-
-      - name: Resolve packages
+      - name: Show toolchain
         run: |
-          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Build iOS .app (unsigned)
         run: |
           RELEASE_VERSION="${VERSION_SOURCE#v}"
           mkdir -p build/app
-          # 用 -scheme + -destination build 出 .app(CONFIGURATION_BUILD_DIR
-          # 指定输出目录,便于后续打包 ipa)。
+          # 设备 SDK + target 构建不需要模拟器 runtime,也避免 destination
+          # 和 scheme 解析引入的环境差异。
+          set -o pipefail
           xcodebuild -project SoundSense.xcodeproj \
-            -scheme SoundSense \
-            -destination 'generic/platform=iOS' \
+            -target SoundSense \
+            -sdk iphoneos \
             -configuration Release \
             MARKETING_VERSION="$RELEASE_VERSION" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
+            CURRENT_PROJECT_VERSION="$RELEASE_BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/build/app" \
-            build
+            build 2>&1 | tee build/ios-build.log
           if [ ! -d build/app/SoundSense.app ]; then
             echo "❌ 未生成 SoundSense.app"
             ls -la build/app/
@@ -250,22 +248,17 @@ jobs:
   # ─────────────────────────────────────────────────
   watchos:
     name: watchOS IPA (unsigned)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: logic-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      # 下载 watchOS simulator runtime(Assets.xcassets 编译需要)
-      - name: Download watchOS simulator runtime
-        run: xcodebuild -downloadPlatform watchOS
-
-      - name: Resolve packages
+      - name: Show toolchain
         run: |
-          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Build watchOS .app (unsigned)
         run: |
@@ -275,17 +268,18 @@ jobs:
           # 绕过 device destination 解析,更可靠。
           # 注意:-derivedDataPath 必须配合 -scheme,这里用 -target,
           # 所以改用 CONFIGURATION_BUILD_DIR 指定输出目录。
+          set -o pipefail
           xcodebuild -project SoundSense.xcodeproj \
             -target SoundSenseWatch \
             -sdk watchos \
             -configuration Release \
             MARKETING_VERSION="$RELEASE_VERSION" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-2}" \
+            CURRENT_PROJECT_VERSION="$RELEASE_BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/build/app" \
-            build
+            build 2>&1 | tee build/watchos-build.log
           if [ ! -d build/app/SoundSenseWatch.app ]; then
             echo "❌ 未生成 SoundSenseWatch.app"
             ls -la build/app/

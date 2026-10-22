@@ -5,7 +5,7 @@ name: CI
 on:
   push:
     branches: ["**"]
-    tags-ignore: ["v*"]   # tag 推送交给 release.yml,这里不重复跑
+    tags-ignore: ["v*"]   # v 前缀 tag 交给 release.yml
   pull_request:
 
 jobs:
@@ -14,13 +14,16 @@ jobs:
   # ─────────────────────────────────────────────────
   logic-tests:
     name: Logic tests
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Show toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Run logic tests
         run: ./scripts/logic_tests.sh
@@ -30,13 +33,16 @@ jobs:
   # ─────────────────────────────────────────────────
   macos-build:
     name: macOS build (universal)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Show toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: SwiftPM build (CLI 算法验证)
         run: swift build --package-path Core
@@ -61,55 +67,52 @@ jobs:
   # ─────────────────────────────────────────────────
   ios-build:
     name: iOS build
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Download iOS simulator runtime
-        run: xcodebuild -downloadPlatform iOS
-
-      - name: Resolve packages
+      - name: Show toolchain
         run: |
-          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Build iOS target
         run: |
+          mkdir -p build/app
+          set -o pipefail
           xcodebuild -project SoundSense.xcodeproj \
-            -scheme SoundSense \
-            -destination 'generic/platform=iOS' \
+            -target SoundSense \
+            -sdk iphoneos \
             -configuration Release \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/build/app" \
-            build
+            build 2>&1 | tee build/ios-build.log
+          test -d build/app/SoundSense.app
 
   # ─────────────────────────────────────────────────
   # watchOS:验证 Xcode 工程能编译 watchOS target
   # ─────────────────────────────────────────────────
   watchos-build:
     name: watchOS build
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Download watchOS simulator runtime
-        run: xcodebuild -downloadPlatform watchOS
-
-      - name: Resolve packages
+      - name: Show toolchain
         run: |
-          xcodebuild -project SoundSense.xcodeproj -resolvePackageDependencies
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Build watchOS target
         run: |
+          mkdir -p build/app
+          set -o pipefail
           xcodebuild -project SoundSense.xcodeproj \
             -target SoundSenseWatch \
             -sdk watchos \
@@ -118,4 +121,5 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/build/app" \
-            build
+            build 2>&1 | tee build/watchos-build.log
+          test -d build/app/SoundSenseWatch.app

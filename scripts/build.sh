@@ -36,7 +36,7 @@ echo ""
 echo "🔨 编译中..."
 
 # 优先使用完整 Xcode 工具链(交叉编译更可靠;CommandLineTools 的 swiftc 在
-# 交叉编译 arm64 时可能卡死)。CI(macos-14 runner)已默认 xcode-select 到 Xcode。
+# 交叉编译 arm64 时可能卡死)。CI runner 已默认 xcode-select 到 Xcode。
 if [ -z "${DEVELOPER_DIR:-}" ] || [ "${DEVELOPER_DIR:-}" = "/" ]; then
   if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
     export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
